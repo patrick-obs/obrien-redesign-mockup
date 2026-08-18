@@ -69,18 +69,46 @@
     <p>Call, write, or schedule a free on-site assessment. We'll measure, plan, and show you the options.</p>
   </div>
 </div>
-<section class="block"><div class="wrap twocol">
-  <div class="body">
-    <h2 style="font-size:1.3rem;margin-bottom:14px">O'Brien Systems</h2>
-    <p><b>Phone:</b> <a href="tel:6108253405">610.825.3405</a><br>
-    <b>Address:</b> 739 E. Elm Street, Conshohocken, PA 19428<br>
-    <b>Service area:</b> Greater Philadelphia, including southeastern Pennsylvania, South Jersey, and Delaware<br>
-    <b>Certification:</b> Commonwealth of Pennsylvania Small Business (SB) Certified &middot; 06/10/2026 &ndash; 06/10/2028</p>
-    <p style="margin-top:18px"><a class="btn btn-solid" href="tel:6108253405">Call 610.825.3405</a></p>
-    <p style="margin-top:26px;color:var(--muted);font-size:.9rem">This is a design mockup. The contact form from the production site (name, email, phone, message) would live here, wired to the same Forminator backend.</p>
+<section class="block"><div class="wrap">
+  <div class="contact-cards">
+    <div class="ccard"><span class="ic">&#128222;</span><b>Call us</b><p>Monday through Friday, straight to a person who knows storage.</p><a class="big" href="tel:6108253405">610.825.3405</a></div>
+    <div class="ccard"><span class="ic">&#128205;</span><b>Visit us</b><p>739 E. Elm Street<br>Conshohocken, PA 19428</p><a class="big" href="https://www.google.com/maps?q=739+E+Elm+Street+Conshohocken+PA+19428" target="_blank" rel="noopener">Get directions</a></div>
+    <div class="ccard"><span class="ic">&#128737;</span><b>Public procurement</b><p>Commonwealth of Pennsylvania Small Business (SB) Certified &middot; 06/10/2026 &ndash; 06/10/2028. Serving PA, NJ &amp; DE.</p><a class="big" href="government-public-safety.html">Government storage &rarr;</a></div>
   </div>
-  <div class="side-img"><iframe title="Map to O'Brien Systems" src="https://www.google.com/maps?q=739+E+Elm+Street+Conshohocken+PA+19428&output=embed" style="border:0;width:100%;height:420px" loading="lazy"></iframe></div>
+  <div class="twocol">
+    <div class="form">
+      <h2>Tell us what you're working on</h2>
+      <p class="note">We reply within one business day. Prefer the phone? <a href="tel:6108253405">610.825.3405</a> works too.</p>
+      <div class="row">
+        <div><label for="f-name">Name</label><input id="f-name" type="text" placeholder="E.g. John Doe"></div>
+        <div><label for="f-company">Organization</label><input id="f-company" type="text" placeholder="Company, agency, or school"></div>
+      </div>
+      <div class="row">
+        <div><label for="f-email">Email</label><input id="f-email" type="email" placeholder="E.g. john@doe.com"></div>
+        <div><label for="f-phone">Phone</label><input id="f-phone" type="tel" placeholder="E.g. +1 3004005000"></div>
+      </div>
+      <label for="f-topic">What do you need?</label>
+      <select id="f-topic">
+        <option value="assessment">Schedule a free space assessment</option>
+        <option value="service">Schedule service on an existing system</option>
+        <option value="quote">Request a quote or proposal</option>
+        <option value="talk">Just want to talk it through</option>
+      </select>
+      <label for="f-msg">Message</label>
+      <textarea id="f-msg" rows="5" placeholder="Enter your message..."></textarea>
+      <button class="btn btn-solid" type="button" onclick="this.textContent='Sent (mockup only)'">Send Message</button>
+      <p class="note" style="margin-top:14px;margin-bottom:0">Design mockup: this form isn't wired up yet. The production version connects to the same Forminator backend as the current site.</p>
+    </div>
+    <div class="side-img"><iframe title="Map to O'Brien Systems" src="https://www.google.com/maps?q=739+E+Elm+Street+Conshohocken+PA+19428&output=embed" style="border:0;width:100%;height:100%;min-height:480px" loading="lazy"></iframe></div>
+  </div>
 </div></section>
+<script>
+  (function(){
+    var t = new URLSearchParams(location.search).get('topic');
+    var sel = document.getElementById('f-topic');
+    if (t && sel && [...sel.options].some(function(o){return o.value===t})) sel.value = t;
+  })();
+</script>
 
 <div class="cta" id="contact">
   <div class="wrap">

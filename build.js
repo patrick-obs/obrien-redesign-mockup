@@ -114,19 +114,39 @@ const IMGS = {
   gcNewSpace: img('5da53-obs__unknown__cabinets__empty_storage_area__newly_designed_storage_area__0730c344-e1775586454713.jpg'),
   gcProject: img('24215-47-e1780411998743.jpg'),
   maximize: img('f5230-maximize-storage-space-1.jpg'),
+  // round 3 additions
+  summitLockers: img('fe33b-summit-lockers-brochure.jpeg'),
+  hamiltonLocker: img('b9be5-hamilton-locker-brochure-final-locker-e1777571764125.jpeg'),
+  nemours1: img('bbb99-nemours1-e1681392439776.jpg'),
+  svc1: img('91063-services-obrien.jpg'),
+  svc2: img('41c78-relocation-consultation.jpg'),
+  svc3: img('235ee-system.jpg'),
+  svcMain: img('89080-services.jpg'),
+};
+
+const COVERS = {
+  museum: img('90855-museum.jpg'),
+  healthcare: img('d193a-healthcare.jpg'),
+  publicSafety: img('332fa-public-safety.jpg'),
+  materialHandling: img('6bb35-material-handling.jpg'),
+  services: img('Services-1.jpg'),
+  government: img('f64ac-government.jpg'),
+  education: img('75eec-education.jpg'),
+  corporate: img('72039-redefining-space-and-asset-management.jpg'),
+  lockers: img('10a31-obrien-system-lockers-brochure-cover.jpg'),
 };
 
 const PDF = 'https://obriensys.patrick-obrien.com/wp-content/uploads/2026/06';
 const BROCHURES = [
-  ['Museum Storage Brochure', `${PDF}/46a27-brochure-obriensys-museum-brochure.pdf`],
-  ['Healthcare Brochure', `${PDF}/c8b0b-brochure-obriensys-healthcare-brochure.pdf`],
-  ['Public Safety Brochure', `${PDF}/325c1-brochure-obriensys-public-safety.pdf`],
-  ['Government Brochure', `${PDF}/7850d-brochure-obriensys-government-brochure.pdf`],
-  ['Education Brochure', `${PDF}/c9557-brochure-obriensys-education-brochure.pdf`],
-  ['Corporate Brochure', `${PDF}/eb0be-brochure-obriensys-corporate-brochure.pdf`],
-  ['Material Handling Brochure', `${PDF}/201e1-brochure-obriensys-material-handling-brochure.pdf`],
-  ['Lockers Brochure', `${PDF}/77e63-obriensystem-lockers-brochure.pdf`],
-  ['Services Brochure', `${PDF}/bcf21-brochure-obriensys-service-brochure.pdf`],
+  ['Museum Storage Brochure', `${PDF}/46a27-brochure-obriensys-museum-brochure.pdf`, 'museum'],
+  ['Healthcare Brochure', `${PDF}/c8b0b-brochure-obriensys-healthcare-brochure.pdf`, 'healthcare'],
+  ['Public Safety Brochure', `${PDF}/325c1-brochure-obriensys-public-safety.pdf`, 'publicSafety'],
+  ['Government Brochure', `${PDF}/7850d-brochure-obriensys-government-brochure.pdf`, 'government'],
+  ['Education Brochure', `${PDF}/c9557-brochure-obriensys-education-brochure.pdf`, 'education'],
+  ['Corporate Brochure', `${PDF}/eb0be-brochure-obriensys-corporate-brochure.pdf`, 'corporate'],
+  ['Material Handling Brochure', `${PDF}/201e1-brochure-obriensys-material-handling-brochure.pdf`, 'materialHandling'],
+  ['Lockers Brochure', `${PDF}/77e63-obriensystem-lockers-brochure.pdf`, 'lockers'],
+  ['Services Brochure', `${PDF}/bcf21-brochure-obriensys-service-brochure.pdf`, 'services'],
 ];
 
 const SB_CERT = `Commonwealth of Pennsylvania Small Business (SB) Certified &middot; 06/10/2026 &ndash; 06/10/2028`;
@@ -167,13 +187,13 @@ nav.menu>div:hover a.top{color:var(--teal)}
 .mega{position:absolute;top:100%;left:50%;transform:translateX(-50%) translateY(8px);background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:22px;display:none;gap:10px 14px}
 .mega::before{content:"";position:absolute;left:-20px;right:-20px;top:-20px;height:24px}
 nav.menu>div:hover .mega,nav.menu>div:focus-within .mega{display:grid}
-.mega.sol{grid-template-columns:repeat(3,220px)}
-.mega.ind{grid-template-columns:repeat(3,215px)}
-.mega a{display:block;padding:10px 12px;border-radius:10px}
+.mega.sol{grid-template-columns:repeat(3,258px);gap:6px 18px}
+.mega.ind{grid-template-columns:repeat(3,248px);gap:6px 18px}
+.mega a{display:block;padding:12px 14px;border-radius:10px}
 .mega a:hover{background:var(--mist)}
-.mega .t{font-weight:700;font-size:.9rem;color:var(--ink)}
+.mega .t{font-weight:700;font-size:.9rem;color:var(--ink);line-height:1.35;display:block}
 .mega a:hover .t{color:var(--teal)}
-.mega .d{font-size:.78rem;color:var(--muted);margin-top:2px;line-height:1.4}
+.mega .d{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.5;display:block}
 .mega .all{grid-column:1/-1;text-align:center;border-top:1px solid var(--line);margin-top:6px;padding-top:12px;font-weight:700;color:var(--teal);font-size:.85rem}
 .head-cta{display:flex;align-items:center;gap:14px}
 .head-phone{font-weight:800;color:var(--teal-ink);font-size:.92rem;white-space:nowrap}
@@ -243,7 +263,9 @@ section.block{padding:72px 0}
 
 .projects-bg{background:var(--mist)}
 .proj-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
-.proj{position:relative;border-radius:var(--radius);overflow:hidden;height:340px;display:flex;align-items:flex-end;color:#fff;background-size:cover;background-position:center}
+.proj{position:relative;border-radius:var(--radius);overflow:hidden;height:340px;display:flex;align-items:flex-end;color:#fff;background-size:cover;background-position:center;transition:transform .15s ease, box-shadow .15s ease}
+a.proj:hover{transform:translateY(-4px);box-shadow:var(--shadow)}
+a.proj .cap .t::after{content:" \\2192";color:#9fd9db}
 .proj::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 40%,rgba(2,40,42,.88) 100%)}
 .proj .cap{position:relative;z-index:2;padding:20px}
 .proj .cap .k{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:#9fd9db;font-weight:700}
@@ -288,6 +310,66 @@ a.pt .ext{display:block;margin-top:10px;font-size:.75rem;font-weight:700;color:v
 
 /* blog */
 .post-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+.post-hero{position:relative;color:#fff;overflow:hidden;background:var(--teal-ink)}
+.post-hero::before{content:"";position:absolute;inset:0;background:var(--hero-img) center/cover no-repeat;opacity:.25}
+.post-hero .wrap{position:relative;z-index:2;padding:64px 24px}
+.post-hero h1{font-size:clamp(1.7rem,3.5vw,2.6rem);max-width:26ch}
+.post-hero .meta{color:var(--teal-soft);font-weight:700;font-size:.85rem;letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px}
+.post-content{max-width:760px;margin:0 auto;padding:56px 24px}
+.post-content p{margin-bottom:1.1rem;color:#39494c}
+.post-content h2{font-size:1.45rem;margin:2rem 0 .8rem;color:var(--teal-ink)}
+.post-content h3{font-size:1.15rem;margin:1.6rem 0 .6rem;color:var(--teal-ink)}
+.post-content ul,.post-content ol{margin:0 0 1.1rem 1.4rem;color:#39494c}
+.post-content li{margin-bottom:.4rem}
+.post-content img{border-radius:var(--radius);margin:1.4rem auto;box-shadow:var(--shadow)}
+.post-content figure{margin:1.4rem 0}
+.post-content figcaption{font-size:.8rem;color:var(--muted);text-align:center}
+.post-content blockquote{border-left:4px solid var(--teal);padding:.4rem 0 .4rem 1.2rem;margin:1.4rem 0;color:var(--muted)}
+.post-content table{border-collapse:collapse;width:100%;margin:1.4rem 0;font-size:.9rem}
+.post-content th,.post-content td{border:1px solid var(--line);padding:8px 12px;text-align:left}
+.post-nav{max-width:760px;margin:0 auto;padding:0 24px 56px;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap}
+
+/* contact */
+.contact-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-bottom:44px}
+.ccard{border:1px solid var(--line);border-radius:var(--radius);padding:24px;background:#fff;text-align:center}
+.ccard .ic{font-size:1.8rem}
+.ccard b{display:block;margin:.5rem 0 .2rem;color:var(--teal-ink)}
+.ccard p{font-size:.88rem;color:var(--muted)}
+.ccard a.big{display:block;font-weight:800;font-size:1.05rem;color:var(--teal);margin-top:.4rem}
+.form{background:var(--mist);border:1px solid var(--line);border-radius:var(--radius);padding:30px}
+.form h2{font-size:1.25rem;margin-bottom:6px}
+.form .note{font-size:.85rem;color:var(--muted);margin-bottom:20px}
+.form .row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form label{display:block;font-size:.8rem;font-weight:700;color:var(--teal-ink);margin:12px 0 4px}
+.form input,.form select,.form textarea{width:100%;padding:.7rem .9rem;border:1px solid var(--line);border-radius:8px;font-family:var(--font);font-size:.92rem;background:#fff;color:var(--ink)}
+.form input:focus,.form select:focus,.form textarea:focus{outline:2px solid var(--teal);border-color:var(--teal)}
+.form button{margin-top:18px}
+
+/* team */
+.team{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:38px}
+.tm{border:1px solid var(--line);border-radius:var(--radius);padding:24px 18px;text-align:center;background:#fff}
+.tm .avatar{width:72px;height:72px;border-radius:50%;background:var(--teal-ink);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.4rem;margin:0 auto 12px}
+.tm b{display:block;color:var(--teal-ink)}
+.tm span{font-size:.82rem;color:var(--muted)}
+
+/* brochure covers */
+.dl-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-top:34px}
+.dlc{border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:#fff;display:flex;flex-direction:column;transition:transform .15s ease, box-shadow .15s ease}
+.dlc:hover{transform:translateY(-4px);box-shadow:var(--shadow)}
+.dlc .cover{height:220px;background-size:cover;background-position:top center}
+.dlc .bd{padding:16px 18px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.dlc b{color:var(--teal-ink);font-size:.95rem}
+.dlc .tag{font-size:.7rem;font-weight:800;background:var(--mist);color:var(--teal);padding:4px 10px;border-radius:999px;letter-spacing:.05em}
+
+/* services */
+.svc-cta{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:48px}
+.svc-cta a{position:relative;border-radius:var(--radius);overflow:hidden;color:#fff;padding:38px 30px;display:block;background:var(--teal-ink)}
+.svc-cta a::before{content:"";position:absolute;inset:0;background:var(--panel-img) center/cover;opacity:.22}
+.svc-cta a>*{position:relative;z-index:2}
+.svc-cta h3{font-size:1.3rem;margin-bottom:8px}
+.svc-cta p{font-size:.9rem;color:#cfe9ea;margin-bottom:14px}
+.svc-cta .go{font-weight:800;color:var(--teal-soft)}
+.svc-cta a:hover{outline:3px solid var(--teal-soft)}
 
 /* downloads */
 .dl-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:34px}
@@ -320,14 +402,14 @@ footer .legal a{display:inline;padding:0 10px}
   nav.menu{display:none}
   .apps .grid{grid-template-columns:repeat(4,1fr)}
   .apps a:nth-child(4n+1){border-left:0}
-  .stats .grid,.compare .duo,.proj-grid,.cards,.steps,.feat,.gallery,.post-grid,.dl-grid{grid-template-columns:1fr 1fr}
-  .twocol{grid-template-columns:1fr}
+  .stats .grid,.compare .duo,.proj-grid,.cards,.steps,.feat,.gallery,.post-grid,.dl-grid,.contact-cards,.team{grid-template-columns:1fr 1fr}
+  .twocol,.svc-cta,.form .row{grid-template-columns:1fr}
   .partners-row{grid-template-columns:repeat(2,1fr)}
   footer .cols{grid-template-columns:1fr 1fr}
 }
 @media (max-width:600px){
   .apps .grid{grid-template-columns:repeat(2,1fr)}
-  .stats .grid,.compare .duo,.proj-grid,.cards,.steps,.feat,.gallery,.post-grid,.dl-grid{grid-template-columns:1fr}
+  .stats .grid,.compare .duo,.proj-grid,.cards,.steps,.feat,.gallery,.post-grid,.dl-grid,.contact-cards,.team{grid-template-columns:1fr}
 }
 `;
 
@@ -344,17 +426,17 @@ const SOLUTIONS = [
 const INDUSTRIES = [
   { slug:'museums', name:'Museums', short:'Collections, art racks and conservation', img:IMGS.museumCard, banner:IMGS.banMuseum },
   { slug:'libraries', name:'Libraries', short:'Collection shelving and study space recovery', img:IMGS.libraryCard, banner:IMGS.libHD },
-  { slug:'education', name:'Education', short:'Classrooms, athletics and supply storage', img:IMGS.eduCard, banner:IMGS.banEducation },
-  { slug:'athletics', name:'Athletics', short:'Team rooms, equipment and gear storage', img:IMGS.eduLockers, banner:IMGS.eduLockers },
+  { slug:'education', name:'Education', short:'Classrooms, athletics and supply storage', img:IMGS.eduModular, banner:IMGS.banEducation },
+  { slug:'athletics', name:'Athletics', short:'Team rooms, equipment and gear storage', img:IMGS.summitLockers, banner:IMGS.summitLockers },
   { slug:'government-public-safety', name:'Government & Public Safety', short:'Evidence, records and gear storage', img:IMGS.gpsCard, banner:IMGS.gpsCard },
   { slug:'military', name:'Military', short:'Readiness gear and base operations storage', img:IMGS.weapons1, banner:IMGS.weapons2 },
-  { slug:'pharmaceutical-healthcare', name:'Healthcare & Pharmaceutical', short:'Supply, sterile core and lab storage', img:IMGS.pharmaCard, banner:IMGS.banPharma },
+  { slug:'pharmaceutical-healthcare', name:'Healthcare & Pharmaceutical', short:'Supply, sterile core and lab storage', img:IMGS.nemoursCabs, banner:IMGS.banPharma },
   { slug:'corporate-legal', name:'Corporate & Legal', short:'Records, files and workplace storage', img:IMGS.corpCard, banner:IMGS.banCorporate },
   { slug:'retail', name:'Retail', short:'Back-of-house and stockroom storage', img:IMGS.retailCard, banner:IMGS.banRetail },
   { slug:'automotive', name:'Automotive', short:'Parts, tires and dealership storage', img:IMGS.autoCard, banner:IMGS.banAuto },
   { slug:'material-handling-warehouse', name:'Material Handling & Warehouse', short:'Racking, AS/RS and mezzanines', img:IMGS.mhwCard, banner:IMGS.banWarehouse },
   { slug:'vertical-farming', name:'Vertical Farming', short:'Mobile grow systems and grow racks', img:IMGS.vfCard, banner:IMGS.banVF },
-  { slug:'general-contractors', name:'General Contractors', short:'Storage packages for GCs and architects', img:IMGS.mezzanine, banner:IMGS.banWarehouse },
+  { slug:'general-contractors', name:'General Contractors', short:'Storage packages for GCs and architects', img:IMGS.gcNewSpace, banner:IMGS.gcProject },
 ];
 
 const PARTNERS = [
@@ -701,7 +783,7 @@ const INDUSTRY_PAGES = {
       ['Athletics storage', 'Ventilated lockers and equipment storage'],
       ['Records compaction', 'High-density systems for registrar and district offices'],
     ],
-    gallery:[IMGS.eduCabs, IMGS.eduModular, IMGS.eduCard],
+    gallery:[IMGS.eduCabs, IMGS.eduCard, IMGS.eduLockers],
     chipsTitle:'Solutions schools use most',
     related: relSol('static-shelving','lockers','modular-casework','high-density-mobile-storage'),
   },
@@ -720,7 +802,7 @@ const INDUSTRY_PAGES = {
       ['Uniform storage', 'Organized, countable, and ready for game day'],
       ['Compact gear rooms', 'Mobile systems that double equipment capacity'],
     ],
-    gallery:[IMGS.lockerSolutions, IMGS.lockerCorp, IMGS.eduLockers],
+    gallery:[IMGS.hamiltonLocker, IMGS.eduLockers, IMGS.agile1],
     chipsTitle:'Solutions athletic programs use most',
     related: relSol('lockers','static-shelving','high-density-mobile-storage'),
   },
@@ -765,7 +847,7 @@ const INDUSTRY_PAGES = {
   'pharmaceutical-healthcare': {
     h1:'Healthcare & Pharmaceutical Storage',
     lead:'Supply chains inside the building: sterile core, pharmacy, lab, and materials storage that keeps clinical space clinical.',
-    sideImg: IMGS.nemours4,
+    sideImg: IMGS.nemours5,
     paras:[
       `Every square foot given to storage in a hospital is a square foot not treating patients. We compress supply storage with high-density systems, organize sterile core and pharmacy with wire and cabinet systems designed for sanitation, and outfit labs with steel casework built for the work.`,
       `Metro wire shelving is the healthcare standard for cleanable, configurable supply storage. Modular casework adapts clinical support spaces without construction. VLMs secure and track high-value pharmacy and supply inventory.`,
@@ -777,7 +859,7 @@ const INDUSTRY_PAGES = {
       ['Lab casework', 'Steel casework and chemical-resistant surfaces'],
       ['Live-facility installs', 'Infection-control aware crews and scheduling'],
     ],
-    gallery:[IMGS.wireRack, IMGS.pharmaCard, IMGS.nemours5],
+    gallery:[IMGS.wireRack, IMGS.pharmaCard, IMGS.nemours1],
     chipsTitle:'Solutions healthcare facilities use most',
     related: relSol('modular-casework','high-density-mobile-storage','cabinets','lifts-carousels'),
   },
@@ -891,7 +973,7 @@ const INDUSTRY_PAGES = {
       ['Spec-or-equal flexibility', '14 lines to meet spec or protect budget'],
       ['PA SB certified', 'Counts toward small business participation goals'],
     ],
-    gallery:[IMGS.gcProject, IMGS.mezzanine, IMGS.maximize],
+    gallery:[IMGS.mezzanine, IMGS.maximize, IMGS.svc3],
     chipsTitle:'Scopes we take',
     related: relSol('high-density-mobile-storage','lockers','modular-casework','static-shelving'),
   },
@@ -939,15 +1021,15 @@ const projectsPage = shell(`Projects | O'Brien Systems`, IMGS.lib1, `
 </div>
 <section class="block"><div class="wrap">
   <div class="proj-grid">
-    <div class="proj" style="background-image:url('${IMGS.artScreen}')"><div class="cap"><span class="k">Museum</span><div class="t">Art screens and conservation storage for a regional collection</div></div></div>
-    <div class="proj" style="background-image:url('${IMGS.lib1}')"><div class="cap"><span class="k">Library</span><div class="t">High-density shelving that kept the whole collection on one floor</div></div></div>
-    <div class="proj" style="background-image:url('${IMGS.nemours4}')"><div class="cap"><span class="k">Healthcare</span><div class="t">Modular casework and supply storage for a children's health system</div></div></div>
-    <div class="proj" style="background-image:url('${IMGS.evidence}')"><div class="cap"><span class="k">Public Safety</span><div class="t">Evidence storage planned around chain of custody</div></div></div>
-    <div class="proj" style="background-image:url('${IMGS.mhwLC}')"><div class="cap"><span class="k">Warehouse</span><div class="t">Material handling and storage for high-throughput operations</div></div></div>
-    <div class="proj" style="background-image:url('${IMGS.retailMobile}')"><div class="cap"><span class="k">Retail</span><div class="t">Back-of-house mobile storage that shrank the stockroom, not the stock</div></div></div>
-    <div class="proj" style="background-image:url('${IMGS.museumCabs}')"><div class="cap"><span class="k">Museum</span><div class="t">Visual storage cabinets that put a collection on display, protected</div></div></div>
-    <div class="proj" style="background-image:url('${IMGS.agile1}')"><div class="cap"><span class="k">Workplace</span><div class="t">Smart lockers for a hybrid office's day-use storage</div></div></div>
-    <div class="proj" style="background-image:url('${IMGS.gcNewSpace}')"><div class="cap"><span class="k">Renovation</span><div class="t">An empty storage area redesigned into working capacity</div></div></div>
+    <a class="proj" href="museums.html" style="background-image:url('${IMGS.artScreen}')"><div class="cap"><span class="k">Museum</span><div class="t">Art screens and conservation storage for a regional collection</div></div></a>
+    <a class="proj" href="libraries.html" style="background-image:url('${IMGS.lib1}')"><div class="cap"><span class="k">Library</span><div class="t">High-density shelving that kept the whole collection on one floor</div></div></a>
+    <a class="proj" href="pharmaceutical-healthcare.html" style="background-image:url('${IMGS.nemoursCabs}')"><div class="cap"><span class="k">Healthcare</span><div class="t">Modular casework and supply storage for a children's health system</div></div></a>
+    <a class="proj" href="government-public-safety.html" style="background-image:url('${IMGS.evidence}')"><div class="cap"><span class="k">Public Safety</span><div class="t">Evidence storage planned around chain of custody</div></div></a>
+    <a class="proj" href="material-handling-warehouse.html" style="background-image:url('${IMGS.mhwLC}')"><div class="cap"><span class="k">Warehouse</span><div class="t">Material handling and storage for high-throughput operations</div></div></a>
+    <a class="proj" href="retail.html" style="background-image:url('${IMGS.retailMobile}')"><div class="cap"><span class="k">Retail</span><div class="t">Back-of-house mobile storage that shrank the stockroom, not the stock</div></div></a>
+    <a class="proj" href="museums.html" style="background-image:url('${IMGS.museumCabs}')"><div class="cap"><span class="k">Museum</span><div class="t">Visual storage cabinets that put a collection on display, protected</div></div></a>
+    <a class="proj" href="corporate-legal.html" style="background-image:url('${IMGS.agile1}')"><div class="cap"><span class="k">Workplace</span><div class="t">Smart lockers for a hybrid office's day-use storage</div></div></a>
+    <a class="proj" href="general-contractors.html" style="background-image:url('${IMGS.gcNewSpace}')"><div class="cap"><span class="k">Renovation</span><div class="t">An empty storage area redesigned into working capacity</div></div></a>
   </div>
 </div></section>`);
 
@@ -958,20 +1040,53 @@ const servicesPage = shell(`Services | O'Brien Systems`, IMGS.banServices, `
     <span class="eyebrow">Services</span>
     <h1>From walkthrough to working storage</h1>
     <p>Buying storage isn't buying steel. It's buying a plan, an installation, and someone who answers the phone afterward.</p>
+    <div class="ctas" style="display:flex;gap:14px;flex-wrap:wrap;margin-top:26px">
+      <a class="btn btn-white" href="contact.html?topic=service">Schedule Service</a>
+      <a class="btn btn-ghost" href="contact.html?topic=quote">Request a Quote or Proposal</a>
+    </div>
   </div>
 </div>
 <section class="block"><div class="wrap">
+  <span class="eyebrow">How Projects Run</span>
+  <h2>Four steps, <em>one team</em></h2>
   <div class="steps">
     <div class="step"><span class="n">01 &mdash; ASSESS</span><h3>Free Space Assessment</h3><p>We walk your space, measure what you store, and find the capacity you didn't know you had. No cost, no obligation.</p></div>
     <div class="step"><span class="n">02 &mdash; DESIGN</span><h3>Layout &amp; Specification</h3><p>Drawings, load calculations, and an itemized quote, matched to the right manufacturer line for the job.</p></div>
     <div class="step"><span class="n">03 &mdash; INSTALL</span><h3>Factory-Trained Installation</h3><p>Our own crews deliver, anchor, and level, coordinated around your operating hours and site rules.</p></div>
     <div class="step"><span class="n">04 &mdash; SUPPORT</span><h3>Service &amp; Relocation</h3><p>Maintenance, reconfiguration, teardown and moves, even for systems we didn't originally supply.</p></div>
   </div>
-  <div class="feat" style="margin-top:44px">
-    <div><b>Relocation and reinstallation</b><span>4-post and case-style systems disassemble and move with your department, file order intact.</span></div>
-    <div><b>Service on any brand</b><span>We maintain and repair storage systems we didn't sell, including legacy installed bases.</span></div>
-    <div><b>Structural coordination</b><span>Rail-mounted systems get floor-load verification and permits handled properly.</span></div>
-    <div><b>Phased projects</b><span>Modular systems mean you can start with the highest-need areas and add sections later.</span></div>
+</div></section>
+<section class="block projects-bg" style="padding-top:56px;padding-bottom:56px"><div class="wrap">
+  <span class="eyebrow">What We Do After the Sale</span>
+  <h2>Service is the <em>product</em></h2>
+  <div class="feat" style="margin-top:34px">
+    <div><b>Maintenance &amp; repair, any brand</b><span>We maintain and repair storage systems we didn't sell, including legacy installed bases from manufacturers no longer in business.</span></div>
+    <div><b>Relocation &amp; reinstallation</b><span>4-post and case-style systems disassemble and move with your department, file order intact. Offices, records rooms, whole facilities.</span></div>
+    <div><b>Reconfiguration</b><span>Add sections, change shelf heights, convert static shelving to mobile carriages as your needs grow.</span></div>
+    <div><b>Structural coordination</b><span>Rail-mounted systems get floor-load verification, seismic and load calculations, and permits handled properly.</span></div>
+    <div><b>Preventive service visits</b><span>Carriage alignment, drive and safety-system checks that keep mobile systems gliding instead of grinding.</span></div>
+    <div><b>Phased projects</b><span>Modular systems mean you can start with the highest-need areas and add sections later, on your budget cycle.</span></div>
+  </div>
+  <div class="gallery">
+    <div class="g" style="background-image:url('${IMGS.svcMain}')"></div>
+    <div class="g" style="background-image:url('${IMGS.svc2}')"></div>
+    <div class="g" style="background-image:url('${IMGS.svc1}')"></div>
+  </div>
+</div></section>
+<section class="block" style="padding-top:56px"><div class="wrap">
+  <span class="eyebrow">Ready When You Are</span>
+  <h2>Two ways to <em>start</em></h2>
+  <div class="svc-cta">
+    <a href="contact.html?topic=service" style="--panel-img:url('${IMGS.svc2}')">
+      <h3>Schedule service</h3>
+      <p>A system that needs maintenance, repair, relocation, or reconfiguration. Tell us the brand and the symptom; we service every line we carry and most we don't.</p>
+      <span class="go">Schedule service &rarr;</span>
+    </a>
+    <a href="contact.html?topic=quote" style="--panel-img:url('${IMGS.svc3}')">
+      <h3>Request a quote or proposal</h3>
+      <p>A project on paper: new construction, a renovation, or a room that stopped working. Send drawings if you have them, or just tell us what you store.</p>
+      <span class="go">Request a quote &rarr;</span>
+    </a>
   </div>
 </div></section>`);
 
@@ -1015,6 +1130,15 @@ const aboutPage = shell(`About Us | O'Brien Systems`, IMGS.heroHome, `
     <div><b>14 manufacturer lines</b><span>Authorized dealer for the industry's leading brands.</span></div>
     <div><b>PA Small Business Certified</b><span>Commonwealth of Pennsylvania SB certification, valid 06/10/2026 through 06/10/2028.</span></div>
   </div>
+  <span class="eyebrow" style="margin-top:56px">The Team</span>
+  <h2>The people who <em>answer the phone</em></h2>
+  <p class="lead">A small team means the person who plans your project is the person who stands behind it.</p>
+  <div class="team">
+    <div class="tm"><div class="avatar">MO</div><b>Michael O'Brien</b><span>Vice President</span></div>
+    <div class="tm"><div class="avatar">PO</div><b>Patrick O'Brien</b><span>Sales &amp; Technology</span></div>
+    <div class="tm"><div class="avatar">JC</div><b>Jim Curcio</b><span>Field Service Lead</span></div>
+    <div class="tm"><div class="avatar">MP</div><b>Matt Parker</b><span>Installation Crew</span></div>
+  </div>
 </div></section>`);
 
 const contactPage = shell(`Contact Us | O'Brien Systems`, IMGS.mobileSol, `
@@ -1026,28 +1150,75 @@ const contactPage = shell(`Contact Us | O'Brien Systems`, IMGS.mobileSol, `
     <p>Call, write, or schedule a free on-site assessment. We'll measure, plan, and show you the options.</p>
   </div>
 </div>
-<section class="block"><div class="wrap twocol">
-  <div class="body">
-    <h2 style="font-size:1.3rem;margin-bottom:14px">O'Brien Systems</h2>
-    <p><b>Phone:</b> <a href="tel:6108253405">610.825.3405</a><br>
-    <b>Address:</b> 739 E. Elm Street, Conshohocken, PA 19428<br>
-    <b>Service area:</b> Greater Philadelphia, including southeastern Pennsylvania, South Jersey, and Delaware<br>
-    <b>Certification:</b> ${SB_CERT}</p>
-    <p style="margin-top:18px"><a class="btn btn-solid" href="tel:6108253405">Call 610.825.3405</a></p>
-    <p style="margin-top:26px;color:var(--muted);font-size:.9rem">This is a design mockup. The contact form from the production site (name, email, phone, message) would live here, wired to the same Forminator backend.</p>
+<section class="block"><div class="wrap">
+  <div class="contact-cards">
+    <div class="ccard"><span class="ic">&#128222;</span><b>Call us</b><p>Monday through Friday, straight to a person who knows storage.</p><a class="big" href="tel:6108253405">610.825.3405</a></div>
+    <div class="ccard"><span class="ic">&#128205;</span><b>Visit us</b><p>739 E. Elm Street<br>Conshohocken, PA 19428</p><a class="big" href="https://www.google.com/maps?q=739+E+Elm+Street+Conshohocken+PA+19428" target="_blank" rel="noopener">Get directions</a></div>
+    <div class="ccard"><span class="ic">&#128737;</span><b>Public procurement</b><p>${SB_CERT}. Serving PA, NJ &amp; DE.</p><a class="big" href="government-public-safety.html">Government storage &rarr;</a></div>
   </div>
-  <div class="side-img"><iframe title="Map to O'Brien Systems" src="https://www.google.com/maps?q=739+E+Elm+Street+Conshohocken+PA+19428&output=embed" style="border:0;width:100%;height:420px" loading="lazy"></iframe></div>
-</div></section>`);
+  <div class="twocol">
+    <div class="form">
+      <h2>Tell us what you're working on</h2>
+      <p class="note">We reply within one business day. Prefer the phone? <a href="tel:6108253405">610.825.3405</a> works too.</p>
+      <div class="row">
+        <div><label for="f-name">Name</label><input id="f-name" type="text" placeholder="E.g. John Doe"></div>
+        <div><label for="f-company">Organization</label><input id="f-company" type="text" placeholder="Company, agency, or school"></div>
+      </div>
+      <div class="row">
+        <div><label for="f-email">Email</label><input id="f-email" type="email" placeholder="E.g. john@doe.com"></div>
+        <div><label for="f-phone">Phone</label><input id="f-phone" type="tel" placeholder="E.g. +1 3004005000"></div>
+      </div>
+      <label for="f-topic">What do you need?</label>
+      <select id="f-topic">
+        <option value="assessment">Schedule a free space assessment</option>
+        <option value="service">Schedule service on an existing system</option>
+        <option value="quote">Request a quote or proposal</option>
+        <option value="talk">Just want to talk it through</option>
+      </select>
+      <label for="f-msg">Message</label>
+      <textarea id="f-msg" rows="5" placeholder="Enter your message..."></textarea>
+      <button class="btn btn-solid" type="button" onclick="this.textContent='Sent (mockup only)'">Send Message</button>
+      <p class="note" style="margin-top:14px;margin-bottom:0">Design mockup: this form isn't wired up yet. The production version connects to the same Forminator backend as the current site.</p>
+    </div>
+    <div class="side-img"><iframe title="Map to O'Brien Systems" src="https://www.google.com/maps?q=739+E+Elm+Street+Conshohocken+PA+19428&output=embed" style="border:0;width:100%;height:100%;min-height:480px" loading="lazy"></iframe></div>
+  </div>
+</div></section>
+<script>
+  (function(){
+    var t = new URLSearchParams(location.search).get('topic');
+    var sel = document.getElementById('f-topic');
+    if (t && sel && [...sel.options].some(function(o){return o.value===t})) sel.value = t;
+  })();
+</script>`);
 
 /* ---------------- blog + resources ---------------- */
 let BLOG = [];
 try { BLOG = JSON.parse(fs.readFileSync(path.join(OUT,'blogdata.json'),'utf8')); } catch(e) { console.warn('no blogdata.json, blog page will be empty'); }
 const fmtDate = (d) => new Date(d+'T12:00:00').toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
 const postCard = (p) => `
-  <a class="card" href="https://obriensys.patrick-obrien.com/${p.slug}/" target="_blank" rel="noopener">
+  <a class="card" href="post-${p.slug}.html">
     ${p.img?`<div class="ph" style="background-image:url('${p.img}')"></div>`:''}
     <div class="bd"><div class="meta">${fmtDate(p.date)}</div><h3>${p.title}</h3><p>${p.excerpt.slice(0,150)}${p.excerpt.length>150?'...':''}</p><span class="go">Read the post &rarr;</span></div>
   </a>`;
+
+const postPage = (p, idx) => {
+  const prev = BLOG[idx+1]; const next = BLOG[idx-1];
+  return shell(`${p.title} | O'Brien Systems Blog`, p.imgLarge || IMGS.banResources, `
+<div class="post-hero">
+  <div class="wrap crumbs"><a href="index.html">Home</a> / <a href="blog.html">Blog</a></div>
+  <div class="wrap">
+    <div class="meta">${fmtDate(p.date)}</div>
+    <h1>${p.title}</h1>
+  </div>
+</div>
+<article class="post-content">
+${p.content}
+</article>
+<div class="post-nav">
+  ${prev?`<a class="btn btn-solid" href="post-${prev.slug}.html">&larr; Older: ${prev.title.slice(0,36)}${prev.title.length>36?'...':''}</a>`:'<span></span>'}
+  ${next?`<a class="btn btn-solid" href="post-${next.slug}.html">Newer: ${next.title.slice(0,36)}${next.title.length>36?'...':''} &rarr;</a>`:'<span></span>'}
+</div>`);
+};
 
 const blogPage = shell(`Blog | O'Brien Systems`, IMGS.banResources, `
 <div class="page-hero">
@@ -1075,7 +1246,7 @@ const resourcesPage = shell(`Resources & Brochures | O'Brien Systems`, IMGS.banR
 </div>
 <section class="block"><div class="wrap">
   <div class="dl-grid">
-    ${BROCHURES.map(b=>`<a class="dl" href="${b[1]}" target="_blank" rel="noopener"><span class="pdficon">PDF</span><span style="flex:1"><b>${b[0]}</b><span>View or download</span></span></a>`).join('\n    ')}
+    ${BROCHURES.map(b=>`<a class="dlc" href="${b[1]}" target="_blank" rel="noopener"><div class="cover" style="background-image:url('${COVERS[b[2]]}')"></div><div class="bd"><b>${b[0]}</b><span class="tag">PDF</span></div></a>`).join('\n    ')}
   </div>
   <p class="lead" style="margin-top:40px">Need drawings, specifications, or manufacturer literature for a specific product line? <a href="contact.html">Ask us</a> and we'll pull the current documents from the manufacturer.</p>
 </div></section>`);
@@ -1172,9 +1343,9 @@ const homeBody = `
       <a class="btn btn-solid" href="projects.html">See All Projects</a>
     </div>
     <div class="proj-grid">
-      <div class="proj" style="background-image:url('${IMGS.artScreen}')"><div class="cap"><span class="k">Museum</span><div class="t">Art screens and conservation storage for a regional collection</div></div></div>
-      <div class="proj" style="background-image:url('${IMGS.lib1}')"><div class="cap"><span class="k">Library</span><div class="t">High-density shelving that kept the whole collection on one floor</div></div></div>
-      <div class="proj" style="background-image:url('${IMGS.nemours4}')"><div class="cap"><span class="k">Healthcare</span><div class="t">Modular casework and supply storage for a children's health system</div></div></div>
+      <a class="proj" href="museums.html" style="background-image:url('${IMGS.artScreen}')"><div class="cap"><span class="k">Museum</span><div class="t">Art screens and conservation storage for a regional collection</div></div></a>
+      <a class="proj" href="libraries.html" style="background-image:url('${IMGS.lib1}')"><div class="cap"><span class="k">Library</span><div class="t">High-density shelving that kept the whole collection on one floor</div></div></a>
+      <a class="proj" href="pharmaceutical-healthcare.html" style="background-image:url('${IMGS.nemoursCabs}')"><div class="cap"><span class="k">Healthcare</span><div class="t">Modular casework and supply storage for a children's health system</div></div></a>
     </div>
   </div>
 </section>
@@ -1245,6 +1416,7 @@ for (const i of INDUSTRIES) {
   const d = INDUSTRY_PAGES[i.slug];
   pages[`${i.slug}.html`] = subpage({ ...d, eyebrow:'Industries', name:i.name, img:i.img, banner:i.banner, hub:'industries', hubName:'Industries' });
 }
+BLOG.forEach((p, idx) => { pages[`post-${p.slug}.html`] = postPage(p, idx); });
 
 let n = 0;
 for (const [file, html] of Object.entries(pages)) {
