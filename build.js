@@ -126,6 +126,7 @@ const IMGS = {
   musApp: img('3e210-museum-storage-application.jpg'),
   storAisle: img('fe96a-storage.jpg'),
   banHome2: img('e381e-homepage-background-2.jpg'),
+  hamilton: img('c4d30-hamilton-2048x1536.jpg'),
   bg3: img('b9dcc-background-3.jpg'),
   bg4: img('e3df5-background-4.jpg'),
   orgBg: img('d2e83-organization-background.jpg'),
@@ -997,7 +998,7 @@ const cardGrid = (items) => `<div class="cards">` + items.map(x=>`
   <a class="card" href="${x.slug}.html"><div class="ph" style="background-image:url('${x.img}')"></div>
     <div class="bd"><h3>${x.name}</h3><p>${x.short}.</p><span class="go">Explore &rarr;</span></div></a>`).join('') + `</div>`;
 
-const solutionsHub = shell(`Storage Solutions | O'Brien Systems`, IMGS.banMobile, `
+const solutionsHub = shell(`Storage Solutions | O'Brien Systems`, IMGS.compact, `
 <div class="page-hero">
   <div class="wrap crumbs"><a href="index.html">Home</a> / Solutions</div>
   <div class="wrap">
@@ -1254,7 +1255,7 @@ const blogPage = shell(`Blog | O'Brien Systems`, IMGS.bg4, `
   </div>
 </div></section>`);
 
-const resourcesPage = shell(`Resources & Brochures | O'Brien Systems`, IMGS.banResources, `
+const resourcesPage = shell(`Resources & Brochures | O'Brien Systems`, IMGS.hamilton, `
 <div class="page-hero">
   <div class="wrap crumbs"><a href="index.html">Home</a> / Resources</div>
   <div class="wrap">
