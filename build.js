@@ -124,6 +124,8 @@ const IMGS = {
   svcMain: img('89080-services.jpg'),
   // round 4: visually-picked replacements
   musApp: img('3e210-museum-storage-application.jpg'),
+  storAisle: img('fe96a-storage.jpg'),
+  contracts: img('d62db-contracts.jpg'),
   musVisual2: img('8efd2-museum-visual-cabinets.jpg'),
   musCompact: img('e3e9d-museum-compact-shelves.jpg'),
   textile: img('9dd25-textile-storage-1.jpg'),
@@ -145,18 +147,18 @@ const COVERS = {
 
 const PDF = 'https://obriensys.patrick-obrien.com/wp-content/uploads/2026/06';
 const BROCHURES = [
-  ['Museum Storage Brochure', `${PDF}/46a27-brochure-obriensys-museum-brochure.pdf`, 'museum'],
-  ['Healthcare Brochure', `${PDF}/c8b0b-brochure-obriensys-healthcare-brochure.pdf`, 'healthcare'],
-  ['Public Safety Brochure', `${PDF}/325c1-brochure-obriensys-public-safety.pdf`, 'publicSafety'],
-  ['Government Brochure', `${PDF}/7850d-brochure-obriensys-government-brochure.pdf`, 'government'],
-  ['Education Brochure', `${PDF}/c9557-brochure-obriensys-education-brochure.pdf`, 'education'],
-  ['Corporate Brochure', `${PDF}/eb0be-brochure-obriensys-corporate-brochure.pdf`, 'corporate'],
-  ['Material Handling Brochure', `${PDF}/201e1-brochure-obriensys-material-handling-brochure.pdf`, 'materialHandling'],
-  ['Lockers Brochure', `${PDF}/77e63-obriensystem-lockers-brochure.pdf`, 'lockers'],
-  ['Services Brochure', `${PDF}/bcf21-brochure-obriensys-service-brochure.pdf`, 'services'],
+  ['Museum Storage Brochure', 'assets/brochures/museum.pdf', 'museum'],
+  ['Healthcare Brochure', 'assets/brochures/healthcare.pdf', 'healthcare'],
+  ['Public Safety Brochure', 'assets/brochures/public-safety.pdf', 'publicSafety'],
+  ['Government Brochure', 'assets/brochures/government.pdf', 'government'],
+  ['Education Brochure', 'assets/brochures/education.pdf', 'education'],
+  ['Corporate Brochure', 'assets/brochures/corporate.pdf', 'corporate'],
+  ['Material Handling Brochure', 'assets/brochures/material-handling.pdf', 'materialHandling'],
+  ['Lockers Brochure', 'assets/brochures/lockers.pdf', 'lockers'],
+  ['Services Brochure', 'assets/brochures/services.pdf', 'services'],
 ];
 
-const SB_CERT = `Commonwealth of Pennsylvania Small Business (SB) Certified &middot; 06/10/2026 &ndash; 06/10/2028`;
+const SB_CERT = `Commonwealth of Pennsylvania Small Business (SB) Certified`;
 
 /* ---------------- shared CSS ---------------- */
 const CSS = `
@@ -422,12 +424,12 @@ footer .legal a{display:inline;padding:0 10px}
 
 /* ---------------- site data ---------------- */
 const SOLUTIONS = [
-  { slug:'high-density-mobile-storage', name:'High-Density Mobile Storage', short:'Compact aisles, double your capacity in the same footprint', img:IMGS.hdCard, banner:IMGS.banMobile },
+  { slug:'high-density-mobile-storage', name:'High-Density Mobile Storage', short:'Compact aisles, double your capacity in the same footprint', img:IMGS.hd1, banner:IMGS.banMobile },
   { slug:'lifts-carousels', name:'Lifts & Carousels (VLM)', short:'Automated vertical storage and retrieval, goods to person', img:IMGS.liftsCard, banner:IMGS.banLifts },
   { slug:'lockers', name:'Lockers', short:'Smart, evidence, athletic and personal storage lockers', img:IMGS.lockersCard, banner:IMGS.banLockers },
   { slug:'static-shelving', name:'Static Shelving', short:'4-post, pallet rack, cantilever and industrial shelving', img:IMGS.shelvCard, banner:IMGS.banShelving },
-  { slug:'cabinets', name:'Cabinets', short:'Lateral, rotary and museum-grade cabinet storage', img:IMGS.cabRotary, banner:IMGS.banCabinets },
-  { slug:'modular-casework', name:'Modular Casework', short:'Reconfigurable laminate and steel casework and lab furniture', img:IMGS.cw1, banner:IMGS.banCasework },
+  { slug:'cabinets', name:'Cabinets', short:'Lateral, rotary and museum-grade cabinet storage', img:IMGS.cabMuseum, banner:IMGS.banCabinets },
+  { slug:'modular-casework', name:'Modular Casework', short:'Reconfigurable laminate and steel casework and lab furniture', img:IMGS.cwLam, banner:IMGS.banCasework },
 ];
 
 const INDUSTRIES = [
@@ -527,7 +529,7 @@ const FOOTER = `
       <div>
         <h4>O'Brien Systems</h4>
         <p>Custom storage solutions for the greater Philadelphia region, planned, installed, and serviced by one local team since 1979.</p>
-        <p style="margin-top:10px;font-size:.8rem">${SB_CERT}</p>
+        <p style="margin-top:10px;font-size:.8rem">PA Small Business (SB) Certified</p>
         <p style="margin-top:12px"><a href="tel:6108253405">610.825.3405</a><a href="mailto:sales@obriensys.com">sales@obriensys.com</a><a href="https://www.facebook.com/OBrienSystems/">Facebook</a></p>
       </div>
       <div>
@@ -623,7 +625,7 @@ const SOLUTION_PAGES = {
       ['Manual and low-profile', 'Simple, economical systems for smaller rooms and closets'],
       ['Reuse your shelving', 'Existing 4-post shelving can often be mounted on new carriages'],
     ],
-    gallery:[IMGS.hd1, IMGS.hd2, IMGS.hdNemours],
+    gallery:[IMGS.hdCard, IMGS.hd2, IMGS.hdNemours],
     faqs:[
       ['Can my existing shelving be converted to mobile?', 'Often, yes. Many 4-post shelving systems can be mounted on new carriages, which lets you buy shelving now and compact it when space runs out. Compatibility depends on the shelving line and condition, which we confirm during an assessment.'],
       ['Will my floor support a mobile system?', 'Mobile systems concentrate weight, so floor capacity is checked before anything is ordered. We verify structural loading and coordinate with your facilities team or engineer as part of the design phase.'],
@@ -711,14 +713,14 @@ const SOLUTION_PAGES = {
       ['Flat files', 'Maps, drawings, and oversized document storage'],
       ['Industrial cabinets', 'Drawer and door cabinets for parts and supplies'],
     ],
-    gallery:[IMGS.flatFiles, IMGS.cabMuseum, IMGS.cabMedia],
+    gallery:[IMGS.flatFiles, IMGS.corpCabs, IMGS.cabMedia],
     chipsTitle:'Where cabinet storage leads',
     related: relInd('museums','pharmaceutical-healthcare','corporate-legal','government-public-safety'),
   },
   'modular-casework': {
     eyebrow:'Solutions', h1:'Modular Casework',
     lead:'Laminate and steel casework and lab furniture that installs fast, moves with your departments, and gets reconfigured instead of demolished.',
-    sideImg: IMGS.cwLam,
+    sideImg: IMGS.cw3,
     paras:[
       `Traditional millwork is built in place and dies in place. Modular casework from Hamilton Casework Solutions is factory-built, installs in days instead of weeks, and unbolts to move or reconfigure when the room's mission changes.`,
       `Laminate casework fits offices, classrooms, mailrooms, and breakrooms. Steel casework stands up to labs, clinics, and industrial spaces. Lab furniture adds chemical-resistant surfaces and service chases where the work demands them.`,
@@ -730,7 +732,7 @@ const SOLUTION_PAGES = {
       ['Lab furniture', 'Chemical-resistant tops and service-ready benches'],
       ['Reconfigurable', 'Unbolts and moves instead of getting demolished'],
     ],
-    gallery:[IMGS.cw2, IMGS.cw3, IMGS.nemours5],
+    gallery:[IMGS.cw2, IMGS.cw1, IMGS.nemours5],
     chipsTitle:'Casework-driven industries',
     related: relInd('pharmaceutical-healthcare','education','corporate-legal','government-public-safety'),
   },
@@ -820,13 +822,13 @@ const INDUSTRY_PAGES = {
     paras:[
       `In public safety storage, organization is chain of custody. Evidence rooms need pass-through lockers, secure shelving, and layouts that make every item findable and auditable. We plan evidence storage around your intake volume, retention schedules, and accreditation requirements.`,
       `Beyond evidence, agencies store records, gear, weapons, and fleet equipment. High-density mobile shelving compresses records rooms. Gear lockers keep officer equipment staged and accounted for. Weapons storage secures armories with the documentation trail agencies require.`,
-      `O'Brien Systems is a Commonwealth of Pennsylvania Small Business (SB) certified vendor (06/10/2026 through 06/10/2028), and our crews are accustomed to working in secure facilities.`,
+      `O'Brien Systems is a Commonwealth of Pennsylvania Small Business (SB) certified vendor, and our crews are accustomed to working in secure facilities.`,
     ],
     features:[
       ['Evidence storage', 'Pass-through lockers and secure, auditable shelving'],
       ['Records compaction', 'High-density systems sized to retention schedules'],
       ['Gear and armory', 'Officer equipment staged, secured, and documented'],
-      ['PA SB certified', 'Small Business certified vendor, 2026 through 2028'],
+      ['PA SB certified', 'Commonwealth of Pennsylvania Small Business certified vendor'],
     ],
     gallery:[IMGS.gun1, IMGS.lockerEvidence, IMGS.gpsCard],
     chipsTitle:'Solutions agencies use most',
@@ -972,7 +974,7 @@ const INDUSTRY_PAGES = {
     paras:[
       `GCs and architects bring us in when a project includes storage scope: evidence rooms in a public safety building, library stacks, lab casework, lockers, or high-density systems in a records center. We take the package from specification through punch list.`,
       `That includes submittals, load calculations and structural coordination for rail-mounted systems, delivery sequenced to the construction schedule, and factory-trained installation crews who work clean on active sites.`,
-      `Because we carry 14 manufacturer lines, we can meet a spec as written or propose equals that protect the budget without weakening the design intent. For public work, O'Brien Systems is a Commonwealth of Pennsylvania Small Business (SB) certified vendor, valid 06/10/2026 through 06/10/2028, which can help prime contractors meet small business participation goals.`,
+      `Because we carry 14 manufacturer lines, we can meet a spec as written or propose equals that protect the budget without weakening the design intent. For public work, O'Brien Systems is a Commonwealth of Pennsylvania Small Business (SB) certified vendor, which can help prime contractors meet small business participation goals.`,
     ],
     features:[
       ['Submittals and drawings', 'Complete packages, coordinated with your schedule'],
@@ -1076,8 +1078,8 @@ const servicesPage = shell(`Services | O'Brien Systems`, IMGS.banServices, `
   </div>
   <div class="gallery">
     <div class="g" style="background-image:url('${IMGS.svcMain}')"></div>
-    <div class="g" style="background-image:url('${IMGS.svc2}')"></div>
-    <div class="g" style="background-image:url('${IMGS.svc1}')"></div>
+    <div class="g" style="background-image:url('${IMGS.svc3}')"></div>
+    <div class="g" style="background-image:url('${IMGS.storAisle}')"></div>
   </div>
 </div></section>
 <section class="block" style="padding-top:56px"><div class="wrap">
@@ -1089,7 +1091,7 @@ const servicesPage = shell(`Services | O'Brien Systems`, IMGS.banServices, `
       <p>A system that needs maintenance, repair, relocation, or reconfiguration. Tell us the brand and the symptom; we service every line we carry and most we don't.</p>
       <span class="go">Schedule service &rarr;</span>
     </a>
-    <a href="contact.html?topic=quote" style="--panel-img:url('${IMGS.svc3}')">
+    <a href="contact.html?topic=quote" style="--panel-img:url('${IMGS.contracts}')">
       <h3>Request a quote or proposal</h3>
       <p>A project on paper: new construction, a renovation, or a room that stopped working. Send drawings if you have them, or just tell us what you store.</p>
       <span class="go">Request a quote &rarr;</span>
@@ -1167,7 +1169,7 @@ const contactPage = shell(`Contact Us | O'Brien Systems`, IMGS.mobileSol, `
   <div class="contact-cards">
     <div class="ccard"><span class="ic">&#128222;</span><b>Call or email</b><p>Monday through Friday, straight to a person who knows storage.</p><a class="big" href="tel:6108253405">610.825.3405</a><a class="big" href="mailto:sales@obriensys.com" style="font-size:.92rem">sales@obriensys.com</a></div>
     <div class="ccard"><span class="ic">&#128205;</span><b>Visit us</b><p>739 E. Elm Street<br>Conshohocken, PA 19428</p><a class="big" href="https://www.google.com/maps?q=739+E+Elm+Street+Conshohocken+PA+19428" target="_blank" rel="noopener">Get directions</a></div>
-    <div class="ccard"><span class="ic">&#128737;</span><b>Public procurement</b><p>${SB_CERT}. Serving PA, NJ &amp; DE.</p><a class="big" href="government-public-safety.html">Government storage &rarr;</a></div>
+    <div class="ccard"><span class="ic">&#128737;</span><b>Public procurement</b><p>PA Small Business (SB) Certified. Serving PA, NJ &amp; DE.</p><a class="big" href="government-public-safety.html">Government storage &rarr;</a></div>
   </div>
   <div class="twocol">
     <div class="form">
