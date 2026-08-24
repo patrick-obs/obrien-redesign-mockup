@@ -125,6 +125,10 @@ const IMGS = {
   // round 4: visually-picked replacements
   musApp: img('3e210-museum-storage-application.jpg'),
   storAisle: img('fe96a-storage.jpg'),
+  banHome2: img('e381e-homepage-background-2.jpg'),
+  bg3: img('b9dcc-background-3.jpg'),
+  bg4: img('e3df5-background-4.jpg'),
+  orgBg: img('d2e83-organization-background.jpg'),
   contracts: img('d62db-contracts.jpg'),
   musVisual2: img('8efd2-museum-visual-cabinets.jpg'),
   musCompact: img('e3e9d-museum-compact-shelves.jpg'),
@@ -1006,7 +1010,7 @@ const solutionsHub = shell(`Storage Solutions | O'Brien Systems`, IMGS.banMobile
 ${cardGrid(SOLUTIONS)}
 </div></section>`);
 
-const industriesHub = shell(`Industries We Serve | O'Brien Systems`, IMGS.heroHome, `
+const industriesHub = shell(`Industries We Serve | O'Brien Systems`, IMGS.banHome2, `
 <div class="page-hero">
   <div class="wrap crumbs"><a href="index.html">Home</a> / Industries</div>
   <div class="wrap">
@@ -1099,7 +1103,7 @@ const servicesPage = shell(`Services | O'Brien Systems`, IMGS.banServices, `
   </div>
 </div></section>`);
 
-const partnersPage = shell(`Manufacturer Partners | O'Brien Systems`, IMGS.banWarehouse, `
+const partnersPage = shell(`Manufacturer Partners | O'Brien Systems`, IMGS.orgBg, `
 <div class="page-hero">
   <div class="wrap crumbs"><a href="index.html">Home</a> / Partners</div>
   <div class="wrap">
@@ -1115,7 +1119,7 @@ const partnersPage = shell(`Manufacturer Partners | O'Brien Systems`, IMGS.banWa
   <p class="lead" style="margin-top:40px">Why buy through a dealer instead of direct? Because manufacturers build products and we build projects. One assessment covers every option. One crew installs the mix your space actually needs. One phone number answers for all of it, for the life of the system.</p>
 </div></section>`);
 
-const aboutPage = shell(`About Us | O'Brien Systems`, IMGS.heroHome, `
+const aboutPage = shell(`About Us | O'Brien Systems`, IMGS.bg3, `
 <div class="page-hero">
   <div class="wrap crumbs"><a href="index.html">Home</a> / About</div>
   <div class="wrap">
@@ -1235,7 +1239,7 @@ ${p.content}
 </div>`);
 };
 
-const blogPage = shell(`Blog | O'Brien Systems`, IMGS.banResources, `
+const blogPage = shell(`Blog | O'Brien Systems`, IMGS.bg4, `
 <div class="page-hero">
   <div class="wrap crumbs"><a href="index.html">Home</a> / Blog</div>
   <div class="wrap">
