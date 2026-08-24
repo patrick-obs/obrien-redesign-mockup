@@ -165,6 +165,7 @@ const BROCHURES = [
 ];
 
 const SB_CERT = `Commonwealth of Pennsylvania Small Business (SB) Certified`;
+const KEYSTONE = (cls) => `<svg class="${cls}" viewBox="0 0 100 100" role="img" aria-label="Pennsylvania keystone"><path d="M35 4 H65 V19 H96 L83 96 H60 V80 H40 V96 H17 L4 19 H35 Z" fill="#023c3f" stroke="#e8a33d" stroke-width="4" stroke-linejoin="round"/><text x="50" y="60" text-anchor="middle" font-size="32" font-weight="800" fill="#e8a33d">SB</text></svg>`;
 
 /* ---------------- shared CSS ---------------- */
 const CSS = `
@@ -243,11 +244,19 @@ nav.menu>div:hover .mega,nav.menu>div:focus-within .mega{display:grid}
 
 .stats{padding:64px 0 0}
 .stats .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;text-align:center}
-.stats b{display:block;font-size:2.1rem;color:var(--teal)}
+.stats b{display:block;font-size:2.1rem;color:var(--teal);font-variant-numeric:tabular-nums}
+.stats b.loc{font-size:1.45rem;line-height:2.52rem;white-space:nowrap}
 .stats span{font-size:.85rem;color:var(--muted)}
-.certbar{margin:44px auto 0;max-width:1200px;padding:0 24px}
-.certbar div{background:var(--mist);border:1px solid var(--line);border-radius:999px;text-align:center;padding:12px 20px;font-size:.88rem;font-weight:600;color:var(--teal-ink)}
-.certbar .shield{margin-right:8px}
+.certbar{margin:44px auto 0;max-width:1200px;padding:0 24px;display:flex;justify-content:center}
+.sb-badge{position:relative;overflow:hidden;display:inline-flex;align-items:center;gap:18px;text-align:left;background:linear-gradient(135deg,#fefcf6 0%,#f7f0df 100%);border:1px solid #d9b25f;box-shadow:inset 0 0 0 3px #fff,0 6px 18px rgba(2,60,63,.10);border-radius:14px;padding:16px 30px 16px 22px}
+.sb-badge .keystone{width:54px;height:54px;flex:none;filter:drop-shadow(0 2px 3px rgba(2,60,63,.25))}
+.sb-text{display:flex;flex-direction:column;gap:2px}
+.sb-eyebrow{font-size:.68rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#a97e2f}
+.sb-text b{font-size:1.05rem;color:var(--teal-ink);line-height:1.25}
+.sb-sub{font-size:.76rem;color:var(--muted)}
+.sb-badge::after{content:"";position:absolute;top:0;bottom:0;left:-80%;width:50%;background:linear-gradient(105deg,transparent,rgba(255,255,255,.75),transparent);transform:skewX(-18deg)}
+.sb-badge:hover::after{animation:sheen 1.1s ease}
+@keyframes sheen{to{left:130%}}
 
 section.block{padding:72px 0}
 .block h2{font-size:clamp(1.6rem,3vw,2.3rem);max-width:26ch}
@@ -401,6 +410,16 @@ a.pt .ext{display:block;margin-top:10px;font-size:.75rem;font-weight:700;color:v
 .cta p{color:#cfe9ea;margin:1rem auto 2rem;max-width:56ch}
 .cta .phone-big{font-size:1.5rem;font-weight:800;color:var(--teal-soft);display:block;margin-top:1.6rem}
 .cta .cert{margin-top:1.6rem;font-size:.8rem;color:#9fc9ca}
+.cta .cert .keystone-sm{width:13px;height:13px;vertical-align:-2px;margin-right:7px}
+
+/* motion (guarded: no-JS and reduced-motion users see everything instantly) */
+header.scrolled{box-shadow:0 6px 22px rgba(2,60,63,.14)}
+@media (prefers-reduced-motion: no-preference){
+  .hero::before{animation:heroZoom 16s ease-out both}
+  @keyframes heroZoom{from{transform:scale(1.07)}to{transform:scale(1)}}
+  html.js .rv{opacity:0;transform:translateY(16px);transition:opacity .55s ease,transform .55s ease}
+  html.js .rv.in{opacity:1;transform:none}
+}
 
 footer{background:#02292b;color:#9fbcbd;font-size:.87rem}
 footer .cols{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:36px;padding:56px 0 40px}
@@ -524,7 +543,7 @@ const CTA = `
     <a class="btn btn-white" href="contact.html">Schedule My Free Assessment</a>
     <span class="phone-big">610.825.3405</span>
     <p style="margin-top:.4rem">739 E. Elm Street, Conshohocken, PA 19428</p>
-    <p class="cert">&#128737; ${SB_CERT}</p>
+    <p class="cert"><svg class="keystone-sm" viewBox="0 0 100 100" aria-hidden="true"><path d="M35 4 H65 V19 H96 L83 96 H60 V80 H40 V96 H17 L4 19 H35 Z" fill="#e8a33d"/></svg>${SB_CERT}</p>
   </div>
 </div>`;
 
@@ -567,6 +586,7 @@ const shell = (title, heroImgUrl, body) => `<!DOCTYPE html>
 <meta name="robots" content="noindex, nofollow">
 <title>${title}</title>
 <link rel="stylesheet" href="assets/style.css">
+<script src="assets/site.js" defer></script>
 <style>:root{--hero-img:url('${heroImgUrl}')}</style>
 </head>
 <body>
@@ -1325,12 +1345,19 @@ const homeBody = `
 <div class="stats wrap">
   <div class="grid">
     <div><b>1979</b><span>family-owned since</span></div>
-    <div><b>Conshohocken, PA</b><span>serving the region, traveling with our customers</span></div>
+    <div><b class="loc">Conshohocken,&nbsp;PA</b><span>serving the region, traveling with our customers</span></div>
     <div><b>14</b><span>manufacturer lines carried</span></div>
     <div><b>Free</b><span>on-site space assessments</span></div>
   </div>
 </div>
-<div class="certbar"><div><span class="shield">&#128737;</span>${SB_CERT}</div></div>
+<div class="certbar"><div class="sb-badge">
+  ${KEYSTONE('keystone')}
+  <div class="sb-text">
+    <span class="sb-eyebrow">Commonwealth of Pennsylvania</span>
+    <b>Small Business (SB) Certified</b>
+    <span class="sb-sub">Certified vendor for public procurement</span>
+  </div>
+</div></div>
 
 <section class="block" id="solutions">
   <div class="wrap">
@@ -1438,8 +1465,53 @@ const homeBody = `
 </section>`;
 
 /* ---------------- write files ---------------- */
+const SITE_JS = `document.documentElement.classList.add('js');
+(function(){
+  var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var hdr = document.querySelector('header');
+  addEventListener('scroll', function(){ if (hdr) hdr.classList.toggle('scrolled', scrollY > 8); }, {passive:true});
+  if (reduce || !('IntersectionObserver' in window)) return;
+
+  /* scroll-reveal: fade-up as tiles enter the viewport */
+  var els = document.querySelectorAll('.card,.proj,a.pt,.dlc,.steps>div,.stats .grid>div,.sb-badge,.gallery img,.ccard,.team>div');
+  els.forEach(function(el,i){ el.classList.add('rv'); el.style.transitionDelay = Math.min((i%6)*60,300)+'ms'; });
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if (!e.isIntersecting) return;
+      var el = e.target;
+      el.classList.add('in');
+      io.unobserve(el);
+      /* hand transforms back to the hover styles once the reveal finishes */
+      setTimeout(function(){ el.classList.remove('rv','in'); el.style.transitionDelay=''; }, 1000);
+    });
+  }, {rootMargin:'0px 0px -8% 0px', threshold:.08});
+  els.forEach(function(el){ io.observe(el); });
+
+  /* count-up on numeric stats */
+  document.querySelectorAll('.stats b').forEach(function(b){
+    var txt = b.textContent.trim();
+    if (!/^\\d{1,4}$/.test(txt)) return;
+    var target = parseInt(txt,10), done = false;
+    var cio = new IntersectionObserver(function(es){
+      es.forEach(function(e){
+        if (!e.isIntersecting || done) return;
+        done = true; cio.disconnect();
+        var t0 = performance.now(), dur = 1100;
+        (function tick(now){
+          var p = Math.min(((now||performance.now())-t0)/dur, 1);
+          p = 1-Math.pow(1-p,3);
+          b.textContent = Math.round(target*p);
+          if (p<1) requestAnimationFrame(tick);
+        })(t0);
+      });
+    }, {threshold:.6});
+    cio.observe(b);
+  });
+})();
+`;
 fs.mkdirSync(path.join(OUT,'assets'), {recursive:true});
 fs.writeFileSync(path.join(OUT,'assets','style.css'), CSS);
+fs.writeFileSync(path.join(OUT,'assets','site.js'), SITE_JS);
 
 const pages = {
   'index.html': shell(`O'Brien Systems | Custom Storage Solutions | Design Concept`, IMGS.heroHome, homeBody),
