@@ -430,7 +430,7 @@ footer .legal a{display:inline;padding:0 10px}
 
 /* ---------------- site data ---------------- */
 const SOLUTIONS = [
-  { slug:'high-density-mobile-storage', name:'High-Density Mobile Storage', short:'Compact aisles, double your capacity in the same footprint', img:IMGS.hd1, banner:IMGS.banMobile },
+  { slug:'high-density-mobile-storage', name:'High-Density Mobile Storage', short:'Compact aisles, double your capacity in the same footprint', img:IMGS.hdNemours, banner:IMGS.banMobile },
   { slug:'lifts-carousels', name:'Lifts & Carousels (VLM)', short:'Automated vertical storage and retrieval, goods to person', img:IMGS.liftsCard, banner:IMGS.banLifts },
   { slug:'lockers', name:'Lockers', short:'Smart, evidence, athletic and personal storage lockers', img:IMGS.lockersCard, banner:IMGS.banLockers },
   { slug:'static-shelving', name:'Static Shelving', short:'4-post, pallet rack, cantilever and industrial shelving', img:IMGS.shelvCard, banner:IMGS.banShelving },
@@ -632,7 +632,7 @@ const SOLUTION_PAGES = {
       ['Manual and low-profile', 'Simple, economical systems for smaller rooms and closets'],
       ['Reuse your shelving', 'Existing 4-post shelving can often be mounted on new carriages'],
     ],
-    gallery:[IMGS.hdCard, IMGS.hd2, IMGS.hdNemours],
+    gallery:[IMGS.hdCard, IMGS.hd2, IMGS.hd1],
     faqs:[
       ['Can my existing shelving be converted to mobile?', 'Often, yes. Many 4-post shelving systems can be mounted on new carriages, which lets you buy shelving now and compact it when space runs out. Compatibility depends on the shelving line and condition, which we confirm during an assessment.'],
       ['Will my floor support a mobile system?', 'Mobile systems concentrate weight, so floor capacity matters. We provide complete equipment loading data and assist your facilities team and structural engineer in evaluating it. The structural determination always rests with your engineer of record.'],
