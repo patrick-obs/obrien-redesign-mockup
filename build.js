@@ -127,6 +127,7 @@ const IMGS = {
   storAisle: img('fe96a-storage.jpg'),
   banHome2: img('e381e-homepage-background-2.jpg'),
   hamilton: img('c4d30-hamilton-2048x1536.jpg'),
+  hamiltonTall: img('dcc9b-homepage_image3.jpg'),
   bg3: img('b9dcc-background-3.jpg'),
   bg4: img('e3df5-background-4.jpg'),
   orgBg: img('d2e83-organization-background.jpg'),
@@ -1137,7 +1138,7 @@ const aboutPage = shell(`About Us | O'Brien Systems`, IMGS.bg3, `
     <p>Kevin joined the business full time in 1981 with a Villanova degree in finance. Charles' youngest son Mike followed in 1985, and years later oldest son Dennis left banking to join his brothers. A phenomenal group of decade-long employees, who have turned into family, play a major role in the success of the business, and most recently Charlie's granddaughter Jess joined the team.</p>
     <p>At its core, O'Brien Systems is a strong combination of family values, determination and a great deal of long, hard hours in the office and in the field. Through four decades the objective has never changed: provide our clients with the highest quality of service and products to help their business succeed.</p>
   </div>
-  <div class="side-img"><img src="${IMGS.compact}" alt="High-density mobile storage installation" loading="lazy"></div>
+  <div class="side-img"><img src="${IMGS.hamiltonTall}" alt="O'Brien Systems storage installation" loading="lazy"></div>
 </div>
 <div class="wrap">
   <div class="feat">
