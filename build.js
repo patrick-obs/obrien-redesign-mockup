@@ -604,6 +604,7 @@ function subpage(p) {
     <div class="feat">
       ${feats}
     </div>
+    ${p.extra||''}
     ${gal?`<div class="gallery">\n      ${gal}\n    </div>`:''}
     ${faqs?`<div class="faq">\n      <h2>Frequently asked questions</h2>\n      ${faqs}\n    </div>`:''}
     ${chips?`<h2 style="margin-top:52px;font-size:1.25rem">${p.chipsTitle}</h2>\n    <div class="chips">\n      ${chips}\n    </div>`:''}
@@ -623,7 +624,7 @@ const SOLUTION_PAGES = {
     paras:[
       `Fixed shelving wastes floor. Every row needs its own aisle, so in most storage rooms more than half the square footage is air. High-density mobile systems mount your shelving on carriages and rails, letting rows compact together and share a single moving aisle.`,
       `We plan, supply, and install mechanical-assist, powered electrical, and manual systems from Montel, Aurora, Bruynzeel, and Datum. Drive choice depends on load, duty cycle, and who uses the space. Powered systems add safety sweeps and access control where the application calls for it.`,
-      `Almost any 4-post shelving can ride on carriages, which means you can often reuse shelving you already own. We confirm floor loading, rail layout, and levelness during a free site assessment, and our own factory-trained crews handle the installation.`,
+      `Almost any 4-post shelving can ride on carriages, which means you can often reuse shelving you already own. We review rail layout and levelness during a free site assessment, provide complete equipment loading data for your structural engineer, and our own factory-trained crews handle the installation.`,
     ],
     features:[
       ['Mechanical-assist', 'Ergonomic handle drive for daily-access rooms of any size'],
@@ -634,7 +635,7 @@ const SOLUTION_PAGES = {
     gallery:[IMGS.hdCard, IMGS.hd2, IMGS.hdNemours],
     faqs:[
       ['Can my existing shelving be converted to mobile?', 'Often, yes. Many 4-post shelving systems can be mounted on new carriages, which lets you buy shelving now and compact it when space runs out. Compatibility depends on the shelving line and condition, which we confirm during an assessment.'],
-      ['Will my floor support a mobile system?', 'Mobile systems concentrate weight, so floor capacity is checked before anything is ordered. We verify structural loading and coordinate with your facilities team or engineer as part of the design phase.'],
+      ['Will my floor support a mobile system?', 'Mobile systems concentrate weight, so floor capacity matters. We provide complete equipment loading data and assist your facilities team and structural engineer in evaluating it. The structural determination always rests with your engineer of record.'],
       ['Mechanical-assist or powered: which do I need?', 'Mechanical-assist handles most rooms with an ergonomic handle drive and no wiring. Powered systems make sense for very long or heavy carriages, high-frequency access, and rooms that need programmed safety and access control.'],
     ],
     chipsTitle:'Industries that rely on high-density mobile',
@@ -771,13 +772,13 @@ const INDUSTRY_PAGES = {
     paras:[
       `Libraries are under pressure to be community spaces, but the collection still needs a home. High-density mobile shelving compresses stacks into a fraction of the floor, and cantilever library shelving from Estey keeps open stacks browsable and adaptable.`,
       `We have compacted entire collections onto a single floor, freeing levels for seating, makerspaces, and programming without deaccessioning. Mobile systems work in public stacks, closed stacks, and archives alike.`,
-      `Load matters in library projects. Book stacks are heavy, and mobile systems concentrate that weight. We verify floor capacity and coordinate with your facilities team before anything is ordered.`,
+      `Load matters in library projects. Book stacks are heavy, and mobile systems concentrate that weight. We supply complete loading data and work with your facilities team and structural engineer before anything is ordered.`,
     ],
     features:[
       ['Cantilever shelving', 'Classic browsable stacks, easy to re-shelve and reconfigure'],
       ['High-density mobile', 'The whole collection in a fraction of the floor'],
       ['Archives and special collections', 'Closed-stack and conservation-grade options'],
-      ['Floor-load verification', 'Structural coordination before ordering'],
+      ['Engineer coordination', 'Loading data supplied to your structural engineer before ordering'],
     ],
     gallery:[IMGS.libShelves, IMGS.libHD, IMGS.libraryCard],
     chipsTitle:'Solutions libraries use most',
@@ -942,7 +943,7 @@ const INDUSTRY_PAGES = {
     paras:[
       `Organizations interested in reducing cost and increasing productivity rely on high-capacity storage solutions and material handling equipment. We supply and install pallet rack and cantilever from Steel King, structural mezzanines and platforms from Steele Solutions, and industrial shelving from Borroughs.`,
       `Mezzanines create a second floor inside the building you already own, often the cheapest square footage an operation can buy. VLMs and automation compress parts storage and speed picking where labor is the constraint.`,
-      `Every project gets load engineering: rack capacities, seismic and floor calculations, and permits handled properly rather than hopefully.`,
+      `Every project gets proper engineering support: manufacturer-rated rack capacities, complete equipment load data for the structural engineer of record, and permits handled properly rather than hopefully.`,
     ],
     features:[
       ['Pallet rack and cantilever', 'Steel King racking engineered to your loads'],
@@ -961,7 +962,7 @@ const INDUSTRY_PAGES = {
     paras:[
       `Vertical farming applies the same math as high-density storage: eliminate aisles, multiply capacity. Montel's mobile grow systems mount multi-tier grow racks on carriages, so a grow room needs one working aisle instead of one per row.`,
       `The same principles cover trays, decking, drying racks, and the carts that move product through the operation. Integration with lighting, ventilation, and irrigation gets planned with your cultivation team, not around them.`,
-      `We handle layout, floor loading, delivery, and installation, and we service and reconfigure systems as operations scale.`,
+      `We handle layout, delivery, and installation, provide loading data for your structural engineer, and service and reconfigure systems as operations scale.`,
     ],
     features:[
       ['Mobile grow systems', 'Montel carriage-mounted multi-tier growing'],
@@ -974,20 +975,44 @@ const INDUSTRY_PAGES = {
     related: relSol('high-density-mobile-storage','static-shelving'),
   },
   'general-contractors': {
-    h1:'For General Contractors',
-    lead:'A storage subcontractor that shows up with stamped drawings, hits the schedule, and handles Division 10 scope end to end.',
+    h1:'For GCs, Architects & Owners',
+    lead:'A storage subcontractor that shows up with complete submittals, hits the schedule, and handles Division 10 storage scope end to end.',
     sideImg: IMGS.gcNewSpace,
     paras:[
-      `GCs and architects bring us in when a project includes storage scope: evidence rooms in a public safety building, library stacks, lab casework, lockers, or high-density systems in a records center. We take the package from specification through punch list.`,
-      `That includes submittals, load calculations and structural coordination for rail-mounted systems, delivery sequenced to the construction schedule, and factory-trained installation crews who work clean on active sites.`,
+      `GCs, architects, and owners bring us in when a project includes storage scope: evidence rooms in a public safety building, library stacks, lab casework, lockers, or high-density systems in a records center. We take the package from specification through punch list.`,
+      `The paperwork works the way construction expects it to. Submittal packages include shop drawings and CAD layouts, product data, finish selections, and lead-time schedules. Progress billing runs in AIA format (G702/G703) with standard retainage, and deliveries are sequenced to the construction schedule with factory-trained crews who work clean on active sites.`,
+      `On floor loads: high-density and rail-mounted systems concentrate weight, so we provide complete equipment loading data and work alongside the project's structural engineer during design. Structural determinations always rest with the engineer of record; our job is to make that engineer's job easy.`,
       `Because we carry 14 manufacturer lines, we can meet a spec as written or propose equals that protect the budget without weakening the design intent. For public work, O'Brien Systems is a Commonwealth of Pennsylvania Small Business (SB) certified vendor, which can help prime contractors meet small business participation goals.`,
     ],
     features:[
-      ['Submittals and drawings', 'Complete packages, coordinated with your schedule'],
-      ['Structural coordination', 'Rail loads, floor capacity, and embed planning'],
-      ['Spec-or-equal flexibility', '14 lines to meet spec or protect budget'],
+      ['Submittals, shop drawings & CAD', 'Complete packages: drawings, product data, finishes, lead times'],
+      ['AIA-format billing', 'G702/G703 progress billing and retainage, handled without drama'],
+      ['Engineer-of-record support', 'Equipment loading data and design assistance for your structural engineer'],
+      ['Spec-or-equal flexibility', '14 lines to meet spec as written or protect the budget'],
+      ['Clean site discipline', 'Crews that work active construction sites properly'],
       ['PA SB certified', 'Counts toward small business participation goals'],
     ],
+    extra:`
+    <span class="eyebrow" style="margin-top:52px;display:inline-block">Who We Answer To</span>
+    <h2 style="font-size:1.5rem">Everyone reads the same drawing differently</h2>
+    <p class="lead">A storage package has three customers, and they want different things. We run projects so all three get theirs.</p>
+    <div class="cards" style="margin-top:30px">
+      <div class="card"><div class="bd">
+        <div class="meta">The GC wants certainty</div>
+        <h3>Schedule &amp; scope</h3>
+        <p>Submittals on time, one sub covering the whole storage scope, deliveries that match the construction sequence, AIA pay apps that process cleanly, and a punch list with nothing on it.</p>
+      </div></div>
+      <div class="card"><div class="bd">
+        <div class="meta">The architect wants intent protected</div>
+        <h3>Design &amp; documentation</h3>
+        <p>Basis-of-design support during spec writing, CAD details and finish selections that hold up, and honest guidance when an equal is proposed so the design intent survives value engineering.</p>
+      </div></div>
+      <div class="card"><div class="bd">
+        <div class="meta">The owner wants it to work</div>
+        <h3>Capacity &amp; life cycle</h3>
+        <p>Storage that matches the program's real volumes, budget options across 14 manufacturer lines, and a local service partner who still answers the phone years after turnover.</p>
+      </div></div>
+    </div>`,
     gallery:[IMGS.mezzanine, IMGS.maximize, IMGS.svc3],
     chipsTitle:'Scopes we take',
     related: relSol('high-density-mobile-storage','lockers','modular-casework','static-shelving'),
@@ -1066,7 +1091,7 @@ const servicesPage = shell(`Services | O'Brien Systems`, IMGS.banServices, `
   <h2>Four steps, <em>one team</em></h2>
   <div class="steps">
     <div class="step"><span class="n">01 &mdash; ASSESS</span><h3>Free Space Assessment</h3><p>We walk your space, measure what you store, and find the capacity you didn't know you had. No cost, no obligation.</p></div>
-    <div class="step"><span class="n">02 &mdash; DESIGN</span><h3>Layout &amp; Specification</h3><p>Drawings, load calculations, and an itemized quote, matched to the right manufacturer line for the job.</p></div>
+    <div class="step"><span class="n">02 &mdash; DESIGN</span><h3>Layout &amp; Specification</h3><p>Drawings, equipment load data, and an itemized quote, matched to the right manufacturer line for the job.</p></div>
     <div class="step"><span class="n">03 &mdash; INSTALL</span><h3>Factory-Trained Installation</h3><p>Our own crews deliver, anchor, and level, coordinated around your operating hours and site rules.</p></div>
     <div class="step"><span class="n">04 &mdash; SUPPORT</span><h3>Service &amp; Relocation</h3><p>Maintenance, reconfiguration, teardown and moves, even for systems we didn't originally supply.</p></div>
   </div>
@@ -1078,7 +1103,7 @@ const servicesPage = shell(`Services | O'Brien Systems`, IMGS.banServices, `
     <div><b>Maintenance &amp; repair, any brand</b><span>We maintain and repair storage systems we didn't sell, including legacy installed bases from manufacturers no longer in business.</span></div>
     <div><b>Relocation &amp; reinstallation</b><span>4-post and case-style systems disassemble and move with your department, file order intact. Offices, records rooms, whole facilities.</span></div>
     <div><b>Reconfiguration</b><span>Add sections, change shelf heights, convert static shelving to mobile carriages as your needs grow.</span></div>
-    <div><b>Structural coordination</b><span>Rail-mounted systems get floor-load verification, seismic and load calculations, and permits handled properly.</span></div>
+    <div><b>Engineer collaboration</b><span>We supply equipment loading data and assist your structural engineer; structural determinations stay with the engineer of record.</span></div>
     <div><b>Preventive service visits</b><span>Carriage alignment, drive and safety-system checks that keep mobile systems gliding instead of grinding.</span></div>
     <div><b>Phased projects</b><span>Modular systems mean you can start with the highest-need areas and add sections later, on your budget cycle.</span></div>
   </div>
@@ -1390,7 +1415,7 @@ const homeBody = `
     <p class="lead">Buying storage isn't buying steel. It's buying a plan. Here's how we run every project, whether it's one evidence room or a whole facility.</p>
     <div class="steps">
       <div class="step"><span class="n">01 &mdash; ASSESS</span><h3>Free Space Assessment</h3><p>We walk your space, measure what you store, and find the capacity you didn't know you had.</p></div>
-      <div class="step"><span class="n">02 &mdash; DESIGN</span><h3>Layout &amp; Specification</h3><p>Drawings, load calculations, and an itemized quote, matched to the right manufacturer line.</p></div>
+      <div class="step"><span class="n">02 &mdash; DESIGN</span><h3>Layout &amp; Specification</h3><p>Drawings, equipment load data, and an itemized quote, matched to the right manufacturer line.</p></div>
       <div class="step"><span class="n">03 &mdash; INSTALL</span><h3>Factory-Trained Installation</h3><p>Our own crews deliver, anchor, and level, coordinated around your operating hours.</p></div>
       <div class="step"><span class="n">04 &mdash; SUPPORT</span><h3>Service &amp; Relocation</h3><p>Maintenance, reconfiguration, teardown and moves, even for systems we didn't originally supply.</p></div>
     </div>
