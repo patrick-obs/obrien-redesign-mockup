@@ -534,7 +534,7 @@ const FOOTER = `
     <div class="cols">
       <div>
         <h4>O'Brien Systems</h4>
-        <p>Custom storage solutions since 1979: headquartered in Conshohocken, PA, serving the Philadelphia region and multi-site accounts nationwide.</p>
+        <p>Custom storage solutions since 1979: headquartered in Conshohocken, PA, serving the greater Philadelphia region and traveling with our customers when their projects do.</p>
         <p style="margin-top:10px;font-size:.8rem">PA Small Business (SB) Certified</p>
         <p style="margin-top:12px"><a href="tel:6108253405">610.825.3405</a><a href="mailto:sales@obriensys.com">sales@obriensys.com</a><a href="https://www.facebook.com/OBrienSystems/">Facebook</a></p>
       </div>
@@ -905,7 +905,7 @@ const INDUSTRY_PAGES = {
     paras:[
       `Stockroom optimization is key to maintaining an efficient flow of goods and keeping selling floor selling. Mobile shelving compacts back-of-house storage so the same room holds more SKUs, or the stockroom shrinks and the sales floor grows.`,
       `We plan retail storage around replenishment workflow: what turns fast stays at reach height in open shelving, what turns slow compacts into mobile systems, and seasonal inventory gets a home that isn't the receiving corridor.`,
-      `Multi-site rollouts are a specialty. We have outfitted national store networks with standardized shelving and locker packages, coordinated store by store around trading hours, across dozens of states.`,
+      `Multi-site rollouts are a specialty. We have outfitted store networks with standardized shelving and locker packages, coordinated store by store around trading hours.`,
     ],
     features:[
       ['Stockroom compaction', 'Mobile systems that grow capacity, not footprint'],
@@ -1056,7 +1056,7 @@ const projectsPage = shell(`Projects | O'Brien Systems`, IMGS.lib1, `
   <div class="wrap">
     <span class="eyebrow">Projects</span>
     <h1>Proof, installed</h1>
-    <p>A sampling of the spaces our crews have planned and built since 1979, from the Delaware Valley to job sites across the country.</p>
+    <p>A sampling of the spaces our crews have planned and built since 1979, at home in the Delaware Valley and on the road with our multi-site customers.</p>
   </div>
 </div>
 <section class="block"><div class="wrap">
@@ -1168,7 +1168,7 @@ const aboutPage = shell(`About Us | O'Brien Systems`, IMGS.bg3, `
 <div class="wrap">
   <div class="feat">
     <div><b>Family-owned since 1979</b><span>Four decades of storage projects, local and national.</span></div>
-    <div><b>Philadelphia HQ, national reach</b><span>Based in Conshohocken, PA, with installations from the Delaware Valley to sites across the country.</span></div>
+    <div><b>Philadelphia HQ</b><span>Based in Conshohocken, PA. When our customers grow beyond the region, we go with them.</span></div>
     <div><b>14 manufacturer lines</b><span>Authorized dealer for the industry's leading brands.</span></div>
     <div><b>PA Small Business Certified</b><span>Commonwealth of Pennsylvania SB certification, valid 06/10/2026 through 06/10/2028.</span></div>
   </div>
@@ -1302,7 +1302,7 @@ const homeBody = `
 <div class="hero">
   <div class="wrap">
     <h1><em>Storage solved.</em> Space reclaimed.</h1>
-    <p>For 45+ years, O'Brien Systems has planned, supplied, and installed custom storage from our Philadelphia-area headquarters, for local facilities and national multi-site accounts alike.</p>
+    <p>For 45+ years, O'Brien Systems has planned, supplied, and installed custom storage from our Philadelphia-area headquarters, at home in the region and wherever our customers need us.</p>
     <div class="ctas">
       <a class="btn btn-white" href="contact.html">Schedule a Free Space Assessment</a>
       <a class="btn btn-ghost" href="solutions.html">Explore Solutions</a>
@@ -1325,7 +1325,7 @@ const homeBody = `
 <div class="stats wrap">
   <div class="grid">
     <div><b>1979</b><span>family-owned since</span></div>
-    <div><b>Coast to Coast</b><span>Philadelphia based, installing nationwide</span></div>
+    <div><b>Conshohocken, PA</b><span>serving the region, traveling with our customers</span></div>
     <div><b>14</b><span>manufacturer lines carried</span></div>
     <div><b>Free</b><span>on-site space assessments</span></div>
   </div>
@@ -1384,7 +1384,7 @@ const homeBody = `
       <div>
         <span class="eyebrow">Projects</span>
         <h2>Proof, <em>installed</em></h2>
-        <p class="lead">A few of the spaces our crews have planned and built, at home in the Delaware Valley and nationwide.</p>
+        <p class="lead">A few of the spaces our crews have planned and built across the region and beyond.</p>
       </div>
       <a class="btn btn-solid" href="projects.html">See All Projects</a>
     </div>
