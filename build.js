@@ -122,6 +122,13 @@ const IMGS = {
   svc2: img('41c78-relocation-consultation.jpg'),
   svc3: img('235ee-system.jpg'),
   svcMain: img('89080-services.jpg'),
+  // round 4: visually-picked replacements
+  musApp: img('3e210-museum-storage-application.jpg'),
+  musVisual2: img('8efd2-museum-visual-cabinets.jpg'),
+  musCompact: img('e3e9d-museum-compact-shelves.jpg'),
+  textile: img('9dd25-textile-storage-1.jpg'),
+  clinic: img('2e457-modular-casework1.jpg'),
+  pharmaBottles: img('Pharmaceutical-and-Healthcare-Solutions.jpg'),
 };
 
 const COVERS = {
@@ -424,13 +431,13 @@ const SOLUTIONS = [
 ];
 
 const INDUSTRIES = [
-  { slug:'museums', name:'Museums', short:'Collections, art racks and conservation', img:IMGS.museumCard, banner:IMGS.banMuseum },
+  { slug:'museums', name:'Museums', short:'Collections, art racks and conservation', img:IMGS.musApp, banner:IMGS.banMuseum },
   { slug:'libraries', name:'Libraries', short:'Collection shelving and study space recovery', img:IMGS.libraryCard, banner:IMGS.libHD },
-  { slug:'education', name:'Education', short:'Classrooms, athletics and supply storage', img:IMGS.eduModular, banner:IMGS.banEducation },
+  { slug:'education', name:'Education', short:'Classrooms, athletics and supply storage', img:IMGS.eduCabs, banner:IMGS.banEducation },
   { slug:'athletics', name:'Athletics', short:'Team rooms, equipment and gear storage', img:IMGS.summitLockers, banner:IMGS.summitLockers },
   { slug:'government-public-safety', name:'Government & Public Safety', short:'Evidence, records and gear storage', img:IMGS.gpsCard, banner:IMGS.gpsCard },
   { slug:'military', name:'Military', short:'Readiness gear and base operations storage', img:IMGS.weapons1, banner:IMGS.weapons2 },
-  { slug:'pharmaceutical-healthcare', name:'Healthcare & Pharmaceutical', short:'Supply, sterile core and lab storage', img:IMGS.nemoursCabs, banner:IMGS.banPharma },
+  { slug:'pharmaceutical-healthcare', name:'Healthcare & Pharmaceutical', short:'Supply, sterile core and lab storage', img:IMGS.wireRack, banner:IMGS.banPharma },
   { slug:'corporate-legal', name:'Corporate & Legal', short:'Records, files and workplace storage', img:IMGS.corpCard, banner:IMGS.banCorporate },
   { slug:'retail', name:'Retail', short:'Back-of-house and stockroom storage', img:IMGS.retailCard, banner:IMGS.banRetail },
   { slug:'automotive', name:'Automotive', short:'Parts, tires and dealership storage', img:IMGS.autoCard, banner:IMGS.banAuto },
@@ -521,7 +528,7 @@ const FOOTER = `
         <h4>O'Brien Systems</h4>
         <p>Custom storage solutions for the greater Philadelphia region, planned, installed, and serviced by one local team since 1979.</p>
         <p style="margin-top:10px;font-size:.8rem">${SB_CERT}</p>
-        <p style="margin-top:12px"><a href="tel:6108253405">610.825.3405</a><a href="https://www.facebook.com/OBrienSystems/">Facebook</a></p>
+        <p style="margin-top:12px"><a href="tel:6108253405">610.825.3405</a><a href="mailto:sales@obriensys.com">sales@obriensys.com</a><a href="https://www.facebook.com/OBrienSystems/">Facebook</a></p>
       </div>
       <div>
         <h4>Solutions</h4>
@@ -711,7 +718,7 @@ const SOLUTION_PAGES = {
   'modular-casework': {
     eyebrow:'Solutions', h1:'Modular Casework',
     lead:'Laminate and steel casework and lab furniture that installs fast, moves with your departments, and gets reconfigured instead of demolished.',
-    sideImg: IMGS.nemoursCabs,
+    sideImg: IMGS.cwLam,
     paras:[
       `Traditional millwork is built in place and dies in place. Modular casework from Hamilton Casework Solutions is factory-built, installs in days instead of weeks, and unbolts to move or reconfigure when the room's mission changes.`,
       `Laminate casework fits offices, classrooms, mailrooms, and breakrooms. Steel casework stands up to labs, clinics, and industrial spaces. Lab furniture adds chemical-resistant surfaces and service chases where the work demands them.`,
@@ -723,7 +730,7 @@ const SOLUTION_PAGES = {
       ['Lab furniture', 'Chemical-resistant tops and service-ready benches'],
       ['Reconfigurable', 'Unbolts and moves instead of getting demolished'],
     ],
-    gallery:[IMGS.cw2, IMGS.cw3, IMGS.cwLam],
+    gallery:[IMGS.cw2, IMGS.cw3, IMGS.nemours5],
     chipsTitle:'Casework-driven industries',
     related: relInd('pharmaceutical-healthcare','education','corporate-legal','government-public-safety'),
   },
@@ -745,7 +752,7 @@ const INDUSTRY_PAGES = {
       ['High-density mobile', 'Compact storage for boxed and framed collections'],
       ['Exhibition-aware installs', 'Staged around your calendar, not ours'],
     ],
-    gallery:[IMGS.artScreens2, IMGS.museumTextile, IMGS.museumDrawers],
+    gallery:[IMGS.musCompact, IMGS.musVisual2, IMGS.textile],
     chipsTitle:'Solutions museums use most',
     related: relSol('high-density-mobile-storage','cabinets','static-shelving'),
   },
@@ -783,7 +790,7 @@ const INDUSTRY_PAGES = {
       ['Athletics storage', 'Ventilated lockers and equipment storage'],
       ['Records compaction', 'High-density systems for registrar and district offices'],
     ],
-    gallery:[IMGS.eduCabs, IMGS.eduCard, IMGS.eduLockers],
+    gallery:[IMGS.education, IMGS.eduCard, IMGS.eduModular],
     chipsTitle:'Solutions schools use most',
     related: relSol('static-shelving','lockers','modular-casework','high-density-mobile-storage'),
   },
@@ -847,7 +854,7 @@ const INDUSTRY_PAGES = {
   'pharmaceutical-healthcare': {
     h1:'Healthcare & Pharmaceutical Storage',
     lead:'Supply chains inside the building: sterile core, pharmacy, lab, and materials storage that keeps clinical space clinical.',
-    sideImg: IMGS.nemours5,
+    sideImg: IMGS.clinic,
     paras:[
       `Every square foot given to storage in a hospital is a square foot not treating patients. We compress supply storage with high-density systems, organize sterile core and pharmacy with wire and cabinet systems designed for sanitation, and outfit labs with steel casework built for the work.`,
       `Metro wire shelving is the healthcare standard for cleanable, configurable supply storage. Modular casework adapts clinical support spaces without construction. VLMs secure and track high-value pharmacy and supply inventory.`,
@@ -859,7 +866,7 @@ const INDUSTRY_PAGES = {
       ['Lab casework', 'Steel casework and chemical-resistant surfaces'],
       ['Live-facility installs', 'Infection-control aware crews and scheduling'],
     ],
-    gallery:[IMGS.wireRack, IMGS.pharmaCard, IMGS.nemours1],
+    gallery:[IMGS.pharmaBottles, IMGS.nemours5, IMGS.pharmaCard],
     chipsTitle:'Solutions healthcare facilities use most',
     related: relSol('modular-casework','high-density-mobile-storage','cabinets','lifts-carousels'),
   },
@@ -1023,7 +1030,7 @@ const projectsPage = shell(`Projects | O'Brien Systems`, IMGS.lib1, `
   <div class="proj-grid">
     <a class="proj" href="museums.html" style="background-image:url('${IMGS.artScreen}')"><div class="cap"><span class="k">Museum</span><div class="t">Art screens and conservation storage for a regional collection</div></div></a>
     <a class="proj" href="libraries.html" style="background-image:url('${IMGS.lib1}')"><div class="cap"><span class="k">Library</span><div class="t">High-density shelving that kept the whole collection on one floor</div></div></a>
-    <a class="proj" href="pharmaceutical-healthcare.html" style="background-image:url('${IMGS.nemoursCabs}')"><div class="cap"><span class="k">Healthcare</span><div class="t">Modular casework and supply storage for a children's health system</div></div></a>
+    <a class="proj" href="pharmaceutical-healthcare.html" style="background-image:url('${IMGS.clinic}')"><div class="cap"><span class="k">Healthcare</span><div class="t">Modular casework and supply storage for a children's health system</div></div></a>
     <a class="proj" href="government-public-safety.html" style="background-image:url('${IMGS.evidence}')"><div class="cap"><span class="k">Public Safety</span><div class="t">Evidence storage planned around chain of custody</div></div></a>
     <a class="proj" href="material-handling-warehouse.html" style="background-image:url('${IMGS.mhwLC}')"><div class="cap"><span class="k">Warehouse</span><div class="t">Material handling and storage for high-throughput operations</div></div></a>
     <a class="proj" href="retail.html" style="background-image:url('${IMGS.retailMobile}')"><div class="cap"><span class="k">Retail</span><div class="t">Back-of-house mobile storage that shrank the stockroom, not the stock</div></div></a>
@@ -1117,9 +1124,11 @@ const aboutPage = shell(`About Us | O'Brien Systems`, IMGS.heroHome, `
 </div>
 <section class="block"><div class="wrap twocol">
   <div class="body">
-    <p>Since 1979, O'Brien Systems has been providing custom storage solutions to a wide variety of clients in multiple industry settings. We pride ourselves on customer service and believe wholeheartedly that in the highly technical world of high-density storage and retrieval systems, what separates a good company from a great one is the service provided before, during and after the sale.</p>
-    <p>We provide the highest quality of products and services while offering a high level of technical expertise and experience to bring your project from blueprint to reality, on time and on budget. We hear your requirements, value your input and implement our expertise, all to solve your storage needs.</p>
-    <p>Our team plans, supplies, installs, and services every system we sell, across 14 manufacturer lines. That range means our recommendation fits your project rather than a single catalog, and our factory-trained crews mean the install meets the drawing.</p>
+    <span class="eyebrow">Our Story</span>
+    <h2 style="margin-bottom:14px">A family owned and operated business</h2>
+    <p>O'Brien Systems was founded in 1979 by Charles O'Brien, Charlie O or Chaz to those who knew and loved him. Shortly after starting the business, Charles was in a major car accident that left him hospitalized for three months and unable to return to his office in Suburban Station for over a year. Although the odds were stacked against him, he was determined to succeed, and the original work-from-home business was born: proposals typed on his trusted Royal typewriter, hand delivered by his son Kevin after classes at Villanova.</p>
+    <p>Kevin joined the business full time in 1981 with a Villanova degree in finance. Charles' youngest son Mike followed in 1985, and years later oldest son Dennis left banking to join his brothers. A phenomenal group of decade-long employees, who have turned into family, play a major role in the success of the business, and most recently Charlie's granddaughter Jess joined the team.</p>
+    <p>At its core, O'Brien Systems is a strong combination of family values, determination and a great deal of long, hard hours in the office and in the field. Through four decades the objective has never changed: provide our clients with the highest quality of service and products to help their business succeed.</p>
   </div>
   <div class="side-img"><img src="${IMGS.compact}" alt="High-density mobile storage installation" loading="lazy"></div>
 </div>
@@ -1130,14 +1139,18 @@ const aboutPage = shell(`About Us | O'Brien Systems`, IMGS.heroHome, `
     <div><b>14 manufacturer lines</b><span>Authorized dealer for the industry's leading brands.</span></div>
     <div><b>PA Small Business Certified</b><span>Commonwealth of Pennsylvania SB certification, valid 06/10/2026 through 06/10/2028.</span></div>
   </div>
-  <span class="eyebrow" style="margin-top:56px">The Team</span>
+  <span class="eyebrow" style="margin-top:56px;display:inline-block">Meet Our Team</span>
   <h2>The people who <em>answer the phone</em></h2>
   <p class="lead">A small team means the person who plans your project is the person who stands behind it.</p>
   <div class="team">
-    <div class="tm"><div class="avatar">MO</div><b>Michael O'Brien</b><span>Vice President</span></div>
-    <div class="tm"><div class="avatar">PO</div><b>Patrick O'Brien</b><span>Sales &amp; Technology</span></div>
-    <div class="tm"><div class="avatar">JC</div><b>Jim Curcio</b><span>Field Service Lead</span></div>
-    <div class="tm"><div class="avatar">MP</div><b>Matt Parker</b><span>Installation Crew</span></div>
+    <div class="tm"><div class="avatar">KO</div><b>Kevin O'Brien</b><span>President</span><p style="font-size:.8rem;color:var(--muted);margin-top:8px">40+ years designing storage and casework solutions. Villanova finance grad; past president of the Automated Solutions Association.</p></div>
+    <div class="tm"><div class="avatar">MO</div><b>Michael O'Brien</b><span>Vice President</span><p style="font-size:.8rem;color:var(--muted);margin-top:8px">30+ years and over 3,000 high-density storage systems across commercial, government, museum, pharmaceutical and education projects.</p></div>
+    <div class="tm"><div class="avatar">DO</div><b>Dennis O'Brien</b><span>Vice President</span><p style="font-size:.8rem;color:var(--muted);margin-top:8px">40+ years in accounting and finance, from Fidelity Bank to O'Brien Systems. Villanova finance grad with a Drexel MBA.</p></div>
+    <div class="tm"><div class="avatar">DM</div><b>Drew Murray</b><span>Regional Sales Manager</span><p style="font-size:.8rem;color:var(--muted);margin-top:8px">25+ years in the design, supply and installation of high-density storage and casework. Dickinson BA, Temple MBA.</p></div>
+    <div class="tm"><div class="avatar">SS</div><b>Sharon Spitko</b><span>Office &amp; Operations Manager</span><p style="font-size:.8rem;color:var(--muted);margin-top:8px">20+ years running accounts, project management and the office itself. Notary public and NNA member.</p></div>
+    <div class="tm"><div class="avatar">JC</div><b>Jim Curcio</b><span>Service Manager</span><p style="font-size:.8rem;color:var(--muted);margin-top:8px">20+ years in the service department, specializing in preventative maintenance and post-installation support.</p></div>
+    <div class="tm"><div class="avatar">JV</div><b>Jess Viola</b><span>Marketing Specialist &amp; Project Manager</span><p style="font-size:.8rem;color:var(--muted);margin-top:8px">Website, social media and project management, with a background in HR and healthcare marketing.</p></div>
+    <div class="tm"><div class="avatar">PO</div><b>Patrick O'Brien</b><span>Sales &amp; Technology</span><p style="font-size:.8rem;color:var(--muted);margin-top:8px">The next generation: sales, systems and the technology that keeps a 45-year-old company moving fast.</p></div>
   </div>
 </div></section>`);
 
@@ -1152,7 +1165,7 @@ const contactPage = shell(`Contact Us | O'Brien Systems`, IMGS.mobileSol, `
 </div>
 <section class="block"><div class="wrap">
   <div class="contact-cards">
-    <div class="ccard"><span class="ic">&#128222;</span><b>Call us</b><p>Monday through Friday, straight to a person who knows storage.</p><a class="big" href="tel:6108253405">610.825.3405</a></div>
+    <div class="ccard"><span class="ic">&#128222;</span><b>Call or email</b><p>Monday through Friday, straight to a person who knows storage.</p><a class="big" href="tel:6108253405">610.825.3405</a><a class="big" href="mailto:sales@obriensys.com" style="font-size:.92rem">sales@obriensys.com</a></div>
     <div class="ccard"><span class="ic">&#128205;</span><b>Visit us</b><p>739 E. Elm Street<br>Conshohocken, PA 19428</p><a class="big" href="https://www.google.com/maps?q=739+E+Elm+Street+Conshohocken+PA+19428" target="_blank" rel="noopener">Get directions</a></div>
     <div class="ccard"><span class="ic">&#128737;</span><b>Public procurement</b><p>${SB_CERT}. Serving PA, NJ &amp; DE.</p><a class="big" href="government-public-safety.html">Government storage &rarr;</a></div>
   </div>
@@ -1345,7 +1358,7 @@ const homeBody = `
     <div class="proj-grid">
       <a class="proj" href="museums.html" style="background-image:url('${IMGS.artScreen}')"><div class="cap"><span class="k">Museum</span><div class="t">Art screens and conservation storage for a regional collection</div></div></a>
       <a class="proj" href="libraries.html" style="background-image:url('${IMGS.lib1}')"><div class="cap"><span class="k">Library</span><div class="t">High-density shelving that kept the whole collection on one floor</div></div></a>
-      <a class="proj" href="pharmaceutical-healthcare.html" style="background-image:url('${IMGS.nemoursCabs}')"><div class="cap"><span class="k">Healthcare</span><div class="t">Modular casework and supply storage for a children's health system</div></div></a>
+      <a class="proj" href="pharmaceutical-healthcare.html" style="background-image:url('${IMGS.clinic}')"><div class="cap"><span class="k">Healthcare</span><div class="t">Modular casework and supply storage for a children's health system</div></div></a>
     </div>
   </div>
 </section>
