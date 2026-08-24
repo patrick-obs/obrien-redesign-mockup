@@ -151,6 +151,8 @@ const IMGS = {
   palletMobile: img('f9947-bma_pallet-rack-on-mobile-rotated-1.jpg'),
   mezz2: img('fdf08-mezzanine.jpg'),
   midproject2: img('87244-midproject2.jpg'),
+  installer: img('748ef-midproject.jpg'),
+  tennscoWardrobe: 'https://www.tennsco.com/AppFiles/PRODUCT_IMAGES/CVD1871.jpg',
   evidRoom: img('0900e-img_4533-scaled-e1774366531196.jpg'),
   rotary2: img('7f9df-rotary-file-cabinets-1.jpg'),
   musSlots: img('99962-12434.jpg'),
@@ -505,7 +507,7 @@ const PRODUCTS = [
   { slug:'athletic-storage', name:'Athletic Equipment Storage', short:'Team gear rooms on mobile carriages: helmets, pads, and sticks in half the space', img:IMGS.montelWisconsin, banner:IMGS.montelFAU, group:'Lockers & Security' },
   { slug:'rotary-cabinets', name:'Rotary Cabinets (Times-2)', short:'Two cabinets in one footprint: spin the core, lock it flush at night', img:IMGS.cabRotary, banner:IMGS.banCabinets, group:'Cabinets & Filing' },
   { slug:'fireproof-cabinets', name:'Fireproof & Safety Cabinets', short:'Fire-rated record protection and code-compliant safety storage', img:IMGS.lateralTh, banner:IMGS.banCabinets, group:'Cabinets & Filing' },
-  { slug:'wardrobe-cabinets', name:'Wardrobe & Uniform Cabinets', short:'Garment, uniform, and gear cabinets for staff and crew spaces', img:IMGS.corpCabs, banner:IMGS.banCabinets, group:'Cabinets & Filing' },
+  { slug:'wardrobe-cabinets', name:'Wardrobe & Uniform Cabinets', short:'Garment, uniform, and gear cabinets for staff and crew spaces', img:IMGS.tennscoWardrobe, banner:IMGS.banCabinets, group:'Cabinets & Filing' },
   { slug:'museum-cabinets', name:'Museum Cabinets', short:'Sealed, conservation-grade cabinets for collections and specimens', img:IMGS.museumCabs, banner:IMGS.banMuseum, group:'Museum & Archival' },
   { slug:'art-screens', name:'Art Screens & Racks', short:'Mobile, pull-out, and wall-mounted screens for framed works', img:IMGS.hdmsArtScreen, banner:IMGS.banMuseum, group:'Museum & Archival' },
   { slug:'mail-sorters', name:'Mail Sorters & Mailroom', short:'Sort modules and mail center casework matched to your daily volume', img:IMGS.hamMailroom, banner:IMGS.banCasework, group:'Casework & Mailroom' },
@@ -535,7 +537,7 @@ const INDUSTRIES = [
   { slug:'automotive', name:'Automotive', short:'Parts, tires and dealership storage', img:IMGS.autoCard, banner:IMGS.banAuto },
   { slug:'material-handling-warehouse', name:'Material Handling & Warehouse', short:'Racking, AS/RS and mezzanines', img:IMGS.mhwCard, banner:IMGS.banWarehouse },
   { slug:'vertical-farming', name:'Vertical Farming', short:'Mobile grow systems and grow racks', img:IMGS.vfCard, banner:IMGS.banVF },
-  { slug:'general-contractors', name:'General Contractors', short:'Storage packages for GCs and architects', img:IMGS.gcNewSpace, banner:IMGS.gcProject },
+  { slug:'general-contractors', name:'GCs, Architects & Owners', short:'Division 10 storage scope, submittals through punch list', img:IMGS.installer, banner:IMGS.gcProject },
 ];
 
 const PARTNERS = [
@@ -1084,6 +1086,7 @@ const PRODUCT_PAGES = {
       ['Crew-proof steel', 'Welded construction, ventilation, sloped tops'],
       ['Lock options', 'Keyed, padlock hasp, or electronic'],
     ],
+    extra:`<p class="note" style="margin-top:18px">Product photo courtesy of Tennsco (tennsco.com), whose cabinet lines we carry as an authorized dealer.</p>`,
     chipsTitle:'Related systems',
     related: relAny('lockers','cabinets','corporate-legal','military'),
   },
