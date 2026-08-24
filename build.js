@@ -484,7 +484,7 @@ const navMegaInd = INDUSTRIES.map(i =>
 
 const HEADER = `
 <div class="ribbon">Design concept. Internal mockup, not the live O'Brien Systems website</div>
-<div class="announce">Free on-site space assessment for PA, NJ &amp; DE facilities. <a href="contact.html">Schedule yours</a> or call <a href="tel:6108253405">610.825.3405</a></div>
+<div class="announce">Free on-site space assessment. <a href="contact.html">Schedule yours</a> or call <a href="tel:6108253405">610.825.3405</a></div>
 <header>
   <div class="wrap nav">
     <a class="logo" href="index.html"><img src="${IMGS.logo}" alt="O'Brien Systems, Storage Redefined"></a>
@@ -534,7 +534,7 @@ const FOOTER = `
     <div class="cols">
       <div>
         <h4>O'Brien Systems</h4>
-        <p>Custom storage solutions for the greater Philadelphia region, planned, installed, and serviced by one local team since 1979.</p>
+        <p>Custom storage solutions since 1979: headquartered in Conshohocken, PA, serving the Philadelphia region and multi-site accounts nationwide.</p>
         <p style="margin-top:10px;font-size:.8rem">PA Small Business (SB) Certified</p>
         <p style="margin-top:12px"><a href="tel:6108253405">610.825.3405</a><a href="mailto:sales@obriensys.com">sales@obriensys.com</a><a href="https://www.facebook.com/OBrienSystems/">Facebook</a></p>
       </div>
@@ -905,7 +905,7 @@ const INDUSTRY_PAGES = {
     paras:[
       `Stockroom optimization is key to maintaining an efficient flow of goods and keeping selling floor selling. Mobile shelving compacts back-of-house storage so the same room holds more SKUs, or the stockroom shrinks and the sales floor grows.`,
       `We plan retail storage around replenishment workflow: what turns fast stays at reach height in open shelving, what turns slow compacts into mobile systems, and seasonal inventory gets a home that isn't the receiving corridor.`,
-      `Multi-site rollouts are a specialty. We have outfitted store networks with standardized shelving and locker packages, coordinated store by store around trading hours.`,
+      `Multi-site rollouts are a specialty. We have outfitted national store networks with standardized shelving and locker packages, coordinated store by store around trading hours, across dozens of states.`,
     ],
     features:[
       ['Stockroom compaction', 'Mobile systems that grow capacity, not footprint'],
@@ -1056,7 +1056,7 @@ const projectsPage = shell(`Projects | O'Brien Systems`, IMGS.lib1, `
   <div class="wrap">
     <span class="eyebrow">Projects</span>
     <h1>Proof, installed</h1>
-    <p>A sampling of the spaces our crews have planned and built across the Delaware Valley since 1979.</p>
+    <p>A sampling of the spaces our crews have planned and built since 1979, from the Delaware Valley to job sites across the country.</p>
   </div>
 </div>
 <section class="block"><div class="wrap">
@@ -1167,8 +1167,8 @@ const aboutPage = shell(`About Us | O'Brien Systems`, IMGS.bg3, `
 </div>
 <div class="wrap">
   <div class="feat">
-    <div><b>Family-owned since 1979</b><span>Four decades of storage projects across the Delaware Valley.</span></div>
-    <div><b>PA, NJ &amp; DE</b><span>Based at 739 E. Elm Street, Conshohocken, PA 19428.</span></div>
+    <div><b>Family-owned since 1979</b><span>Four decades of storage projects, local and national.</span></div>
+    <div><b>Philadelphia HQ, national reach</b><span>Based in Conshohocken, PA, with installations from the Delaware Valley to sites across the country.</span></div>
     <div><b>14 manufacturer lines</b><span>Authorized dealer for the industry's leading brands.</span></div>
     <div><b>PA Small Business Certified</b><span>Commonwealth of Pennsylvania SB certification, valid 06/10/2026 through 06/10/2028.</span></div>
   </div>
@@ -1200,7 +1200,7 @@ const contactPage = shell(`Contact Us | O'Brien Systems`, IMGS.mobileSol, `
   <div class="contact-cards">
     <div class="ccard"><span class="ic">&#128222;</span><b>Call or email</b><p>Monday through Friday, straight to a person who knows storage.</p><a class="big" href="tel:6108253405">610.825.3405</a><a class="big" href="mailto:sales@obriensys.com" style="font-size:.92rem">sales@obriensys.com</a></div>
     <div class="ccard"><span class="ic">&#128205;</span><b>Visit us</b><p>739 E. Elm Street<br>Conshohocken, PA 19428</p><a class="big" href="https://www.google.com/maps?q=739+E+Elm+Street+Conshohocken+PA+19428" target="_blank" rel="noopener">Get directions</a></div>
-    <div class="ccard"><span class="ic">&#128737;</span><b>Public procurement</b><p>PA Small Business (SB) Certified. Serving PA, NJ &amp; DE.</p><a class="big" href="government-public-safety.html">Government storage &rarr;</a></div>
+    <div class="ccard"><span class="ic">&#128737;</span><b>Public procurement</b><p>PA Small Business (SB) Certified.</p><a class="big" href="government-public-safety.html">Government storage &rarr;</a></div>
   </div>
   <div class="twocol">
     <div class="form">
@@ -1302,7 +1302,7 @@ const homeBody = `
 <div class="hero">
   <div class="wrap">
     <h1><em>Storage solved.</em> Space reclaimed.</h1>
-    <p>For 45+ years, O'Brien Systems has planned, supplied, and installed custom storage for the Philadelphia region as the authorized dealer for the industry's leading manufacturers.</p>
+    <p>For 45+ years, O'Brien Systems has planned, supplied, and installed custom storage from our Philadelphia-area headquarters, for local facilities and national multi-site accounts alike.</p>
     <div class="ctas">
       <a class="btn btn-white" href="contact.html">Schedule a Free Space Assessment</a>
       <a class="btn btn-ghost" href="solutions.html">Explore Solutions</a>
@@ -1325,7 +1325,7 @@ const homeBody = `
 <div class="stats wrap">
   <div class="grid">
     <div><b>1979</b><span>family-owned since</span></div>
-    <div><b>PA &middot; NJ &middot; DE</b><span>greater Philadelphia region</span></div>
+    <div><b>Coast to Coast</b><span>Philadelphia based, installing nationwide</span></div>
     <div><b>14</b><span>manufacturer lines carried</span></div>
     <div><b>Free</b><span>on-site space assessments</span></div>
   </div>
@@ -1384,7 +1384,7 @@ const homeBody = `
       <div>
         <span class="eyebrow">Projects</span>
         <h2>Proof, <em>installed</em></h2>
-        <p class="lead">A few of the spaces our crews have planned and built across the Delaware Valley.</p>
+        <p class="lead">A few of the spaces our crews have planned and built, at home in the Delaware Valley and nationwide.</p>
       </div>
       <a class="btn btn-solid" href="projects.html">See All Projects</a>
     </div>
