@@ -250,6 +250,18 @@ nav.menu>div:hover .mega,nav.menu>div:focus-within .mega{display:grid}
 .head-cta{display:flex;align-items:center;gap:14px}
 .head-phone{font-weight:800;color:var(--teal-ink);font-size:.92rem;white-space:nowrap}
 .head-cta .btn{padding:.65rem 1.2rem;font-size:.84rem;white-space:nowrap}
+.burger{display:none;flex-direction:column;justify-content:center;gap:5px;width:44px;height:44px;padding:10px;background:none;border:1px solid var(--line);border-radius:10px;cursor:pointer}
+.burger span{display:block;height:2px;background:var(--teal-ink);border-radius:2px;transition:transform .2s ease,opacity .2s ease}
+.burger[aria-expanded="true"] span:nth-child(1){transform:translateY(7px) rotate(45deg)}
+.burger[aria-expanded="true"] span:nth-child(2){opacity:0}
+.burger[aria-expanded="true"] span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
+.mnav{display:none;background:#fff;border-bottom:1px solid var(--line);box-shadow:0 14px 30px rgba(2,60,63,.12)}
+.mnav.open{display:block}
+.mnav .wrap{padding-top:10px;padding-bottom:22px}
+.mnav a{display:block;padding:11px 4px;font-weight:600;color:var(--ink);border-bottom:1px solid var(--mist);font-size:.98rem}
+.mnav a.sub{padding-left:22px;font-weight:500;font-size:.9rem;color:var(--muted)}
+.mnav a:active,.mnav a:hover{color:var(--teal)}
+.mnav .mnav-cta{margin-top:16px;display:flex;gap:12px;align-items:center}
 
 /* home hero */
 .hero{position:relative;color:#fff;overflow:hidden}
@@ -319,6 +331,34 @@ section.block{padding:72px 0}
 .compare .panel h3{font-size:1rem;margin-bottom:14px;color:#fff}
 .compare .panel p{font-size:.85rem;color:#bcd8d9;margin-top:12px}
 .compare svg{width:100%;height:auto;display:block}
+/* before/after slider (shown only with JS; no-JS keeps the two panels) */
+.ba{display:none;margin-top:40px}
+html.js .ba{display:block}
+html.js .compare .duo{display:none}
+.ba-frame{position:relative;border:1px solid rgba(255,255,255,.14);border-radius:var(--radius);overflow:hidden;background:rgba(255,255,255,.06);touch-action:none}
+.ba-frame svg{display:block;width:100%;height:auto}
+.ba-top{position:absolute;inset:0;clip-path:inset(0 0 0 50%)}
+.ba-handle{position:absolute;top:0;bottom:0;left:50%;width:0;z-index:3;pointer-events:none}
+.ba-handle::before{content:"";position:absolute;top:0;bottom:0;left:-1px;width:2px;background:#fff}
+.ba-handle span{position:absolute;top:50%;left:0;transform:translate(-50%,-50%);width:40px;height:40px;border-radius:50%;background:#fff;color:var(--teal-ink);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.8rem;box-shadow:0 4px 14px rgba(0,0,0,.35)}
+.ba-range{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:ew-resize;z-index:4;margin:0}
+.ba-lbl{position:absolute;top:10px;z-index:2;font-size:.72rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:rgba(2,41,43,.78);color:#fff;padding:5px 10px;border-radius:999px;pointer-events:none}
+.ba-lbl.l{left:10px}
+.ba-lbl.r{right:10px;background:var(--teal);}
+.ba p{font-size:.85rem;color:#bcd8d9;margin-top:12px;text-align:center}
+
+/* industry showcase */
+.showcase{display:grid;grid-template-columns:290px 1fr;gap:28px;margin-top:38px}
+.sc-list{display:flex;flex-direction:column;align-self:start}
+.sc-item{padding:9px 16px;border-left:3px solid var(--line);font-weight:600;font-size:.92rem;color:var(--ink);transition:border-color .12s ease,background .12s ease,color .12s ease}
+.sc-item:hover,.sc-item.on{border-color:var(--teal);color:var(--teal);background:var(--mist)}
+.sc-stage{position:relative;display:block;border-radius:var(--radius);overflow:hidden;min-height:520px;background:var(--teal-ink)}
+.sc-img{position:absolute;inset:0;background-size:cover;background-position:center;transition:opacity .5s ease}
+.sc-img.hide{opacity:0}
+.sc-cap{position:absolute;left:0;right:0;bottom:0;z-index:2;padding:80px 28px 26px;background:linear-gradient(transparent,rgba(2,41,43,.88));color:#fff}
+.sc-cap .k{font-size:.72rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--teal-soft)}
+.sc-cap .t{font-size:1.25rem;font-weight:800;margin-top:6px;max-width:44ch}
+.sc-cap .go{display:inline-block;margin-top:10px;font-weight:700;font-size:.88rem;color:#fff}
 .badge{display:inline-block;background:var(--teal-soft);color:var(--teal-ink);font-size:.72rem;font-weight:800;padding:3px 10px;border-radius:999px;letter-spacing:.06em;text-transform:uppercase;margin-left:8px}
 
 .projects-bg{background:var(--mist)}
@@ -470,12 +510,19 @@ footer .legal a{display:inline;padding:0 10px}
 @media (max-width:1060px){ .head-phone{display:none} }
 @media (max-width:960px){
   nav.menu{display:none}
+  .burger{display:flex}
+  .head-cta .btn{display:none}
   .apps .grid{grid-template-columns:repeat(4,1fr)}
   .apps a:nth-child(4n+1){border-left:0}
   .stats .grid,.compare .duo,.proj-grid,.cards,.steps,.feat,.gallery,.post-grid,.dl-grid,.contact-cards,.team{grid-template-columns:1fr 1fr}
   .twocol,.svc-cta,.form .row{grid-template-columns:1fr}
   .partners-row{grid-template-columns:repeat(2,1fr)}
   footer .cols{grid-template-columns:1fr 1fr}
+  .showcase{grid-template-columns:1fr}
+  .sc-list{flex-direction:row;flex-wrap:wrap;gap:8px}
+  .sc-item{border-left:0;border:1px solid var(--line);border-radius:999px;padding:7px 14px;font-size:.84rem}
+  .sc-item:hover,.sc-item.on{border-color:var(--teal)}
+  .sc-stage{min-height:340px}
 }
 @media (max-width:600px){
   .apps .grid{grid-template-columns:repeat(2,1fr)}
@@ -603,8 +650,23 @@ const HEADER = `
     <div class="head-cta">
       <span class="head-phone">610.825.3405</span>
       <a class="btn btn-solid" href="contact.html">Free Assessment</a>
+      <button class="burger" aria-label="Open menu" aria-expanded="false" aria-controls="mnav"><span></span><span></span><span></span></button>
     </div>
   </div>
+  <nav class="mnav" id="mnav" aria-label="Mobile">
+    <div class="wrap">
+      <a href="solutions.html">Solutions</a>
+      ${SOLUTIONS.map(s=>`<a class="sub" href="${s.slug}.html">${s.name}</a>`).join('\n      ')}
+      <a href="industries.html">Industries</a>
+      <a href="projects.html">Projects</a>
+      <a href="services.html">Services</a>
+      <a href="partners.html">Partners</a>
+      <a href="resources.html">Resources</a>
+      <a href="blog.html">Blog</a>
+      <a href="about.html">About</a>
+      <div class="mnav-cta"><a class="btn btn-solid" href="contact.html">Free Assessment</a><a class="head-phone" href="tel:6108253405">610.825.3405</a></div>
+    </div>
+  </nav>
 </header>`;
 
 const CTA = `
@@ -1483,6 +1545,7 @@ const projectsPage = shell(`Projects | O'Brien Systems`, IMGS.lib1, `
   <div class="proj-grid">
     <a class="proj" href="museums.html" style="background-image:url('${IMGS.artScreen}')"><div class="cap"><span class="k">Museum</span><div class="t">Art screens and conservation storage for a regional collection</div></div></a>
     <a class="proj" href="libraries.html" style="background-image:url('${IMGS.lib1}')"><div class="cap"><span class="k">Library</span><div class="t">High-density shelving that kept the whole collection on one floor</div></div></a>
+    <a class="proj" href="cantilever-shelving.html" style="background-image:url('${IMGS.lancaster1}')"><div class="cap"><span class="k">Library</span><div class="t">Wood-top cantilever stacks across two floors of a public library</div></div></a>
     <a class="proj" href="pharmaceutical-healthcare.html" style="background-image:url('${IMGS.clinic}')"><div class="cap"><span class="k">Healthcare</span><div class="t">Modular casework and supply storage for a children's health system</div></div></a>
     <a class="proj" href="government-public-safety.html" style="background-image:url('${IMGS.evidence}')"><div class="cap"><span class="k">Public Safety</span><div class="t">Evidence storage planned around chain of custody</div></div></a>
     <a class="proj" href="material-handling-warehouse.html" style="background-image:url('${IMGS.mhwLC}')"><div class="cap"><span class="k">Warehouse</span><div class="t">Material handling and storage for high-throughput operations</div></div></a>
@@ -1718,6 +1781,22 @@ const resourcesPage = shell(`Resources & Brochures | O'Brien Systems`, IMGS.hami
 </div></section>`);
 
 /* ---------------- home page ---------------- */
+const SVG_FIXED = `<svg viewBox="0 0 400 150" role="img" aria-label="Fixed shelving layout with wasted aisle space">
+          <rect x="0" y="0" width="400" height="150" fill="rgba(255,255,255,.04)"/>
+          <g fill="#7fd6d9"><rect x="10" y="10" width="40" height="130" rx="3"/><rect x="105" y="10" width="40" height="130" rx="3"/><rect x="200" y="10" width="40" height="130" rx="3"/><rect x="295" y="10" width="40" height="130" rx="3"/></g>
+          <g fill="rgba(255,255,255,.13)"><rect x="52" y="10" width="51" height="130"/><rect x="147" y="10" width="51" height="130"/><rect x="242" y="10" width="51" height="130"/><rect x="337" y="10" width="53" height="130"/></g>
+          <text x="200" y="82" text-anchor="middle" fill="#e2f0f0" font-size="13" font-weight="700" font-family="sans-serif">4 shelving rows &middot; 4 aisles</text>
+        </svg>`;
+const SVG_MOBILE = `<svg viewBox="0 0 400 150" role="img" aria-label="Mobile shelving layout with one shared aisle">
+          <rect x="0" y="0" width="400" height="150" fill="#023c3f"/>
+          <rect x="0" y="0" width="400" height="150" fill="rgba(255,255,255,.04)"/>
+          <g fill="#7fd6d9"><rect x="10" y="10" width="40" height="130" rx="3"/><rect x="54" y="10" width="40" height="130" rx="3"/><rect x="98" y="10" width="40" height="130" rx="3"/><rect x="142" y="10" width="40" height="130" rx="3"/><rect x="186" y="10" width="40" height="130" rx="3"/><rect x="230" y="10" width="40" height="130" rx="3"/><rect x="274" y="10" width="40" height="130" rx="3"/></g>
+          <rect x="318" y="10" width="51" height="130" fill="rgba(255,255,255,.13)"/>
+          <g fill="#7fd6d9"><rect x="373" y="10" width="17" height="130" rx="3"/></g>
+          <text x="343" y="82" text-anchor="middle" fill="#e2f0f0" font-size="12" font-weight="700" font-family="sans-serif">1 aisle</text>
+          <text x="160" y="82" text-anchor="middle" fill="#023c3f" font-size="13" font-weight="700" font-family="sans-serif">8 shelving rows</text>
+        </svg>`;
+
 const homeBody = `
 <div class="hero">
   <div class="wrap">
@@ -1782,26 +1861,48 @@ const homeBody = `
     <div class="duo">
       <div class="panel">
         <h3>Conventional fixed shelving</h3>
-        <svg viewBox="0 0 400 150" role="img" aria-label="Fixed shelving layout with wasted aisle space">
-          <rect x="0" y="0" width="400" height="150" fill="rgba(255,255,255,.04)"/>
-          <g fill="#7fd6d9"><rect x="10" y="10" width="40" height="130" rx="3"/><rect x="105" y="10" width="40" height="130" rx="3"/><rect x="200" y="10" width="40" height="130" rx="3"/><rect x="295" y="10" width="40" height="130" rx="3"/></g>
-          <g fill="rgba(255,255,255,.13)"><rect x="52" y="10" width="51" height="130"/><rect x="147" y="10" width="51" height="130"/><rect x="242" y="10" width="51" height="130"/><rect x="337" y="10" width="53" height="130"/></g>
-          <text x="200" y="82" text-anchor="middle" fill="#e2f0f0" font-size="13" font-weight="700" font-family="sans-serif">4 shelving rows &middot; 4 aisles</text>
-        </svg>
+        ${SVG_FIXED}
         <p>Every row needs its own access aisle, so more than half the floor is air.</p>
       </div>
       <div class="panel">
         <h3>O'Brien high-density mobile <span class="badge">2&times; capacity</span></h3>
-        <svg viewBox="0 0 400 150" role="img" aria-label="Mobile shelving layout with one shared aisle">
-          <rect x="0" y="0" width="400" height="150" fill="rgba(255,255,255,.04)"/>
-          <g fill="#7fd6d9"><rect x="10" y="10" width="40" height="130" rx="3"/><rect x="54" y="10" width="40" height="130" rx="3"/><rect x="98" y="10" width="40" height="130" rx="3"/><rect x="142" y="10" width="40" height="130" rx="3"/><rect x="186" y="10" width="40" height="130" rx="3"/><rect x="230" y="10" width="40" height="130" rx="3"/><rect x="274" y="10" width="40" height="130" rx="3"/></g>
-          <rect x="318" y="10" width="51" height="130" fill="rgba(255,255,255,.13)"/>
-          <g fill="#7fd6d9"><rect x="373" y="10" width="17" height="130" rx="3"/></g>
-          <text x="343" y="82" text-anchor="middle" fill="#e2f0f0" font-size="12" font-weight="700" font-family="sans-serif">1 aisle</text>
-          <text x="160" y="82" text-anchor="middle" fill="#023c3f" font-size="13" font-weight="700" font-family="sans-serif">8 shelving rows</text>
-        </svg>
+        ${SVG_MOBILE}
         <p>Carriages glide on rails to open one aisle where you need it. The rest of the floor works for you.</p>
       </div>
+    </div>
+    <div class="ba">
+      <div class="ba-frame">
+        ${SVG_FIXED}
+        <div class="ba-top">${SVG_MOBILE}</div>
+        <div class="ba-handle" style="left:50%"><span>&#8596;</span></div>
+        <span class="ba-lbl l">Fixed &middot; 4 rows</span>
+        <span class="ba-lbl r">Mobile &middot; 8 rows</span>
+        <input class="ba-range" type="range" min="0" max="100" value="50" aria-label="Compare fixed shelving with high-density mobile on the same floor">
+      </div>
+      <p>Drag the divider: the same floor, fixed shelving versus high-density mobile.</p>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="industry-showcase">
+  <div class="wrap">
+    <div class="sec-head">
+      <div>
+        <span class="eyebrow">Industries</span>
+        <h2>Built around <em>your work</em></h2>
+        <p class="lead">Thirteen industries, each with its own storage problems. Pick yours and see how we solve them.</p>
+      </div>
+      <a class="btn btn-solid" href="industries.html">All Industries</a>
+    </div>
+    <div class="showcase">
+      <div class="sc-list">
+        ${INDUSTRIES.map((i,idx)=>`<a class="sc-item${idx===0?' on':''}" href="${i.slug}.html" data-img="${i.img}" data-name="${i.name}" data-short="${i.short}">${i.name}</a>`).join('\n        ')}
+      </div>
+      <a class="sc-stage" href="${INDUSTRIES[0].slug}.html">
+        <div class="sc-img a" style="background-image:url('${INDUSTRIES[0].img}')"></div>
+        <div class="sc-img b hide"></div>
+        <div class="sc-cap"><span class="k">${INDUSTRIES[0].name}</span><div class="t">${INDUSTRIES[0].short}.</div><span class="go">Explore &rarr;</span></div>
+      </a>
     </div>
   </div>
 </section>
@@ -1908,6 +2009,72 @@ const SITE_JS = `document.documentElement.classList.add('js');
     }, {threshold:.6});
     cio.observe(b);
   });
+})();
+
+/* mobile menu */
+(function(){
+  var burger = document.querySelector('.burger'), panel = document.getElementById('mnav');
+  if (!burger || !panel) return;
+  burger.addEventListener('click', function(){
+    var open = panel.classList.toggle('open');
+    burger.setAttribute('aria-expanded', open ? 'true' : 'false');
+    burger.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+  });
+})();
+
+/* before/after compare slider */
+(function(){
+  var frame = document.querySelector('.ba-frame');
+  if (!frame) return;
+  var range = frame.querySelector('.ba-range'), top = frame.querySelector('.ba-top'), handle = frame.querySelector('.ba-handle');
+  var set = function(v){
+    top.style.clipPath = 'inset(0 0 0 ' + v + '%)';
+    handle.style.left = v + '%';
+  };
+  range.addEventListener('input', function(){ set(range.value); });
+  set(range.value);
+})();
+
+/* industry showcase */
+(function(){
+  var list = document.querySelector('.sc-list');
+  if (!list) return;
+  var items = [].slice.call(list.querySelectorAll('.sc-item'));
+  var stage = document.querySelector('.sc-stage');
+  var imgA = stage.querySelector('.sc-img.a'), imgB = stage.querySelector('.sc-img.b');
+  var capK = stage.querySelector('.sc-cap .k'), capT = stage.querySelector('.sc-cap .t');
+  var front = imgA, back = imgB, current = 0, interacted = false, timer = null;
+  items.forEach(function(a){ new Image().src = a.dataset.img; });
+  function show(idx){
+    if (idx === current) return;
+    current = idx;
+    var a = items[idx];
+    items.forEach(function(x,i){ x.classList.toggle('on', i===idx); });
+    back.style.backgroundImage = "url('" + a.dataset.img + "')";
+    back.classList.remove('hide');
+    front.classList.add('hide');
+    var t = front; front = back; back = t;
+    capK.textContent = a.dataset.name;
+    capT.textContent = a.dataset.short + '.';
+    stage.href = a.href;
+  }
+  items.forEach(function(a, idx){
+    a.addEventListener('mouseenter', function(){ interacted = true; stopAuto(); show(idx); });
+    a.addEventListener('focus', function(){ interacted = true; stopAuto(); show(idx); });
+    a.addEventListener('touchstart', function(){ interacted = true; stopAuto(); }, {passive:true});
+  });
+  function stopAuto(){ if (timer) { clearInterval(timer); timer = null; } }
+  /* gentle auto-advance until the visitor takes over; skipped for reduced motion */
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches && 'IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function(es){
+      es.forEach(function(e){
+        if (e.isIntersecting && !interacted && !timer) {
+          timer = setInterval(function(){ show((current + 1) % items.length); }, 3500);
+        } else if (!e.isIntersecting) { stopAuto(); }
+      });
+    }, {threshold:.4});
+    io.observe(stage);
+  }
 })();
 `;
 fs.mkdirSync(path.join(OUT,'assets'), {recursive:true});
