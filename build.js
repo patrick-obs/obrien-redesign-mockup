@@ -332,20 +332,22 @@ section.block{padding:72px 0}
 .compare .panel p{font-size:.85rem;color:#bcd8d9;margin-top:12px}
 .compare svg{width:100%;height:auto;display:block}
 /* before/after slider (shown only with JS; no-JS keeps the two panels) */
-.ba{display:none;margin-top:40px}
+.ba{display:none;margin:44px auto 0;max-width:860px}
 html.js .ba{display:block}
 html.js .compare .duo{display:none}
-.ba-frame{position:relative;border:1px solid rgba(255,255,255,.14);border-radius:var(--radius);overflow:hidden;background:rgba(255,255,255,.06);touch-action:none}
+.ba-frame{position:relative;border:1px solid rgba(255,255,255,.18);border-radius:var(--radius);overflow:hidden;background:rgba(255,255,255,.06);touch-action:none;box-shadow:0 18px 44px rgba(0,0,0,.28)}
 .ba-frame svg{display:block;width:100%;height:auto}
 .ba-top{position:absolute;inset:0;clip-path:inset(0 0 0 50%)}
 .ba-handle{position:absolute;top:0;bottom:0;left:50%;width:0;z-index:3;pointer-events:none}
-.ba-handle::before{content:"";position:absolute;top:0;bottom:0;left:-1px;width:2px;background:#fff}
-.ba-handle span{position:absolute;top:50%;left:0;transform:translate(-50%,-50%);width:40px;height:40px;border-radius:50%;background:#fff;color:var(--teal-ink);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.8rem;box-shadow:0 4px 14px rgba(0,0,0,.35)}
+.ba-handle::before{content:"";position:absolute;top:0;bottom:0;left:-1.5px;width:3px;background:#fff;box-shadow:0 0 10px rgba(0,0,0,.45)}
+.ba-handle span{position:absolute;top:50%;left:0;transform:translate(-50%,-50%);width:46px;height:46px;border-radius:50%;background:#fff;color:var(--teal-ink);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.05rem;letter-spacing:-1px;box-shadow:0 6px 18px rgba(0,0,0,.4),0 0 0 4px rgba(255,255,255,.25);padding-bottom:2px}
+.ba-frame:hover .ba-handle span{background:var(--teal-soft)}
 .ba-range{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:ew-resize;z-index:4;margin:0}
-.ba-lbl{position:absolute;top:10px;z-index:2;font-size:.72rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:rgba(2,41,43,.78);color:#fff;padding:5px 10px;border-radius:999px;pointer-events:none}
-.ba-lbl.l{left:10px}
-.ba-lbl.r{right:10px;background:var(--teal);}
-.ba p{font-size:.85rem;color:#bcd8d9;margin-top:12px;text-align:center}
+.ba-lbl{position:absolute;top:12px;z-index:2;font-size:.72rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;background:rgba(2,41,43,.82);color:#fff;padding:6px 12px;border-radius:999px;pointer-events:none}
+.ba-lbl.l{left:12px}
+.ba-lbl.r{right:12px;background:var(--gold,#e8a33d);color:var(--teal-ink)}
+.ba p{font-size:.88rem;color:#bcd8d9;margin-top:14px;text-align:center}
+.ba p b{color:#fff}
 
 /* industry showcase */
 .showcase{display:grid;grid-template-columns:290px 1fr;gap:28px;margin-top:38px}
@@ -1797,6 +1799,10 @@ const SVG_MOBILE = `<svg viewBox="0 0 400 150" role="img" aria-label="Mobile she
           <text x="160" y="82" text-anchor="middle" fill="#023c3f" font-size="13" font-weight="700" font-family="sans-serif">8 shelving rows</text>
         </svg>`;
 
+/* slider variants: same art, no center captions (the corner pills carry the labels) */
+const SVG_FIXED_BA = SVG_FIXED.replace(/<text[\s\S]*?<\/text>/g, '');
+const SVG_MOBILE_BA = SVG_MOBILE.replace(/<text[\s\S]*?<\/text>/g, '');
+
 const homeBody = `
 <div class="hero">
   <div class="wrap">
@@ -1872,14 +1878,14 @@ const homeBody = `
     </div>
     <div class="ba">
       <div class="ba-frame">
-        ${SVG_FIXED}
-        <div class="ba-top">${SVG_MOBILE}</div>
-        <div class="ba-handle" style="left:50%"><span>&#8596;</span></div>
+        ${SVG_FIXED_BA}
+        <div class="ba-top">${SVG_MOBILE_BA}</div>
+        <div class="ba-handle" style="left:50%"><span>&#8249;&nbsp;&#8250;</span></div>
         <span class="ba-lbl l">Fixed &middot; 4 rows</span>
         <span class="ba-lbl r">Mobile &middot; 8 rows</span>
         <input class="ba-range" type="range" min="0" max="100" value="50" aria-label="Compare fixed shelving with high-density mobile on the same floor">
       </div>
-      <p>Drag the divider: the same floor, fixed shelving versus high-density mobile.</p>
+      <p><b>Drag the divider.</b> Same floor: four rows fixed, or eight rows on mobile carriages.</p>
     </div>
   </div>
 </section>
@@ -2033,6 +2039,28 @@ const SITE_JS = `document.documentElement.classList.add('js');
   };
   range.addEventListener('input', function(){ set(range.value); });
   set(range.value);
+  /* one-time damped wobble when the slider first scrolls into view: a drag hint */
+  var userTouched = false;
+  range.addEventListener('pointerdown', function(){ userTouched = true; }, {once:true});
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches && 'IntersectionObserver' in window) {
+    var hinted = false;
+    var hio = new IntersectionObserver(function(es){
+      es.forEach(function(e){
+        if (!e.isIntersecting || hinted) return;
+        hinted = true; hio.disconnect();
+        var t0 = null, D = 1800;
+        (function tick(now){
+          if (userTouched) { set(range.value); return; }
+          if (!t0) t0 = now || performance.now();
+          var p = Math.min(((now || performance.now()) - t0) / D, 1);
+          var v = 50 + Math.sin(p * Math.PI * 2) * 15 * (1 - p);
+          range.value = v; set(v);
+          if (p < 1) requestAnimationFrame(tick); else { range.value = 50; set(50); }
+        })();
+      });
+    }, {threshold:.65});
+    hio.observe(frame);
+  }
 })();
 
 /* industry showcase */

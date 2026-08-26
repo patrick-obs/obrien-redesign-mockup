@@ -64,6 +64,28 @@ document.documentElement.classList.add('js');
   };
   range.addEventListener('input', function(){ set(range.value); });
   set(range.value);
+  /* one-time damped wobble when the slider first scrolls into view: a drag hint */
+  var userTouched = false;
+  range.addEventListener('pointerdown', function(){ userTouched = true; }, {once:true});
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches && 'IntersectionObserver' in window) {
+    var hinted = false;
+    var hio = new IntersectionObserver(function(es){
+      es.forEach(function(e){
+        if (!e.isIntersecting || hinted) return;
+        hinted = true; hio.disconnect();
+        var t0 = null, D = 1800;
+        (function tick(now){
+          if (userTouched) { set(range.value); return; }
+          if (!t0) t0 = now || performance.now();
+          var p = Math.min(((now || performance.now()) - t0) / D, 1);
+          var v = 50 + Math.sin(p * Math.PI * 2) * 15 * (1 - p);
+          range.value = v; set(v);
+          if (p < 1) requestAnimationFrame(tick); else { range.value = 50; set(50); }
+        })();
+      });
+    }, {threshold:.65});
+    hio.observe(frame);
+  }
 })();
 
 /* industry showcase */
