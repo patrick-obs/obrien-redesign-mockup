@@ -382,7 +382,9 @@ button.btn{font:inherit;font-weight:700;cursor:pointer}
 .est-in:focus-within{border-color:var(--teal);box-shadow:0 0 0 3px rgba(0,115,119,.15)}
 .est-in input{flex:1;min-width:0;border:0;padding:9px 10px;font:inherit;font-size:1rem;background:transparent;outline:0}
 .est-in em{font-style:normal;color:var(--muted);padding:0 10px;font-size:.85rem}
-.est-pair{display:grid;grid-template-columns:1.4fr 1fr;gap:10px}
+.est-pair{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:10px}
+.est-pair>label,.est-in{min-width:0}
+.est-in input{width:100%}
 .est-note,.est-fine{font-size:.82rem;color:var(--muted)}
 .est-out{border:1px solid var(--line);border-radius:var(--radius);padding:22px;box-shadow:var(--shadow)}
 .est-room-l{color:var(--muted);margin-bottom:8px}
