@@ -6,7 +6,7 @@ const path = require('path');
 const OUT = __dirname;
 // every build gets a new asset version so browsers never mix new pages with an old cached stylesheet
 const VER = Date.now().toString(36);
-const X = require('./extras'); // Sept 2026 upgrades: specify panel, estimator, specify hub, service, SEO plumbing
+const X = require('./extras'); // Sept 2026 upgrades: specify panel, specify hub, service, SEO plumbing
 // Website assistant (same one as obriensys.com). Switch to 'https://obriensys.com' once the chat is live there.
 const CHAT_API = 'https://chatbot.obriensys-web.pages.dev';
 
@@ -630,7 +630,7 @@ const navMegaInd = INDUSTRIES.map(i =>
 
 const HEADER = `
 <div class="ribbon">Design concept. Internal mockup, not the live O'Brien Systems website</div>
-<div class="announce">Free on-site space assessment. <a href="contact.html">Schedule yours</a> or call <a href="tel:6108253405">610.825.3405</a> <span class="sep">&middot;</span> <a href="service.html">Request service</a> <span class="sep">&middot;</span> <a href="tools-space-estimator.html">Space estimator</a></div>
+<div class="announce">Free on-site space assessment. <a href="contact.html">Schedule yours</a> or call <a href="tel:6108253405">610.825.3405</a> <span class="sep">&middot;</span> <a href="service.html">Request service</a></div>
 <header>
   <div class="wrap nav">
     <a class="logo" href="index.html"><img src="${IMGS.logo}" alt="O'Brien Systems, Storage Redefined"></a>
@@ -670,7 +670,6 @@ const HEADER = `
       <a href="services.html">Services</a>
       <a href="design-specify.html">Design &amp; Specify</a>
       <a href="service.html">Request Service</a>
-      <a href="tools-space-estimator.html">Space Estimator</a>
       <a href="partners.html">Partners</a>
       <a href="resources.html">Resources</a>
       <a href="blog.html">Blog</a>
@@ -713,7 +712,7 @@ const FOOTER = `
       </div>
       <div>
         <h4>Company</h4>
-        <a href="about.html">About Us</a><a href="projects.html">Projects</a><a href="services.html">Services</a><a href="partners.html">Manufacturer Partners</a><a href="design-specify.html">Design &amp; Specify</a><a href="service.html">Request Service</a><a href="tools-space-estimator.html">Space Estimator</a><a href="resources.html">Resources &amp; Brochures</a><a href="blog.html">Blog</a><a href="contact.html">Contact</a>
+        <a href="about.html">About Us</a><a href="projects.html">Projects</a><a href="services.html">Services</a><a href="partners.html">Manufacturer Partners</a><a href="design-specify.html">Design &amp; Specify</a><a href="service.html">Request Service</a><a href="resources.html">Resources &amp; Brochures</a><a href="blog.html">Blog</a><a href="contact.html">Contact</a>
       </div>
     </div>
     <div class="legal">
@@ -778,7 +777,7 @@ function subpage(p) {
     ${faqs?`<div class="faq">\n      <h2>Frequently asked questions</h2>\n      ${faqs}\n    </div>`:''}
     ${chips?`<h2 style="margin-top:52px;font-size:1.25rem">${p.chipsTitle}</h2>\n    <div class="chips">\n      ${chips}\n    </div>`:''}
   </div>
-</section>${p.slug === 'high-density-mobile-storage' ? X.estimatorTeaser() : ''}`);
+</section>`);
 }
 
 /* ---------------- page content ---------------- */
@@ -1791,7 +1790,7 @@ const resourcesPage = shell(`Resources & Brochures | O'Brien Systems`, IMGS.hami
   <div class="dl-grid">
     ${BROCHURES.map(b=>`<a class="dlc" href="${b[1]}" target="_blank" rel="noopener"><div class="cover" style="background-image:url('${COVERS[b[2]]}')"></div><div class="bd"><b>${b[0]}</b><span class="tag">PDF</span></div></a>`).join('\n    ')}
   </div>
-  <div class="chips" style="margin-top:36px"><a href="tools-space-estimator.html">Space savings estimator</a><a href="design-specify.html">Design &amp; Specify: CSI sections, CAD and Revit</a><a href="service.html">Request service</a></div>
+  <div class="chips" style="margin-top:36px"><a href="design-specify.html">Design &amp; Specify: CSI sections, CAD and Revit</a><a href="service.html">Request service</a></div>
   <p class="lead" style="margin-top:28px">Need drawings, specifications, or manufacturer literature for a specific product line? <a href="contact.html">Ask us</a> and we'll pull the current documents from the manufacturer.</p>
 </div></section>`);
 
@@ -2120,12 +2119,10 @@ const SITE_JS = `document.documentElement.classList.add('js');
 `;
 fs.mkdirSync(path.join(OUT,'assets'), {recursive:true});
 fs.writeFileSync(path.join(OUT,'assets','style.css'), CSS + X.CSS);
-fs.writeFileSync(path.join(OUT,'assets','estimator.js'), X.ESTIMATOR_JS);
 fs.writeFileSync(path.join(OUT,'assets','site.js'), SITE_JS);
 
 const pages = {
-  'index.html': shell(`O'Brien Systems | Custom Storage Solutions | Design Concept`, IMGS.heroHome, homeBody + X.estimatorTeaser()),
-  'tools-space-estimator.html': X.estimatorPage(shell, IMGS.banMobile),
+  'index.html': shell(`O'Brien Systems | Custom Storage Solutions | Design Concept`, IMGS.heroHome, homeBody),
   'design-specify.html': X.designSpecifyPage(shell, IMGS.gcProject),
   'service.html': X.servicePage(shell, IMGS.banServices, PARTNERS),
   '404.html': X.notFound(shell, IMGS.heroHome),

@@ -2,7 +2,6 @@
 //  - search/share plumbing added to every page after it is generated (description, Open Graph,
 //    JSON-LD LocalBusiness / FAQPage / BreadcrumbList), plus sitemap.xml, robots.txt and 404.html
 //  - "Specify & quote" panel on product and solution pages
-//  - Space savings estimator (tools-space-estimator.html) and a teaser block
 //  - Design & Specify hub for architects, Request Service page
 //  - design polish CSS (page transitions, balanced headlines, focus states, hover depth)
 // Copy rules: no em dashes, region-first geography, floor loading is the engineer of record's call.
@@ -89,102 +88,6 @@ function specPanel(slug, name, brochures) {
     <button type="button" class="btn btn-ghost" data-chat-ask="${attr(`I'm planning ${name.toLowerCase()}. What should I know first?`)}">Ask our assistant</button>
   </div>
 </section>`;
-}
-
-/* ---------------- Space savings estimator ---------------- */
-const estimatorTeaser = () => `
-<section class="est-teaser">
-  <div class="wrap">
-    <div>
-      <span class="eyebrow">Free tool</span>
-      <h2>How much more would your room hold?</h2>
-      <p>Enter your room size and shelf depth. See fixed rows next to mobile rows, drawn to scale, in seconds. No email required.</p>
-    </div>
-    <a class="btn btn-white" href="tools-space-estimator.html">Try the space estimator &rarr;</a>
-  </div>
-</section>`;
-
-const ESTIMATOR_JS = `(function(){
-  var f = document.getElementById('est'); if (!f) return;
-  var out = document.getElementById('est-out');
-  function num(id){ var v = parseFloat(f.elements[id].value); return isFinite(v) && v > 0 ? v : 0; }
-  function ftin(inches){ var ft = Math.floor(inches / 12), inch = inches - ft * 12; inch = Math.round(inch * 16) / 16; if (inch === 12) { ft++; inch = 0; } return ft + "' " + (inch ? inch + '"' : '0"'); }
-  function draw(svg, faces, depth, aisle, width, mobile){
-    var W = 400, H = 170, sx = W / width, g = '', x = 0, used = 0;
-    var row = function(w, cls){ g += '<rect x="' + (x * sx).toFixed(2) + '" y="18" width="' + Math.max(w * sx - 1, 1).toFixed(2) + '" height="' + (H - 36) + '" class="' + cls + '"/>'; x += w; };
-    var gap = function(w){ g += '<rect x="' + (x * sx).toFixed(2) + '" y="18" width="' + (w * sx).toFixed(2) + '" height="' + (H - 36) + '" class="est-aisle"/>'; x += w; };
-    if (mobile) { var half = Math.floor(faces / 2); for (var i = 0; i < half; i++) row(depth, 'est-u'); gap(aisle); for (var j = half; j < faces; j++) row(depth, 'est-u'); }
-    else { var k = (faces - 2) / 2; row(depth, 'est-u'); for (var r = 0; r < k; r++) { gap(aisle); row(depth * 2, 'est-u'); } gap(aisle); row(depth, 'est-u'); }
-    svg.innerHTML = '<rect x="0" y="10" width="' + W + '" height="' + (H - 20) + '" class="est-room"/>' + g;
-  }
-  function calc(){
-    var W = num('w') * 12 + num('wi'), L = num('l') * 12 + num('li'), d = num('d'), a = num('a'), c = num('c'), lv = num('lv') || 1;
-    if (!W || !L || !d || !a) { out.hidden = true; return; }
-    var usable = L - c; if (usable <= 0) { out.hidden = true; return; }
-    var k = Math.floor((W - 2 * d - a) / (2 * d + a)); var fixedFaces = k >= 0 ? 2 + 2 * k : (W >= d + a ? 1 : 0);
-    var mobileFaces = Math.max(0, Math.floor((W - a) / d));
-    var lfFixed = fixedFaces * usable / 12 * lv, lfMobile = mobileFaces * usable / 12 * lv;
-    var gain = fixedFaces ? Math.round((mobileFaces / fixedFaces - 1) * 100) : 0;
-    out.hidden = false;
-    out.querySelector('[data-o=ff]').textContent = fixedFaces;
-    out.querySelector('[data-o=mf]').textContent = mobileFaces;
-    out.querySelector('[data-o=lff]').textContent = lfFixed.toLocaleString('en-US', {maximumFractionDigits:1});
-    out.querySelector('[data-o=lfm]').textContent = lfMobile.toLocaleString('en-US', {maximumFractionDigits:1});
-    out.querySelector('[data-o=gain]').textContent = gain > 0 ? '+' + gain + '%' : gain + '%';
-    out.querySelector('[data-o=room]').textContent = ftin(W) + ' x ' + ftin(L);
-    draw(document.getElementById('est-svg-f'), fixedFaces, d, a, W, false);
-    draw(document.getElementById('est-svg-m'), mobileFaces, d, a, W, true);
-    var summary = 'My room is ' + ftin(W) + ' wide by ' + ftin(L) + ' long, with ' + d + '" deep shelving, ' + a + '" aisles and ' + lv + ' shelf levels. The estimator shows ' + fixedFaces + ' fixed shelving faces vs ' + mobileFaces + ' on mobile carriages. What would you recommend?';
-    document.getElementById('est-ask').setAttribute('data-chat-ask', summary);
-    document.getElementById('est-book').href = 'contact.html?topic=assessment&room=' + encodeURIComponent(ftin(W) + ' x ' + ftin(L)) + '&faces=' + fixedFaces + '-' + mobileFaces;
-  }
-  f.addEventListener('input', calc); calc();
-})();`;
-
-function estimatorPage(shell, heroImg) {
-  const field = (id, label, value, unit, extra = '') => `<label>${label}<span class="est-in"><input name="${id}" type="number" inputmode="decimal" min="0" step="any" value="${value}" ${extra}><em>${unit}</em></span></label>`;
-  return shell(`Space Savings Estimator | O'Brien Systems`, heroImg, `
-<div class="page-hero">
-  <div class="wrap crumbs"><a href="index.html">Home</a> / <a href="resources.html">Resources</a> / Space Savings Estimator</div>
-  <div class="wrap">
-    <span class="eyebrow">Free tool</span>
-    <h1>Space savings estimator</h1>
-    <p>See how many shelving faces fit your room as fixed rows, and how many fit on mobile carriages with one shared aisle. Change any number and the drawing updates.</p>
-  </div>
-</div>
-<section class="block">
-  <div class="wrap est">
-    <form id="est" class="est-form" onsubmit="return false">
-      <fieldset><legend>Room</legend>
-        <div class="est-pair">${field('w', 'Width (across the rows)', 20, 'ft')}${field('wi', '&nbsp;', 0, 'in')}</div>
-        <div class="est-pair">${field('l', 'Length (along the rows)', 30, 'ft')}${field('li', '&nbsp;', 0, 'in')}</div>
-      </fieldset>
-      <fieldset><legend>Shelving</legend>
-        ${field('d', 'Shelf depth', 18, 'in')}
-        ${field('lv', 'Shelf levels per unit', 7, 'levels')}
-      </fieldset>
-      <fieldset><legend>Clearances</legend>
-        ${field('a', 'Aisle width', 36, 'in')}
-        ${field('c', 'Cross aisle at one end', 36, 'in')}
-      </fieldset>
-      <p class="est-note">Aisle widths depend on your use and local code (36 in. is a common minimum for accessible routes). Your design team confirms them.</p>
-    </form>
-    <div id="est-out" class="est-out" hidden>
-      <p class="est-room-l">Room <b data-o="room"></b></p>
-      <div class="est-grid">
-        <figure><figcaption>Fixed rows <b><span data-o="ff"></span> faces</b></figcaption><svg id="est-svg-f" viewBox="0 0 400 170" role="img" aria-label="Fixed shelving layout"></svg><p><span data-o="lff"></span> linear ft of shelf</p></figure>
-        <figure><figcaption>Mobile carriages <b><span data-o="mf"></span> faces</b></figcaption><svg id="est-svg-m" viewBox="0 0 400 170" role="img" aria-label="Mobile shelving layout"></svg><p><span data-o="lfm"></span> linear ft of shelf</p></figure>
-      </div>
-      <p class="est-gain">Capacity change with mobile: <b data-o="gain"></b></p>
-      <div class="est-act">
-        <a id="est-book" class="btn btn-solid" href="contact.html?topic=assessment">Book a free assessment to confirm</a>
-        <button id="est-ask" type="button" class="btn btn-ghost" data-chat-ask="">Ask our assistant about my room</button>
-      </div>
-      <p class="est-fine">Planning estimate only: real layouts account for columns, doors, sprinklers, lighting and end panels. Floor capacity is evaluated by your structural engineer of record; we supply complete equipment load data for that review.</p>
-    </div>
-  </div>
-</section>
-<script src="assets/estimator.js?v=${Date.now().toString(36)}" defer></script>`);
 }
 
 /* ---------------- Design & Specify hub ---------------- */
@@ -296,7 +199,7 @@ const notFound = (shell, heroImg) => shell(`Page not found | O'Brien Systems`, h
   </div>
 </div>
 <section class="block"><div class="wrap"><div class="chips">
-  <a href="solutions.html">All solutions</a><a href="industries.html">Industries</a><a href="projects.html">Projects</a><a href="tools-space-estimator.html">Space estimator</a><a href="blog.html">Blog</a><a href="contact.html">Contact</a>
+  <a href="solutions.html">All solutions</a><a href="industries.html">Industries</a><a href="projects.html">Projects</a><a href="blog.html">Blog</a><a href="contact.html">Contact</a>
 </div></div></section>`);
 
 /* ---------------- search/share plumbing, applied to each finished page ---------------- */
@@ -368,39 +271,7 @@ button.btn{font:inherit;font-weight:700;cursor:pointer}
 .spec-r .btn{text-align:center;justify-content:center}
 @media (max-width:820px){.spec{grid-template-columns:1fr;padding:24px}}
 
-/* estimator */
-.est-teaser{background:var(--teal-ink);color:#fff;padding:54px 0}
-.est-teaser .wrap{display:flex;gap:28px;align-items:center;justify-content:space-between;flex-wrap:wrap}
-.est-teaser h2{font-size:1.7rem;margin:.3rem 0 .4rem;color:#fff}
-.est-teaser p{max-width:620px;opacity:.9}
-.est-teaser .eyebrow{color:var(--teal-soft)}
-.est{display:grid;grid-template-columns:minmax(260px,340px) 1fr;gap:36px;align-items:start}
-.est-form fieldset{min-width:0;border:1px solid var(--line);border-radius:12px;padding:14px 16px 6px;margin-bottom:14px}
-.est-form legend{font-weight:700;padding:0 6px;color:var(--teal-ink)}
-.est-form label{display:block;font-size:.88rem;color:var(--muted);margin-bottom:10px}
-.est-in{display:flex;align-items:center;border:1px solid #cfdada;border-radius:8px;margin-top:4px;background:#fff}
-.est-in:focus-within{border-color:var(--teal);box-shadow:0 0 0 3px rgba(0,115,119,.15)}
-.est-in input{flex:1;min-width:0;border:0;padding:9px 10px;font:inherit;font-size:1rem;background:transparent;outline:0}
-.est-in em{font-style:normal;color:var(--muted);padding:0 10px;font-size:.85rem}
-.est-pair{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:10px}
-.est-pair>label,.est-in{min-width:0}
-.est-in input{width:100%}
-.est-note,.est-fine{font-size:.82rem;color:var(--muted)}
-.est-out{border:1px solid var(--line);border-radius:var(--radius);padding:22px;box-shadow:var(--shadow)}
-.est-room-l{color:var(--muted);margin-bottom:8px}
-.est-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
-.est-grid figure{background:var(--mist);border-radius:12px;padding:12px}
-.est-grid figcaption{display:flex;justify-content:space-between;font-weight:600;margin-bottom:6px}
-.est-grid figcaption b{color:var(--teal)}
-.est-grid svg{width:100%;height:auto;display:block}
-.est-grid p{font-size:.9rem;color:var(--muted);margin-top:6px}
-.est-room{fill:#fff;stroke:#b9c7c7}
-.est-u{fill:var(--teal)}
-.est-aisle{fill:#e8a33d;opacity:.22}
-.est-gain{font-size:1.25rem;margin:16px 0}
-.est-gain b{color:var(--teal);font-size:1.6rem}
-.est-act{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
-@media (max-width:860px){.est{grid-template-columns:1fr}.est-grid{grid-template-columns:1fr}}
+.est-note{font-size:.82rem;color:var(--muted)}
 
 /* design & specify */
 .sec-h{font-size:1.35rem;margin:44px 0 14px;max-width:none}
@@ -488,4 +359,4 @@ function photos(file, html) {
   return html;
 }
 
-module.exports = { photos, specPanel, estimatorTeaser, estimatorPage, ESTIMATOR_JS, designSpecifyPage, servicePage, notFound, enrich, sitemap, ROBOTS, CSS, LINES };
+module.exports = { photos, specPanel, designSpecifyPage, servicePage, notFound, enrich, sitemap, ROBOTS, CSS, LINES };
