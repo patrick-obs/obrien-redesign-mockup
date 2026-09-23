@@ -374,7 +374,7 @@ const ALL3D = 'hd-mobile,four-post,library,lockers,flat-files,rotary,museum-cabi
 const viewer3d = (slug, name) => VIEW3D[slug] ? `
 <section class="v3d-sec">
   <div class="wrap">
-    <div class="v3d-head"><div><span class="eyebrow">Explore in 3D</span><h2>See ${name.replace(/\s*\(VLM\)/, '')} from every side</h2></div><a class="v3d-all" href="showroom.html">Open the 3D showroom &rarr;</a></div>
+    <div class="v3d-head"><div><span class="eyebrow">Explore in 3D</span><h2>${VIEW3D[slug].includes(',') ? 'Explore the systems in 3D' : `See ${name.replace(/\s*\(VLM\)/, '')} from every side`}</h2></div><a class="v3d-all" href="showroom.html">Open the 3D showroom &rarr;</a></div>
     <div class="v3d" data-models="${VIEW3D[slug]}"></div>
   </div>
 </section>` : '';
