@@ -71,8 +71,16 @@ function kit(THREE) {
     endPanels: [{ name: 'O\'Brien teal', swatch: '#0f7377', color: 0x0f7377 }, { name: 'Maple laminate', swatch: '#c79a66', color: 0xc79a66 }, { name: 'Light gray', swatch: '#c3c7ca', color: 0xbfc4c7 }, { name: 'Black', swatch: '#2c2f31', color: 0x2c2f31 }, { name: 'Navy', swatch: '#2a3d5c', color: 0x2a3d5c }],
     cabinets: [{ name: 'White', swatch: '#f1f2f0', color: 0xeeefed }, { name: 'Light gray', swatch: '#c3c7ca', color: 0xbfc4c7 }, { name: 'Putty', swatch: '#d9cfbd', color: 0xd6ccb9 }, { name: 'Black', swatch: '#2c2f31', color: 0x2c2f31 }],
   };
-  const finisher = (mat) => (f) => { mat.color.setHex(f.color); };
-  return { M, bx, cyl, bar, group, grid, meshMat, many, FIN, finisher, std };
+  const finisher = (...mats) => (f) => { mats.forEach(mat => mat.color.setHex(f.color)); };
+  // upright with a column of slots every 2", tinted by the shelf paint
+  const postMat = (paint) => {
+    const c = document.createElement('canvas'); c.width = 16; c.height = 64; const g = c.getContext('2d');
+    g.fillStyle = '#fff'; g.fillRect(0, 0, 16, 64); g.fillStyle = '#3a3d40';
+    for (const y of [10, 42]) { g.fillRect(6, y, 4, 12); }
+    const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1, 21); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+    return new THREE.MeshStandardMaterial({ color: paint.color.clone(), map: t, roughness: paint.roughness, metalness: paint.metalness });
+  };
+  return { M, bx, cyl, bar, group, grid, meshMat, many, FIN, finisher, std, postMat };
 }
 
 const KRAFT = ['#b58a55', '#c49a64', '#a97d49', '#d1ab77', '#e4e1d6', '#ffffff'];
@@ -81,13 +89,14 @@ const BOOKS = ['#7c2d2d', '#2d4a7c', '#2f6b4f', '#a3782b', '#5a3d6e', '#1f1f1f',
 /* four-post / closed steel shelving unit, min corner at origin, open face toward +z */
 function shelving(k, parent, o) {
   const { M, bx, bar, group, many } = k;
-  const { bays = 3, w = 36, d = 18, h = 84, shelves = 6, closed = false, paint = M.paint, contents = null, seed = 7 } = o;
+  const { bays = 3, w = 36, d = 18, h = 84, shelves = 6, closed = false, paint = M.paint, contents = null, seed = 7, labels = false } = o;
+  const post = o.postPaint || paint;
   const g = group(parent, o.x || 0, o.y || 0, o.z || 0), W = bays * w, r = rng(seed);
   for (let i = 0; i <= bays; i++) {
     const x = i * w, inner = i > 0 && i < bays;
     for (const zf of [0, d - 0.12]) {
-      bx(g, inner ? 2.5 : 1.25, h, 0.12, paint, i === 0 ? 0 : i === bays ? W - 1.25 : x - 1.25, 0, zf);
-      bx(g, 0.12, h, 1.25, paint, i === bays ? W - 0.12 : x, 0, zf === 0 ? 0 : d - 1.25);
+      bx(g, inner ? 2.5 : 1.25, h, 0.12, post, i === 0 ? 0 : i === bays ? W - 1.25 : x - 1.25, 0, zf);
+      bx(g, 0.12, h, 1.25, post, i === bays ? W - 0.12 : x, 0, zf === 0 ? 0 : d - 1.25);
     }
     if (closed) bx(g, 0.05, h, d, paint, i === bays ? W - 0.05 : x, 0, 0);
   }
@@ -99,6 +108,7 @@ function shelving(k, parent, o) {
     for (const [si, y] of ys.entries()) {
       bx(g, w - 0.2, 0.06, d - 0.2, paint, x0, y, 0.1);
       bx(g, w - 0.2, 1.4, 0.06, paint, x0, y - 1.34, d - 0.16);
+      if (labels) bx(g, 4, 0.9, 0.05, M.label, x0 + w / 2 - 2, y - 1.1, d - 0.1);
       bx(g, w - 0.2, 1.4, 0.06, paint, x0, y - 1.34, 0.1);
       if (!closed && si === 0) { bar(g, b * w + 1, 4, (b + 1) * w - 1, h - 4, 0.3, 0.35, paint); bar(g, b * w + 1, h - 4, (b + 1) * w - 1, 4, 0.5, 0.35, paint); }
       const top = si === ys.length - 1, gap = top ? 0 : ys[si + 1] - y - 2;
@@ -121,17 +131,17 @@ function shelving(k, parent, o) {
 }
 
 /* ---------------- 1. four-post shelving ---------------- */
-def('four-post', '4-Post Steel Shelving', 'Three 36" W x 18" D x 84" H bays', ({ THREE, wake, bake }) => {
+def('four-post', '4-Post Steel Shelving', 'Three 36" W x 18" D x 84" H sections', ({ THREE, wake, bake }) => {
   const k = kit(THREE), root = new THREE.Group();
-  const paint = k.std(0xbfc4c7, 0.5, 0.3);
-  let closed = false, shelves = 6, contents = true, unit = null;
-  const make = () => { if (unit) root.remove(unit); unit = shelving(k, root, { bays: 3, closed, shelves, paint, contents: contents ? 'boxes' : null }); unit.traverse(o => { if (o.isMesh) { o.castShadow = o.receiveShadow = true; } }); unit.userData.dyn = true; bake?.(unit); wake(); };
+  const paint = k.std(0xbfc4c7, 0.5, 0.3), post = k.postMat(paint);
+  let closed = true, shelves = 7, contents = true, unit = null;
+  const make = () => { if (unit) root.remove(unit); unit = shelving(k, root, { bays: 3, closed, shelves, paint, postPaint: post, labels: true, contents: contents ? 'boxes' : null }); unit.traverse(o => { if (o.isMesh) { o.castShadow = o.receiveShadow = true; } }); unit.userData.dyn = true; bake?.(unit); wake(); };
   make();
   return {
-    group: root, finishes: k.FIN.shelving, setFinish: k.finisher(paint),
+    group: root, finishes: k.FIN.shelving, setFinish: k.finisher(paint, post),
     actions: [
-      { label: 'Closed style', run: () => { closed = !closed; make(); return closed ? 'Open style' : 'Closed style'; } },
-      { label: 'Shelves: 6', run: () => { shelves = shelves >= 8 ? 5 : shelves + 1; make(); return `Shelves: ${shelves}`; } },
+      { label: 'Open style', run: () => { closed = !closed; make(); return closed ? 'Open style' : 'Closed style'; } },
+      { label: 'Shelves: 7', run: () => { shelves = shelves >= 8 ? 5 : shelves + 1; make(); return `Shelves: ${shelves}`; } },
       { label: 'Hide boxes', run: () => { contents = !contents; make(); return contents ? 'Hide boxes' : 'Show boxes'; } },
     ],
   };
@@ -230,10 +240,15 @@ def('hd-mobile', 'High-Density Mobile Shelving', 'Two fixed + five mobile ranges
     bx(r0, 1.6, h + 6, dd - 0.3, panel, -1.6, 0, 0.15);
     bx(r0, 0.4, h - 10, 0.8, M.chrome, L + 1.6, 8, 0.4); bx(r0, 0.4, h - 10, 0.8, M.chrome, L + 1.6, 8, dd - 1.2);
     if (!fixed) {
-      const hub = group(r0, L + 3.2, 50, dd / 2);
-      const wheel = new THREE.Mesh(new THREE.TorusGeometry(6.5, 0.55, 12, 40), M.chrome); wheel.rotation.y = Math.PI / 2; hub.add(wheel);
-      cyl(hub, 1.2, 1.6, M.chrome, 0, 0, 0, 20, 'x');
-      for (let s = 0; s < 3; s++) { const sp = bx(null, 0.5, 6.5, 0.5, M.chrome); sp.position.set(0, 0, 0); sp.geometry = sp.geometry; const p = new THREE.Group(); p.rotation.x = (s * Math.PI * 2) / 3; sp.position.set(0, 3.2, 0); p.add(sp); hub.add(p); }
+      // three-arm spinner handle with ball grips on a round hub
+      const hub = group(r0, L + 1.8, 50, dd / 2), black = k.std(0x1c1e20, 0.45, 0.15);
+      cyl(hub, 2.6, 2, black, 1, 0, 0, 28, 'x');
+      cyl(hub, 1.6, 0.4, M.chrome, 2.1, 0, 0, 24, 'x');
+      for (let s = 0; s < 3; s++) {
+        const arm = new THREE.Group(); arm.rotation.x = (s * Math.PI * 2) / 3; hub.add(arm);
+        const a = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 1.1, 8.4, 16), black); a.position.set(1.2, 4.6, 0); arm.add(a);
+        const ball = new THREE.Mesh(new THREE.SphereGeometry(1.4, 20, 14), black); ball.position.set(1.2, 9.4, 0); arm.add(ball);
+      }
       g.userData.onClick = () => { open = open === j - 1 ? j : j - 1; move(); };
       g.userData.wheel = hub; hub.userData.dyn = true;
     }
@@ -259,13 +274,19 @@ def('hd-mobile', 'High-Density Mobile Shelving', 'Two fixed + five mobile ranges
 def('lockers', 'Steel Lockers', 'Four 12" W x 18" D x 72" H lockers on a base', ({ THREE, tween, wake, bake }) => {
   const k = kit(THREE), { M, bx, group } = k, root = new THREE.Group();
   const paint = k.std(0xb5babd, 0.45, 0.35);
-  let tiers = 2, bank, doors = [];
+  let tiers = 2, sloped = true, bank, doors = [];
   const make = () => {
     if (bank) root.remove(bank);
     bank = group(root); doors = [];
     const n = 4, w = 12, d = 18, h = 72, baseH = 6, dh = h / tiers;
     bx(bank, n * w, baseH, d - 1, M.dark, 0, 0, 0.5);
     bx(bank, n * w, 0.5, d, paint, 0, baseH + h, 0);
+    if (sloped) {
+      // sloped top: high at the wall, sheds toward the front so nothing gets stored up there
+      const s = new THREE.Shape(); s.moveTo(0, 0); s.lineTo(d, 0); s.lineTo(0, 7.5); s.closePath();
+      const wedge = new THREE.Mesh(new THREE.ExtrudeGeometry(s, { depth: n * w, bevelEnabled: false }), paint);
+      wedge.rotation.y = -Math.PI / 2; wedge.position.set(n * w, baseH + h + 0.5, 0); bank.add(wedge);
+    }
     for (let i = 0; i <= n; i++) bx(bank, 0.3, h, d, paint, i * w - (i === n ? 0.3 : 0), baseH, 0);
     bx(bank, n * w, h, 0.3, paint, 0, baseH, 0);
     for (let i = 0; i < n; i++) for (let t = 0; t < tiers; t++) {
@@ -282,10 +303,9 @@ def('lockers', 'Steel Lockers', 'Four 12" W x 18" D x 72" H lockers on a base', 
       pivot.userData.onClick = () => { pivot.userData.open = !pivot.userData.open; tween(pivot.rotation, 'y', pivot.userData.open ? -1.9 : 0, 650); };
       doors.push(pivot);
     }
-    const bench = group(root, 4, 0, 30);
+    const bench = group(bank, 4, 0, 30);
     bx(bench, 40, 1.5, 9.5, k.std(0xc79a66, 0.65, 0), 0, 16, 0);
     for (const x of [3, 34]) bx(bench, 3, 16, 3, M.dark, x, 0, 3.2);
-    bank.add(bench);
     bank.traverse(o => { if (o.isMesh) { o.castShadow = o.receiveShadow = true; } }); bank.userData.dyn = true; bake?.(bank); wake();
   };
   make();
@@ -294,6 +314,52 @@ def('lockers', 'Steel Lockers', 'Four 12" W x 18" D x 72" H lockers on a base', 
     actions: [
       { label: 'Open all doors', run: () => { const o = !doors.every(p => p.userData.open); doors.forEach(p => { p.userData.open = o; tween(p.rotation, 'y', o ? -1.9 : 0, 650); }); return o ? 'Close all doors' : 'Open all doors'; } },
       { label: 'Double tier', run: () => { tiers = tiers === 1 ? 2 : tiers === 2 ? 3 : 1; make(); return ['', 'Single tier', 'Double tier', 'Triple tier'][tiers]; } },
+      { label: 'Flat top', run: () => { sloped = !sloped; make(); return sloped ? 'Flat top' : 'Sloped top'; } },
+    ],
+  };
+});
+
+/* ---------------- 6b. evidence lockers (pass-through) ---------------- */
+def('evidence-lockers', 'Pass-Through Evidence Lockers', 'Set into a wall: officers deposit on one side, the evidence room retrieves on the other', ({ THREE, tween }) => {
+  const k = kit(THREE), { M, bx, group } = k, root = new THREE.Group();
+  const paint = k.std(0x9aa3a8, 0.45, 0.35), wall = k.std(0xe7e4dc, 0.9, 0);
+  const lit = k.std(0x39d353, 0.3, 0, { emissive: 0x1f8a33, emissiveIntensity: 0.8 });
+  const screen = k.std(0x2a6f97, 0.2, 0.1, { emissive: 0x1b4f70, emissiveIntensity: 0.7 });
+  const cw = 15, D = 24, base = 4, H = 72;
+  // compartment heights per column, bottom to top: small, medium, long items, refrigerated
+  const cols = [[18, 18, 18, 18], [12, 12, 12, 12, 12, 12], [36, 36], [24, 24, 24], [H], [12, 12, 12, 12, 12, 12]];
+  const W = cols.length * cw, top = base + H + 0.6, wz = 9, wd = 6;
+  // wall with the locker bank passing through it
+  bx(root, 20, top + 16, wd, wall, -20, 0, wz); bx(root, 20, top + 16, wd, wall, W, 0, wz); bx(root, W, 16, wd, wall, 0, top, wz);
+  bx(root, W, base, D, M.dark, 0, 0, 0);
+  bx(root, W, 0.6, D, paint, 0, base + H, 0);
+  const fronts = [], backs = [];
+  const swing = (pv, o, front) => { pv.userData.open = o; tween(pv.rotation, 'y', o ? (front ? -1.8 : 1.8) : 0, 600); };
+  cols.forEach((col, c) => {
+    const x0 = c * cw; let y = base;
+    bx(root, 0.4, H, D, paint, x0, base, 0);
+    col.forEach(ch => {
+      bx(root, cw, 0.3, D, paint, x0, y, 0);
+      for (const front of [true, false]) {
+        const pv = group(root, x0 + 0.3, y + 0.2, front ? D : 0), zo = front ? 0 : -0.3, zf = front ? 0.3 : -0.7;
+        bx(pv, cw - 0.6, ch - 0.4, 0.3, paint, 0, 0, zo);
+        bx(pv, 2.2, 3, 0.4, M.black, cw - 4.2, ch / 2 - 1.5, zf);
+        bx(pv, 1.6, 0.6, 0.1, lit, cw - 3.9, ch / 2 + 1.1, front ? 0.72 : -0.82);
+        if (col.length === 1 && front) bx(pv, 4, 2, 0.2, screen, 1.5, ch - 5, 0.35);
+        pv.userData.onClick = () => swing(pv, !pv.userData.open, front);
+        (front ? fronts : backs).push(pv);
+      }
+      y += ch;
+    });
+  });
+  bx(root, 0.4, H, D, paint, W - 0.4, base, 0);
+  const toggle = (list, front) => { const o = !list.every(p => p.userData.open); list.forEach(p => swing(p, o, front)); return o; };
+  return {
+    group: root, view: [0.75, 0.42, 1.3],
+    finishes: [{ name: 'Gray', swatch: '#9aa3a8', color: 0x9aa3a8 }, { name: 'Putty', swatch: '#d9cfbd', color: 0xd6ccb9 }, { name: 'Black', swatch: '#2c2f31', color: 0x2c2f31 }], setFinish: k.finisher(paint),
+    actions: [
+      { label: 'Open officer side', run: () => (toggle(fronts, true) ? 'Close officer side' : 'Open officer side') },
+      { label: 'Open evidence-room side', run: () => (toggle(backs, false) ? 'Close evidence-room side' : 'Open evidence-room side') },
     ],
   };
 });
@@ -301,118 +367,161 @@ def('lockers', 'Steel Lockers', 'Four 12" W x 18" D x 72" H lockers on a base', 
 /* ---------------- 7. flat files ---------------- */
 def('flat-files', 'Flat File Cabinets', 'Two stacked 5-drawer units, 50" W x 38" D', ({ THREE, tween }) => {
   const k = kit(THREE), { M, bx, group } = k, root = new THREE.Group();
-  const paint = k.std(0xeeefed, 0.45, 0.3);
-  const W = 50, D = 38, uh = 16.5, base = 4;
+  const paint = k.std(0xeeefed, 0.45, 0.3), inner = k.std(0xd7dada, 0.5, 0.3), paper = [M.white, k.std(0xf1ede2, 0.85, 0), k.std(0xe6ecef, 0.85, 0)];
+  const W = 50, D = 38, uh = 16.5, base = 4, r = rng(3);
   bx(root, W - 2, base, D - 3, M.dark, 1, 0, 1);
   const drawers = [];
   for (let u = 0; u < 2; u++) {
     const y0 = base + u * (uh + 0.3);
-    bx(root, W, 0.6, D, paint, 0, y0 + uh - 0.6, 0);
+    bx(root, W, 0.6, D, paint, 0, y0 + uh - 0.6, 0); bx(root, W, 0.4, D, paint, 0, y0, 0);
     bx(root, 0.6, uh, D, paint, 0, y0, 0); bx(root, 0.6, uh, D, paint, W - 0.6, y0, 0); bx(root, W, uh, 0.4, paint, 0, y0, 0);
     for (let i = 0; i < 5; i++) {
-      const dy = y0 + 0.3 + i * 3.15, dr = group(root, 0, 0, 0);
+      // open-top drawer: front, floor, sides, back and a rear hood, with loose sheets inside
+      const dy = y0 + 0.5 + i * 3.1, dr = group(root, 0, 0, 0), iw = W - 3, id = D - 3.5, ih = 2.2;
       bx(dr, W - 1.6, 2.9, 0.8, paint, 0.8, dy, D - 0.8);
-      bx(dr, W - 3, 2.3, D - 2, k.std(0xd9dcdc, 0.5, 0.3), 1.5, dy + 0.2, 1);
-      bx(dr, W - 8, 0.05, D - 6, M.white, 4, dy + 0.5, 3);
+      bx(dr, iw, 0.12, id, inner, 1.5, dy + 0.1, 1);
+      bx(dr, 0.15, ih, id, inner, 1.5, dy + 0.1, 1); bx(dr, 0.15, ih, id, inner, 1.5 + iw - 0.15, dy + 0.1, 1);
+      bx(dr, iw, ih, 0.15, inner, 1.5, dy + 0.1, 1);
+      bx(dr, iw, 0.1, 5, inner, 1.5, dy + ih, 1);
+      const sheets = 3 + Math.floor(r() * 6);
+      for (let s = 0; s < sheets; s++) bx(dr, 36 - r() * 6, 0.05, 24 - r() * 4, paper[s % 3], 5 + r() * 2, dy + 0.25 + s * 0.09, 7 + r() * 2);
       bx(dr, 22, 0.5, 0.9, M.chrome, W / 2 - 11, dy + 1.9, D);
       bx(dr, 3, 1.3, 0.1, M.label, W / 2 - 1.5, dy + 0.4, D + 0.02);
-      dr.userData.onClick = () => { dr.userData.open = !dr.userData.open; tween(dr.position, 'z', dr.userData.open ? 30 : 0, 700); };
+      dr.userData.onClick = () => { dr.userData.open = !dr.userData.open; tween(dr.position, 'z', dr.userData.open ? 28 : 0, 700); };
       drawers.push(dr);
     }
   }
   return {
-    group: root, finishes: k.FIN.cabinets, setFinish: k.finisher(paint),
-    actions: [{ label: 'Open a drawer', run: () => { const dr = drawers[7]; dr.userData.open = !dr.userData.open; tween(dr.position, 'z', dr.userData.open ? 30 : 0, 700); return dr.userData.open ? 'Close the drawer' : 'Open a drawer'; } }],
+    group: root, view: [0.7, 0.9, 1.2], finishes: k.FIN.cabinets, setFinish: k.finisher(paint),
+    actions: [{ label: 'Open a drawer', run: () => { const dr = drawers[7]; dr.userData.onClick(); return dr.userData.open ? 'Close the drawer' : 'Open a drawer'; } }],
   };
 });
 
 /* ---------------- 8. rotary cabinet ---------------- */
-def('rotary', 'Rotary File Cabinet', '41" W x 41" D x 80" H, rotates to lock flush', ({ THREE, tween }) => {
+def('rotary', 'Rotary File Cabinet', '48" W x 48" D x 80" H cabinet, the unit inside turns to lock flush', ({ THREE, tween }) => {
   const k = kit(THREE), { M, bx, group, many } = k, root = new THREE.Group();
-  const paint = k.std(0xbfc4c7, 0.45, 0.35), S = 41, H = 80, r = rng(5);
-  bx(root, S, 4, S, M.dark, 0, 0, 0); bx(root, S, 1, S, paint, 0, H - 1, 0);
-  bx(root, 1, H - 4, S, paint, 0, 4, 0); bx(root, 1, H - 4, S, paint, S - 1, 4, 0);
-  bx(root, S, H - 4, 1, paint, 0, 4, 0);
-  const rot = group(root, S / 2, 4, S / 2);
-  bx(rot, S - 3, H - 6, 0.8, paint, -(S - 3) / 2, 0, -0.4);
+  const paint = k.std(0xbfc4c7, 0.45, 0.35), S = 48, H = 80, RW = 34, RD = 26, RH = H - 12, r = rng(5);
+  // the rotor's corners sweep a 21.4" radius; the shell leaves 23" to each wall so it never clips
+  bx(root, S, 4, S, M.dark, 0, 0, 0); bx(root, S, 1.2, S, paint, 0, H - 1.2, 0);
+  bx(root, 1, H - 4, S, paint, 0, 4, 0); bx(root, 1, H - 4, S, paint, S - 1, 4, 0); bx(root, S, H - 4, 1, paint, 0, 4, 0);
+  const pil = (S - RW - 2) / 2;
+  bx(root, pil, H - 4, 1, paint, 0, 4, S - 1); bx(root, pil, H - 4, 1, paint, S - pil, 4, S - 1); bx(root, S, H - 4 - RH - 1.6, 1, paint, 0, 4 + RH + 1.6, S - 1);
+  bx(root, S - 2, 0.6, S - 2, k.std(0x8f969a, 0.6, 0.4), 1, 4, 1);
+  const rot = group(root, S / 2, 4.6, S / 2);
+  bx(rot, RW, RH, 0.8, paint, -RW / 2, 0, -0.4);
+  bx(rot, 0.8, RH, RD, paint, -RW / 2, 0, -RD / 2); bx(rot, 0.8, RH, RD, paint, RW / 2 - 0.8, 0, -RD / 2);
+  bx(rot, RW, 0.8, RD, paint, -RW / 2, RH - 0.8, -RD / 2);
   const items = [];
   for (const side of [1, -1]) for (let s = 0; s < 6; s++) {
     const y = 1 + s * 12.3;
-    bx(rot, S - 3, 0.1, 17, paint, -(S - 3) / 2, y, side > 0 ? 0.4 : -17.4);
+    bx(rot, RW - 1.6, 0.1, RD / 2 - 1, paint, -RW / 2 + 0.8, y, side > 0 ? 0.4 : -RD / 2 + 0.6);
     if (s === 5) continue;
-    let x = -(S - 3) / 2 + 0.5;
-    while (x < (S - 3) / 2 - 2.5) {
+    let x = -RW / 2 + 1.3;
+    while (x < RW / 2 - 3.5) {
       const t = side > 0 ? 1.8 + r() * 1.2 : 0.35 + r() * 0.5;
-      if (r() > 0.1) items.push({ x, y: y + 0.1, z: side > 0 ? 3 : -14, w: t - 0.1, h: side > 0 ? 11 : 9.5, d: side > 0 ? 10.5 : 11, color: side > 0 ? BOOKS[Math.floor(r() * BOOKS.length)] : KRAFT[Math.floor(r() * 4)] });
+      if (r() > 0.1) items.push({ x, y: y + 0.1, z: side > 0 ? 1 : -RD / 2 + 1.2, w: t - 0.1, h: side > 0 ? 11 : 9.5, d: RD / 2 - 2.5, color: side > 0 ? BOOKS[Math.floor(r() * BOOKS.length)] : KRAFT[Math.floor(r() * 4)] });
       x += t;
     }
   }
   many(rot, items, k.std(0xffffff, 0.7, 0));
-  rot.userData.onClick = () => tween(rot.rotation, 'y', rot.rotation.y + Math.PI, 1200);
+  rot.userData.onClick = () => tween(rot.rotation, 'y', rot.rotation.y + Math.PI, 1300);
   return { group: root, finishes: k.FIN.cabinets, setFinish: k.finisher(paint), actions: [{ label: 'Rotate', run: () => rot.userData.onClick() }] };
 });
 
 /* ---------------- 9. museum cabinet ---------------- */
-def('museum-cabinet', 'Museum Storage Cabinet', '48" W x 30" D x 62" H, gasketed doors, specimen drawers', ({ THREE, tween }) => {
-  const k = kit(THREE), { M, bx, group } = k, root = new THREE.Group();
-  const paint = k.std(0xeeefed, 0.4, 0.3), W = 48, D = 30, H = 62, base = 4;
-  bx(root, W, base, D - 1, M.dark, 0, 0, 0.5);
+def('museum-cabinet', 'Museum Storage Cabinet', '48" W x 30" D x 76" H, gasketed glass doors, shelves over drawers', ({ THREE, tween, wake }) => {
+  const k = kit(THREE), { M, bx, cyl, group } = k, root = new THREE.Group();
+  const paint = k.std(0xd9dcd8, 0.4, 0.3), tray = k.std(0xe3e5e2, 0.5, 0.2), W = 48, D = 30, H = 72, base = 4, r = rng(12);
+  const pots = [0xb56f4a, 0x6b8f71, 0xe9e2cf, 0x3d5a7a].map(c => k.std(c, 0.6, 0.05)), boxMat = k.std(0xe8e2d2, 0.9, 0);
+  bx(root, W, base, D - 1, k.std(0xeef0ee, 0.5, 0.2), 0, 0, 0.5);
   bx(root, W, 1, D, paint, 0, H + base - 1, 0); bx(root, 1, H, D, paint, 0, base, 0); bx(root, 1, H, D, paint, W - 1, base, 0); bx(root, W, H, 1, paint, 0, base, 0); bx(root, W, 1, D, paint, 0, base, 0);
-  bx(root, W - 2, 0.6, 0.6, M.rubber, 1, H + base - 1.6, D - 0.6); bx(root, W - 2, 0.6, 0.6, M.rubber, 1, base + 1, D - 0.6);
+  for (const y of [base + 0.4, H + base - 1.4]) bx(root, W - 2, 0.7, 0.7, M.rubber, 1, y, D - 0.7);
+  for (const x of [1, W - 1.7]) bx(root, 0.7, H - 2, 0.7, M.rubber, x, base + 1, D - 0.7);
+  // upper shelves holding objects and archival boxes
+  for (const y of [base + 46, base + 59]) {
+    bx(root, W - 2, 0.3, D - 3, paint, 1, y, 1);
+    let x = 4;
+    while (x < W - 10) {
+      if (r() < 0.5) { const rr = 2 + r() * 2.5, ph = 4 + r() * 6; cyl(root, rr, ph, pots[Math.floor(r() * 4)], x + rr, y + 0.3 + ph / 2, 8 + r() * 12, 20); x += rr * 2 + 3; }
+      else { const bw = 6 + r() * 6; bx(root, bw, 3 + r() * 4, 9 + r() * 6, boxMat, x, y + 0.3, 5); x += bw + 2; }
+    }
+  }
   const drawers = [];
-  for (let i = 0; i < 9; i++) {
-    const y = base + 2 + i * 6.4, dr = group(root);
-    bx(dr, W - 4, 3.2, D - 4, k.std(0xe3e5e2, 0.5, 0.2), 2, y, 2);
-    bx(dr, W - 4, 3.2, 0.5, paint, 2, y, D - 2.5);
+  for (let i = 0; i < 7; i++) {
+    const y = base + 2 + i * 5.9, dr = group(root);
+    bx(dr, W - 4, 0.2, D - 4, tray, 2, y, 2);
+    bx(dr, 0.2, 3, D - 4, tray, 2, y, 2); bx(dr, 0.2, 3, D - 4, tray, W - 2.2, y, 2); bx(dr, W - 4, 3, 0.2, tray, 2, y, 2);
+    bx(dr, W - 4, 3.3, 0.5, paint, 2, y, D - 2.5);
     bx(dr, 8, 0.8, 0.8, M.chrome, W / 2 - 4, y + 1.2, D - 2);
-    for (let t = 0; t < 4; t++) bx(dr, 8, 1.2, 6, M.white, 4 + t * 10.5, y + 0.6, 6 + (t % 2) * 9);
+    for (let t = 0; t < 4; t++) bx(dr, 8, 1.2, 6, M.white, 4 + t * 10.5, y + 0.2, 6 + (t % 2) * 9);
     dr.userData.onClick = () => { dr.userData.open = !dr.userData.open; tween(dr.position, 'z', dr.userData.open ? 22 : 0, 700); };
     drawers.push(dr);
   }
-  const doors = [];
-  for (const side of [0, 1]) {
-    const pv = group(root, side ? W - 0.5 : 0.5, base + 0.5, D);
-    bx(pv, W / 2 - 0.7, H - 1, 0.9, paint, side ? -(W / 2 - 0.7) : 0, 0, 0);
-    bx(pv, 1, 10, 1.2, M.chrome, side ? -(W / 2 - 3) : W / 2 - 4, H / 2 - 5, 0.8);
-    pv.userData.onClick = () => { const o = !pv.userData.open; doors.forEach(d => { d.userData.open = o; tween(d.rotation, 'y', o ? (d === doors[0] ? -1.95 : 1.95) : 0, 800); }); };
-    doors.push(pv);
-  }
+  let glass = true, doors = [];
+  const hinge = group(root); hinge.userData.dyn = true;
+  const makeDoors = () => {
+    const was = doors[0]?.userData.open;
+    hinge.clear(); doors = [];
+    for (const side of [0, 1]) {
+      const pv = group(hinge, side ? W - 0.5 : 0.5, base + 0.5, D), dw = W / 2 - 0.7, sx = side ? -dw : 0;
+      if (glass) {
+        bx(pv, dw, 3, 0.9, paint, sx, 0, 0); bx(pv, dw, 3, 0.9, paint, sx, H - 4, 0);
+        bx(pv, 3, H - 1, 0.9, paint, sx, 0, 0); bx(pv, 3, H - 1, 0.9, paint, sx + dw - 3, 0, 0);
+        bx(pv, dw - 6, H - 7, 0.25, M.glass, sx + 3, 3, 0.3);
+      } else bx(pv, dw, H - 1, 0.9, paint, sx, 0, 0);
+      // chrome latch plate with a lever
+      bx(pv, 3, 8, 0.3, M.chrome, side ? -(dw - 0.6) : dw - 3.6, H / 2 - 4, 0.9); bx(pv, 1, 4, 1, M.chrome, side ? -(dw - 1.6) : dw - 2.6, H / 2 - 1.5, 1.1);
+      pv.userData.onClick = () => { const o = !pv.userData.open; doors.forEach((d, n) => { d.userData.open = o; tween(d.rotation, 'y', o ? (n === 0 ? -1.95 : 1.95) : 0, 800); }); };
+      if (was) { pv.userData.open = true; pv.rotation.y = side ? 1.95 : -1.95; }
+      doors.push(pv);
+    }
+    hinge.traverse(o => { if (o.isMesh) { o.castShadow = o.receiveShadow = true; } }); wake();
+  };
+  makeDoors();
   return {
-    group: root, finishes: k.FIN.cabinets, setFinish: k.finisher(paint),
+    group: root, finishes: [{ name: 'Light gray', swatch: '#d9dcd8', color: 0xd9dcd8 }, { name: 'White', swatch: '#f1f2f0', color: 0xeeefed }, { name: 'Putty', swatch: '#d9cfbd', color: 0xd6ccb9 }], setFinish: k.finisher(paint),
     actions: [
       { label: 'Open doors', run: () => { doors[0].userData.onClick(); return doors[0].userData.open ? 'Close doors' : 'Open doors'; } },
-      { label: 'Pull a drawer', run: () => { if (!doors[0].userData.open) doors[0].userData.onClick(); drawers[4].userData.onClick(); } },
+      { label: 'Pull a drawer', run: () => { if (!doors[0].userData.open) doors[0].userData.onClick(); drawers[3].userData.onClick(); } },
+      { label: 'Solid doors', run: () => { glass = !glass; makeDoors(); return glass ? 'Solid doors' : 'Glass doors'; } },
     ],
   };
 });
 
 /* ---------------- 10. art screens ---------------- */
-def('art-screens', 'Sliding Art Screens', 'Five 10 ft x 8 ft mesh screens on an overhead track', ({ THREE, tween }) => {
+def('art-screens', 'Sliding Art Screens', 'Two facing banks of 8 ft x 8 ft mesh screens, pulled into a center aisle', ({ THREE, tween }) => {
   const k = kit(THREE), { M, bx, group } = k, root = new THREE.Group();
-  const frame = k.std(0x6f777c, 0.4, 0.7), L = 120, H = 96, n = 5, gap = 16, r = rng(9);
-  const Ztot = n * gap + 8;
-  for (const x of [-6, L + 4, L + 62]) { bx(root, 2, H + 14, 2, frame, x, 0, 0); bx(root, 2, H + 14, 2, frame, x, 0, Ztot); bx(root, 2, 2, Ztot + 2, frame, x, H + 12, 0); }
-  for (let i = 0; i < n; i++) bx(root, L + 70, 2, 1.5, frame, -6, H + 12, 6 + i * gap);
-  const art = ['#8c3b2f', '#2f4f6f', '#c9a227', '#3d6b4f', '#b56f4a', '#5e4a7a', '#d8cfc0', '#244a5a'];
+  const white = k.std(0xf3f4f2, 0.45, 0.25), rail = k.std(0xdfe2e0, 0.4, 0.6), mesh = k.meshMat(96, 96, 2, '#fbfbf9', 0.2);
+  const Ls = 96, H = 96, A = 104, n = 6, gap = 18, r = rng(9);
+  // the two banks sit on staggered tracks so screens from either side can share the aisle
+  const X = n * gap + 14, Z0 = -A / 2 - Ls, Z1 = A / 2 + Ls, top = H + 11;
+  for (const z of [Z0, -A / 2, A / 2, Z1]) for (const x of [0, X]) bx(root, 2.5, top + 3, 2.5, white, x - 1.25, 0, z - 1.25);
+  for (const z of [Z0, -A / 2, A / 2, Z1]) bx(root, X, 3, 2.5, white, 0, top, z - 1.25);
+  for (const x of [0, X]) bx(root, 2.5, 3, Z1 - Z0, white, x - 1.25, top, Z0);
+  const xs = bank => Array.from({ length: n }, (_, i) => 6 + i * gap + (bank > 0 ? gap / 2 : 0));
+  for (const bank of [-1, 1]) for (const x of xs(bank)) bx(root, 2, 2, Z1 - Z0, rail, x - 1, top - 0.5, Z0);
+  const art = ['#8c3b2f', '#2f4f6f', '#c9a227', '#3d6b4f', '#b56f4a', '#5e4a7a', '#d8cfc0', '#244a5a'].map(c => k.std(c, 0.8, 0));
+  const gilt = k.std(0xa6832f, 0.35, 0.7);
   const screens = [];
-  for (let i = 0; i < n; i++) {
-    const s = group(root, 0, 6, 6 + i * gap);
-    bx(s, L, 1.5, 1.5, frame, 0, 0, -0.75); bx(s, L, 1.5, 1.5, frame, 0, H - 1.5, -0.75); bx(s, 1.5, H, 1.5, frame, 0, 0, -0.75); bx(s, 1.5, H, 1.5, frame, L - 1.5, 0, -0.75);
-    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(L - 3, H - 3), k.meshMat(L, H, 2)); mesh.position.set(L / 2, H / 2, 0); s.add(mesh);
-    bx(s, 4, 6, 3, frame, 10, H, -1.5); bx(s, 4, 6, 3, frame, L - 14, H, -1.5);
+  for (const bank of [-1, 1]) xs(bank).forEach(x0 => {
+    const home = bank < 0 ? Z0 : A / 2, s = group(root, x0, 4, home);
+    bx(s, 1.5, 1.5, Ls, white, -0.75, 0, 0); bx(s, 1.5, 1.5, Ls, white, -0.75, H - 1.5, 0);
+    bx(s, 1.5, H, 1.5, white, -0.75, 0, 0); bx(s, 1.5, H, 1.5, white, -0.75, 0, Ls - 1.5); bx(s, 1.5, H, 1.2, white, -0.75, 0, Ls / 2 - 0.6);
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(Ls - 3, H - 3), mesh); m.rotation.y = Math.PI / 2; m.position.set(0, H / 2, Ls / 2); s.add(m);
+    bx(s, 3, top - H - 4.5, 4, white, -1.5, H, 8); bx(s, 3, top - H - 4.5, 4, white, -1.5, H, Ls - 12);
     for (const face of [1, -1]) {
-      let x = 6;
-      while (x < L - 20) {
-        const fw = 16 + r() * 22, fh = 18 + r() * 30, y = 20 + r() * (H - fh - 30);
-        const fr = bx(s, fw, fh, 1.6, r() > 0.5 ? k.std(0xa6832f, 0.35, 0.7) : M.woodDark, x, y, face > 0 ? 0.3 : -1.9);
-        bx(s, fw - 3, fh - 3, 0.2, k.std(art[Math.floor(r() * art.length)], 0.8, 0), x + 1.5, y + 1.5, face > 0 ? 1.9 : -2.1);
-        x += fw + 5 + r() * 6;
+      let z = 5;
+      while (z < Ls - 16) {
+        const fw = 14 + r() * 22, fh = 16 + r() * 30, y = 14 + r() * (H - fh - 24);
+        bx(s, 1.6, fh, fw, r() > 0.5 ? gilt : M.woodDark, face > 0 ? 0.3 : -1.9, y, z);
+        bx(s, 0.2, fh - 3, fw - 3, art[Math.floor(r() * art.length)], face > 0 ? 1.9 : -2.1, y + 1.5, z + 1.5);
+        z += fw + 4 + r() * 6;
       }
     }
-    s.userData.onClick = () => { s.userData.out = !s.userData.out; tween(s.position, 'x', s.userData.out ? 64 : 0, 1200); };
+    s.userData.onClick = () => { s.userData.out = !s.userData.out; tween(s.position, 'z', home + (s.userData.out ? -bank * (A - 8) : 0), 1300); };
     screens.push(s);
-  }
-  return { group: root, actions: [{ label: 'Pull out a screen', run: () => { screens[2].userData.onClick(); return screens[2].userData.out ? 'Slide it back' : 'Pull out a screen'; } }] };
+  });
+  return { group: root, view: [1.25, 0.8, 0.75], actions: [{ label: 'Pull out a screen', run: () => { screens[2].userData.onClick(); return screens[2].userData.out ? 'Slide it back' : 'Pull out a screen'; } }] };
 });
 
 /* ---------------- 11. pallet rack ---------------- */
@@ -473,44 +582,59 @@ def('mezzanine', 'Structural Steel Mezzanine', '20 ft x 16 ft platform, 9 ft cle
 });
 
 /* ---------------- 13. vertical lift module ---------------- */
-def('vlm', 'Vertical Lift Module (VLM)', 'About 10 ft W x 8 ft D x 16 ft H, trays delivered to the operator', ({ THREE, tween }) => {
+def('vlm', 'Vertical Lift Module (VLM)', 'About 10 ft W x 9 ft D x 15 ft H: two tray columns with the lift between them', ({ THREE, tween }) => {
   const k = kit(THREE), { M, bx, group, many } = k, root = new THREE.Group();
-  const shell = k.std(0xe6e8e7, 0.45, 0.25), accent = k.std(0x0f7377, 0.45, 0.3), r = rng(8);
-  const W = 118, D = 96, H = 192, trayW = W - 16, trayD = 32, win = 34;
-  bx(root, W, 4, D, M.dark, 0, 0, 0);
-  bx(root, W, H - 4, 1, shell, 0, 4, 0); bx(root, W, 2, D, shell, 0, H - 2, 0);
-  bx(root, 1, H - 4, D, shell, 0, 4, 0);
-  bx(root, 1, H - 4, D, M.glass, W - 1, 4, 0);
-  bx(root, 1.4, H - 4, 3, accent, W - 1.2, 4, 0); bx(root, 1.4, 3, D, accent, W - 1.2, H - 5, 0);
-  bx(root, W, H - 4 - (win + 24), 1, shell, 0, win + 24 + 4, D - 1);
-  bx(root, W, win - 2, 1, shell, 0, 4, D - 1);
-  bx(root, 6, H - 4, 1.2, accent, 0, 4, D - 1.1); bx(root, 6, H - 4, 1.2, accent, W - 6, 4, D - 1.1);
-  bx(root, W - 12, 3, 12, shell, 6, win, D - 6);
-  const con = group(root, W - 30, win + 34, D);
-  bx(con, 16, 12, 3, M.dark, 0, 0, 0); bx(con, 13, 8, 0.2, k.std(0x2a6f97, 0.2, 0.1, { emissive: 0x1b4f70, emissiveIntensity: 0.6 }), 1.5, 2.5, 3);
+  const shell = k.std(0xf2f3f1, 0.4, 0.2), trim = k.std(0xd9dcda, 0.45, 0.3), r = rng(8);
+  const W = 118, D = 108, H = 180, TW = W - 18, TD = 30, bayY = 34, bayH = 22;
+  const zRear = 4, zLift = zRear + TD + 4, zFront = zLift + TD + 4, trayX = 9, zBay = D - TD - 1;
+  const bins = ['#2f6fb3', '#c92a2a', '#e0a526', '#7a8288', '#2f9e44'];
+  // white cabinet, glass on one side so the lift is visible, wide lit bay at working height
+  bx(root, W, 3, D, trim, 0, 0, 0);
+  bx(root, W, H - 3, 1, shell, 0, 3, 0); bx(root, W, 2, D, shell, 0, H - 2, 0); bx(root, 1, H - 3, D, shell, 0, 3, 0);
+  bx(root, 1, H - 3, D, M.glass, W - 1, 3, 0);
+  for (const z of [0, zLift - 2, zFront - 2, D - 3]) bx(root, 1.4, H - 3, 3, trim, W - 1.2, 3, z);
+  for (const y of [3, H - 5]) bx(root, 1.4, 3, D, trim, W - 1.2, y, 0);
+  bx(root, W, bayY - 3, 1, shell, 0, 3, D - 1);
+  bx(root, W, H - bayY - bayH - 10, 1, shell, 0, bayY + bayH + 10, D - 1);
+  bx(root, W, 10, 6, shell, 0, bayY + bayH, D - 6);
+  bx(root, W - 12, 0.8, 16, trim, 6, bayY - 1.2, D - 16);
+  bx(root, 6, bayH + 10, 16, shell, 0, bayY - 0.4, D - 16); bx(root, 6, bayH + 10, 16, shell, W - 6, bayY - 0.4, D - 16);
+  bx(root, W - 12, 0.6, 1, k.std(0xfff6d5, 0.3, 0, { emissive: 0xfff2c4, emissiveIntensity: 0.9 }), 6, bayY + bayH - 0.8, D - 14);
+  const con = group(root, 16, bayY + bayH + 12, D); bx(con, 16, 11, 2, M.dark, 0, 0, 0);
+  bx(con, 13, 8, 0.2, k.std(0x2a6f97, 0.2, 0.1, { emissive: 0x1b4f70, emissiveIntensity: 0.7 }), 1.5, 1.5, 2);
+  // tray columns: rear runs full height, front starts above the bay; the lift rides between them
   const items = [];
-  for (const [zc, col] of [[6, 'b'], [D - 44, 'f']]) for (let t = 0; t < 22; t++) {
-    const y = 12 + t * 7.8; if (col === 'f' && y < win + 30) continue;
-    bx(root, trayW, 0.8, trayD, M.steel, 8, y, zc);
-    let x = 10; while (x < trayW) { const bw = 6 + Math.floor(r() * 3) * 4; if (r() > 0.25) items.push({ x, y: y + 0.8, z: zc + 2, w: bw - 0.5, h: 2 + r() * 3.5, d: trayD - 4, color: ['#2f6fb3', '#c92a2a', '#e0a526', '#7a8288', '#2f9e44'][Math.floor(r() * 5)] }); x += bw; }
+  const fill = (list, x0, y, z, span) => { let x = x0 + 2; while (x < x0 + span - 6) { const bw = 6 + Math.floor(r() * 3) * 4; if (r() > 0.25) list.push({ x, y, z: z + 2, w: bw - 0.5, h: 2 + r() * 3.5, d: TD - 4, color: bins[Math.floor(r() * 5)] }); x += bw; } };
+  const levels = []; for (let y = 10; y < H - 14; y += 8.5) levels.push(y);
+  const pickY = levels[9];
+  for (const y of levels) {
+    if (y !== pickY) { bx(root, TW, 0.8, TD, M.steel, trayX, y, zRear); fill(items, trayX, y + 0.8, zRear, TW); }
+    if (y > bayY + bayH + 12) { bx(root, TW, 0.8, TD, M.steel, trayX, y, zFront); fill(items, trayX, y + 0.8, zFront, TW); }
   }
   many(root, items, k.std(0xffffff, 0.45, 0.05));
-  const lift = group(root, 0, 0, 0);
-  const carriage = group(lift, 0, 100, D / 2 - trayD / 2);
-  bx(carriage, trayW + 8, 1.5, trayD + 6, M.dark, 4, -1.5, -3);
-  const tray = group(carriage, 8, 0, 0); tray.userData.dyn = true;
-  bx(tray, trayW, 0.8, trayD, M.steel, 0, 0, 0);
-  const tItems = []; let x = 2; while (x < trayW - 6) { const bw = 8 + Math.floor(r() * 2) * 6; tItems.push({ x, y: 0.8, z: 2, w: bw - 0.5, h: 3 + r() * 3, d: trayD - 4, color: ['#2f6fb3', '#e0a526', '#2f9e44', '#c92a2a'][Math.floor(r() * 4)] }); x += bw; }
-  many(tray, tItems, k.std(0xffffff, 0.45, 0.05));
-  let delivered = false;
+  for (const z of [zRear, zRear + TD, zFront, zFront + TD]) for (const x of [trayX - 2, trayX + TW]) bx(root, 2, H - 8, 1.5, trim, x, 3, z - 0.75);
+  for (const x of [2, W - 5]) bx(root, 3, H - 6, 4, M.dark, x, 3, zLift + TD / 2 - 2);
+  const lift = group(root, 0, pickY - 2, zLift); lift.userData.dyn = true;
+  bx(lift, W - 11, 1.6, TD + 2, M.dark, 5.5, -0.2, -1);
+  for (const x of [5.5, W - 8.5]) bx(lift, 3, 6, TD + 2, M.dark, x, -0.2, -1);
+  const tray = group(root, 0, pickY, zRear);
+  bx(tray, TW, 0.8, TD, M.steel, trayX, 0, 0);
+  const tItems = []; fill(tItems, trayX, 0.8, 0, TW); many(tray, tItems, k.std(0xffffff, 0.45, 0.05));
+  let out = false, busy = false;
+  const run = (steps) => { busy = true; let t = 0; for (const [fn, ms] of steps) { setTimeout(fn, t); t += ms; } setTimeout(() => { busy = false; }, t); };
   const call = () => {
-    delivered = !delivered;
-    if (delivered) { tween(carriage.position, 'y', win + 4, 1500); setTimeout(() => tween(tray.position, 'z', D / 2 - trayD / 2 + 8, 900), 1500); }
-    else { tween(tray.position, 'z', 0, 800); setTimeout(() => tween(carriage.position, 'y', 100, 1400), 800); }
-    return delivered ? 'Return the tray' : 'Call a tray';
+    if (busy) return out ? 'Return the tray' : 'Call a tray';
+    out = !out;
+    const y = out ? bayY : pickY;
+    run([
+      [() => tween(tray.position, 'z', zLift, 800), 850],
+      [() => { tween(lift.position, 'y', y - 2, 1600); tween(tray.position, 'y', y, 1600); }, 1650],
+      [() => tween(tray.position, 'z', out ? zBay : zRear, 900), 900],
+    ]);
+    return out ? 'Return the tray' : 'Call a tray';
   };
-  carriage.userData.onClick = call;
-  return { group: root, actions: [{ label: 'Call a tray', run: call }] };
+  tray.userData.onClick = call;
+  return { group: root, view: [1.25, 0.5, 0.95], actions: [{ label: 'Call a tray', run: call }] };
 });
 
 /* ---------------- 14. lab casework ---------------- */
@@ -564,3 +688,6 @@ def('wire-cage', 'Wire Partition Enclosure', '10 ft x 8 ft x 8 ft cage with hing
   shelving(k, root, { bays: 2, closed: false, shelves: 5, h: 84, d: 24, contents: 'boxes', seed: 14, x: 10, z: 4 });
   return { group: root, finishes: [{ name: 'Gray', swatch: '#6b7378', color: 0x6b7378 }, { name: 'Black', swatch: '#26292b', color: 0x26292b }, { name: 'Safety yellow', swatch: '#e0a526', color: 0xe0a526 }], setFinish: k.finisher(frame), actions: [{ label: 'Open the door', run: () => { door.userData.onClick(); return door.userData.open ? 'Close the door' : 'Open the door'; } }] };
 });
+
+const SHORT = { 'four-post': '4-post', 'bin-shelving': 'Bin shelving', 'wire-shelving': 'Wire', library: 'Library', 'hd-mobile': 'Mobile', lockers: 'Lockers', 'evidence-lockers': 'Evidence', 'flat-files': 'Flat files', rotary: 'Rotary', 'museum-cabinet': 'Museum cabinet', 'art-screens': 'Art screens', 'pallet-rack': 'Pallet rack', mezzanine: 'Mezzanine', vlm: 'VLM', casework: 'Casework', 'wire-cage': 'Wire cage' };
+for (const [id, s] of Object.entries(SHORT)) if (MODELS[id]) MODELS[id].short = s;

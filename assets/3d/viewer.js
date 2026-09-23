@@ -39,24 +39,51 @@ function bake(THREE, root) {
   }
 }
 
+const GROUPS = [
+  { name: 'Mobile & automated', ids: ['hd-mobile', 'vlm', 'art-screens'] },
+  { name: 'Shelving', ids: ['four-post', 'bin-shelving', 'wire-shelving', 'library'] },
+  { name: 'Lockers', ids: ['lockers', 'evidence-lockers'] },
+  { name: 'Cabinets & casework', ids: ['flat-files', 'rotary', 'museum-cabinet', 'casework'] },
+  { name: 'Industrial', ids: ['pallet-rack', 'mezzanine', 'wire-cage'] },
+];
+
 function viewer(el) {
   const ids = (el.dataset.models || el.dataset.model || '').split(',').map(s => s.trim()).filter(id => MODELS[id]);
   if (!ids.length) return;
   el.classList.add('v3d-on');
+  const side = el.dataset.layout === 'side' && ids.length > 1;
+  const groups = GROUPS.map(g => ({ ...g, ids: g.ids.filter(id => ids.includes(id)) })).filter(g => g.ids.length);
+  const ICON = {
+    spin: '<svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v5h-5"/></svg>',
+    reset: '<svg viewBox="0 0 24 24"><path d="M3 12h4M17 12h4M12 3v4M12 17v4"/><circle cx="12" cy="12" r="3"/></svg>',
+    full: '<svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>',
+  };
   el.innerHTML = `
-    ${ids.length > 1 ? `<div class="v3d-tabs" role="tablist">${ids.map((id, i) => `<button role="tab" data-id="${id}" aria-selected="${i === 0}">${MODELS[id].name}</button>`).join('')}</div>` : ''}
-    <div class="v3d-stage">
-      <canvas aria-label="Interactive 3D model. Drag to rotate, scroll or pinch to zoom."></canvas>
-      <div class="v3d-load">Loading 3D model...</div>
-      <div class="v3d-hint">Drag to rotate &middot; Scroll or pinch to zoom &middot; Click parts to try them</div>
-      <div class="v3d-cap"><b></b><span></span></div>
+  <div class="v3d-wrap${side ? ' has-side' : ''}">
+    ${side ? `<nav class="v3d-side" aria-label="Choose a product">${groups.map(g => `<div class="v3d-g"><span>${g.name}</span>${g.ids.map(id => `<button type="button" data-id="${id}">${MODELS[id].name}</button>`).join('')}</div>`).join('')}</nav>
+      <label class="v3d-pick"><span>Product</span><select>${groups.map(g => `<optgroup label="${g.name}">${g.ids.map(id => `<option value="${id}">${MODELS[id].name}</option>`).join('')}</optgroup>`).join('')}</select></label>`
+      : ids.length > 1 ? `<div class="v3d-seg" role="tablist">${ids.map(id => `<button type="button" role="tab" data-id="${id}">${MODELS[id].short || MODELS[id].name}</button>`).join('')}</div>` : ''}
+    <div class="v3d-main">
+      <div class="v3d-top">
+        <div class="v3d-title"><b></b><span></span></div>
+        <div class="v3d-icons">
+          <button type="button" data-v="spin" aria-pressed="false" title="Auto-rotate" aria-label="Auto-rotate">${ICON.spin}</button>
+          <button type="button" data-v="reset" title="Reset view" aria-label="Reset view">${ICON.reset}</button>
+          <button type="button" data-v="full" title="Full screen" aria-label="Full screen">${ICON.full}</button>
+        </div>
+      </div>
+      <div class="v3d-stage">
+        <canvas aria-label="Interactive 3D model. Drag to rotate, scroll or pinch to zoom."></canvas>
+        <div class="v3d-load">Loading 3D model...</div>
+        <div class="v3d-hint">Drag to turn &middot; Pinch or scroll to zoom &middot; Tap parts to move them</div>
+      </div>
+      <div class="v3d-bar">
+        <div class="v3d-acts"></div>
+        <div class="v3d-fin"></div>
+      </div>
+      <p class="v3d-note">Representative model. Sizes, finishes and accessories vary by manufacturer and configuration.</p>
     </div>
-    <div class="v3d-bar">
-      <div class="v3d-acts"></div>
-      <div class="v3d-fin"></div>
-      <div class="v3d-view"><button type="button" data-v="spin" aria-pressed="false">Auto-rotate</button><button type="button" data-v="reset">Reset view</button></div>
-    </div>
-    <p class="v3d-note">Representative model. Sizes, finishes and accessories vary by manufacturer and configuration.</p>`;
+  </div>`;
 
   const canvas = el.querySelector('canvas'), stage = el.querySelector('.v3d-stage');
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
@@ -117,8 +144,10 @@ function viewer(el) {
     bake(THREE, current.group);
     scene.add(current.group);
     fit(current.group, current.view);
-    el.querySelector('.v3d-cap b').textContent = def.name;
-    el.querySelector('.v3d-cap span').textContent = def.dims || '';
+    el.querySelector('.v3d-title b').textContent = def.name;
+    el.querySelector('.v3d-title span').textContent = def.dims || '';
+    el.querySelectorAll('[data-id]').forEach(x => x.setAttribute('aria-selected', String(x.dataset.id === id)));
+    const sel = el.querySelector('.v3d-pick select'); if (sel) sel.value = id;
     const acts = el.querySelector('.v3d-acts');
     acts.replaceChildren(...(current.actions || []).map(a => {
       const b = document.createElement('button'); b.type = 'button'; b.textContent = a.label;
@@ -126,12 +155,13 @@ function viewer(el) {
       return b;
     }));
     const fin = el.querySelector('.v3d-fin');
-    fin.replaceChildren(...(current.finishes || []).map((f, i) => {
+    const swatches = (current.finishes || []).map((f, i) => {
       const b = document.createElement('button'); b.type = 'button'; b.className = 'v3d-sw'; b.title = f.name; b.setAttribute('aria-label', `Finish: ${f.name}`);
       b.style.background = f.swatch; if (!i) b.setAttribute('aria-pressed', 'true');
-      b.addEventListener('click', () => { fin.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); current.setFinish(f); wake(); });
+      b.addEventListener('click', () => { fin.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); current.setFinish(f); fin.querySelector('em').textContent = f.name; wake(); });
       return b;
-    }));
+    });
+    fin.replaceChildren(...(swatches.length ? [Object.assign(document.createElement('span'), { textContent: 'Finish' }), ...swatches, Object.assign(document.createElement('em'), { textContent: current.finishes[0].name })] : []));
     el.querySelector('.v3d-load').hidden = true;
     wake();
   }
@@ -181,16 +211,16 @@ function viewer(el) {
   el.querySelector('[data-v=reset]').addEventListener('click', () => { if (home) { camera.position.copy(home.pos); controls.target.copy(home.target); controls.update(); wake(); } });
   const spin = el.querySelector('[data-v=spin]');
   spin.addEventListener('click', () => { controls.autoRotate = !controls.autoRotate; spin.setAttribute('aria-pressed', String(controls.autoRotate)); wake(); });
-  el.querySelectorAll('.v3d-tabs button').forEach(b => b.addEventListener('click', () => {
-    el.querySelectorAll('.v3d-tabs button').forEach(x => x.setAttribute('aria-selected', String(x === b)));
-    load(b.dataset.id);
-    b.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
-  }));
+  el.querySelector('[data-v=full]').addEventListener('click', () => {
+    const box = el.querySelector('.v3d-main');
+    if (document.fullscreenElement) document.exitFullscreen(); else (box.requestFullscreen || box.webkitRequestFullscreen)?.call(box);
+  });
+  canvas.addEventListener('pointerdown', () => el.querySelector('.v3d-hint')?.classList.add('gone'), { once: true });
+  el.querySelectorAll('[data-id]').forEach(b => b.addEventListener('click', () => load(b.dataset.id)));
+  el.querySelector('.v3d-pick select')?.addEventListener('change', e => load(e.target.value));
   const want = new URLSearchParams(location.search).get('model');
   const first = want && ids.includes(want) ? want : ids[0];
-  if (first !== ids[0]) el.querySelectorAll('.v3d-tabs button').forEach(x => x.setAttribute('aria-selected', String(x.dataset.id === first)));
   resize(); load(first);
-  el.querySelector('.v3d-tabs [aria-selected=true]')?.scrollIntoView({ block: 'nearest', inline: 'center' });
 }
 
 // start each viewer only when it scrolls near the screen
