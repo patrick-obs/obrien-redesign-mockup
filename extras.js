@@ -359,4 +359,88 @@ function photos(file, html) {
   return html;
 }
 
-module.exports = { photos, specPanel, designSpecifyPage, servicePage, notFound, enrich, sitemap, ROBOTS, CSS, LINES };
+/* ---------------- 3D product viewer ---------------- */
+// which interactive models appear on which page (ids live in assets/3d/models.js)
+const VIEW3D = {
+  'four-post-shelving': 'four-post', 'bin-storage': 'bin-shelving', 'wire-shelving': 'wire-shelving', 'cantilever-shelving': 'library',
+  'static-shelving': 'four-post,bin-shelving,wire-shelving,library', 'high-density-mobile-storage': 'hd-mobile', 'lockers': 'lockers',
+  'cabinets': 'flat-files,rotary,museum-cabinet', 'rotary-cabinets': 'rotary', 'museum-cabinets': 'museum-cabinet', 'art-screens': 'art-screens',
+  'pallet-rack': 'pallet-rack', 'mezzanines': 'mezzanine', 'lifts-carousels': 'vlm', 'modular-casework': 'casework', 'wire-partitions': 'wire-cage',
+  'museums': 'art-screens,museum-cabinet,hd-mobile', 'libraries': 'library,hd-mobile', 'material-handling-warehouse': 'pallet-rack,mezzanine,vlm,wire-cage',
+  'pharmaceutical-healthcare': 'casework,wire-shelving', 'education': 'lockers,library', 'government-public-safety': 'lockers,hd-mobile,wire-cage',
+  'corporate-legal': 'hd-mobile,rotary,flat-files', 'automotive': 'bin-shelving,pallet-rack,vlm', 'retail': 'four-post,bin-shelving',
+};
+const ALL3D = 'hd-mobile,four-post,library,lockers,flat-files,rotary,museum-cabinet,art-screens,bin-shelving,wire-shelving,pallet-rack,mezzanine,vlm,casework,wire-cage';
+const viewer3d = (slug, name) => VIEW3D[slug] ? `
+<section class="v3d-sec">
+  <div class="wrap">
+    <div class="v3d-head"><div><span class="eyebrow">Explore in 3D</span><h2>See ${name.replace(/\s*\(VLM\)/, '')} from every side</h2></div><a class="v3d-all" href="showroom.html">Open the 3D showroom &rarr;</a></div>
+    <div class="v3d" data-models="${VIEW3D[slug]}"></div>
+  </div>
+</section>` : '';
+const home3d = () => `
+<section class="v3d-sec v3d-home">
+  <div class="wrap">
+    <div class="v3d-head"><div><span class="eyebrow">3D showroom</span><h2>Spin it, open it, see how it works</h2><p>Drag to look at every side. Tap a carriage to open an aisle, pull a drawer, swing a door.</p></div><a class="v3d-all" href="showroom.html">All 15 models &rarr;</a></div>
+    <div class="v3d" data-models="hd-mobile,four-post,lockers,flat-files,vlm"></div>
+  </div>
+</section>`;
+function showroomPage(shell, heroImg) {
+  return shell(`3D Showroom | O'Brien Systems`, heroImg, `
+<div class="page-hero">
+  <div class="wrap crumbs"><a href="index.html">Home</a> / <a href="solutions.html">Solutions</a> / 3D Showroom</div>
+  <div class="wrap">
+    <span class="eyebrow">3D showroom</span>
+    <h1>Walk around the products</h1>
+    <p>Fifteen of the systems we plan and install, as interactive models. Drag to see every side, zoom in on the details, and try how they move.</p>
+  </div>
+</div>
+<section class="v3d-sec v3d-room"><div class="wrap">
+  <div class="v3d v3d-big" data-models="${ALL3D}"></div>
+  <p class="v3d-foot">Seen something that fits? <a href="contact.html?topic=assessment">Book a free assessment</a> and we'll lay out the real thing in your space, or <button type="button" class="linkish" data-chat-ask="I was looking at your 3D showroom. Which system would fit my space best?">ask our assistant</button>.</p>
+</div></section>`);
+}
+// load the viewer only on pages that have one
+const with3d = (html, ver) => html.includes('class="v3d') ? html.replace('</body>', `<script type="module" src="assets/3d/viewer.js?v=${ver}"></script>\n</body>`) : html;
+const CSS3D = `
+/* 3D viewer */
+.v3d-sec{padding:56px 0;background:linear-gradient(180deg,#f4f8f8,#fff)}
+.v3d-home{background:linear-gradient(180deg,#fff,#eef5f5)}
+.v3d-room{padding-top:34px}
+.v3d-head{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;margin-bottom:18px}
+.v3d-head h2{font-size:1.6rem;margin:.25rem 0 .2rem}
+.v3d-head p{color:var(--muted);max-width:620px}
+.v3d-all{color:var(--teal);font-weight:700;white-space:nowrap}
+.v3d{border-radius:18px;background:#fff;border:1px solid var(--line);box-shadow:var(--shadow);overflow:hidden}
+.v3d:not(.v3d-on){min-height:480px;background:radial-gradient(ellipse at 50% 40%,#fff,#e9f0f0)}
+.v3d-tabs{display:flex;gap:6px;overflow-x:auto;padding:12px 12px 0;scrollbar-width:thin}
+.v3d-tabs button{flex:none;border:1px solid var(--line);background:#fff;border-radius:999px;padding:8px 14px;font:inherit;font-size:.88rem;font-weight:600;color:var(--teal-ink);cursor:pointer;transition:all .15s}
+.v3d-tabs button[aria-selected=true]{background:var(--teal);border-color:var(--teal);color:#fff}
+.v3d-stage{position:relative;height:clamp(360px,58vh,620px);background:radial-gradient(ellipse at 50% 38%,#ffffff 0%,#eef3f3 58%,#dde7e7 100%);cursor:grab;touch-action:none}
+.v3d-big .v3d-stage{height:clamp(420px,70vh,760px)}
+.v3d-stage:active{cursor:grabbing}
+.v3d-stage canvas{width:100%;height:100%;display:block}
+.v3d-load[hidden]{display:none}
+.v3d-load{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-size:.95rem}
+.v3d-hint{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);background:rgba(2,60,63,.78);color:#fff;font-size:.78rem;padding:6px 12px;border-radius:999px;pointer-events:none;white-space:nowrap;transition:opacity .4s}
+.v3d-stage:hover .v3d-hint{opacity:.35}
+.v3d-cap{position:absolute;left:16px;top:14px;pointer-events:none}
+.v3d-cap b{display:block;font-size:1.05rem;color:var(--teal-ink)}
+.v3d-cap span{font-size:.82rem;color:var(--muted)}
+.v3d-bar{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;justify-content:space-between;padding:12px 14px;border-top:1px solid var(--line)}
+.v3d-acts,.v3d-view{display:flex;flex-wrap:wrap;gap:8px}
+.v3d-bar button:not(.v3d-sw){border:1px solid var(--teal);background:#fff;color:var(--teal);border-radius:999px;padding:8px 14px;font:inherit;font-size:.86rem;font-weight:700;cursor:pointer;transition:all .15s}
+.v3d-acts button{background:var(--teal)!important;color:#fff!important}
+.v3d-bar button:hover{transform:translateY(-1px);box-shadow:0 6px 14px rgba(2,60,63,.15)}
+.v3d-view button[aria-pressed=true]{background:var(--teal-ink)!important;color:#fff!important;border-color:var(--teal-ink)!important}
+.v3d-fin{display:flex;gap:8px;align-items:center}
+.v3d-sw{width:28px;height:28px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px #c5cfcf;cursor:pointer;padding:0}
+.v3d-sw[aria-pressed=true]{box-shadow:0 0 0 2px var(--teal)}
+.v3d-note{font-size:.78rem;color:var(--muted);padding:0 14px 12px}
+.v3d-foot{margin-top:18px;color:var(--muted)}
+.v3d-foot a,.linkish{color:var(--teal);font-weight:700}
+.linkish{background:none;border:0;padding:0;font:inherit;cursor:pointer;text-decoration:underline}
+@media (max-width:640px){.v3d-stage{height:62vh}.v3d-hint{font-size:.7rem}.v3d-bar{padding:10px}}
+`;
+
+module.exports = { viewer3d, home3d, showroomPage, with3d, CSS3D, photos, specPanel, designSpecifyPage, servicePage, notFound, enrich, sitemap, ROBOTS, CSS, LINES };

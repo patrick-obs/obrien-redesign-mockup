@@ -622,7 +622,8 @@ const navMegaSol =
   megaCol(SOL_GROUPS[1]) + '\n          ' +
   megaCol(SOL_GROUPS[2], SOL_GROUPS[3]) + '\n          ' +
   megaCol(SOL_GROUPS[4], SOL_GROUPS[6]) +
-  `\n          <a class="all" href="solutions.html">All solutions &rarr;</a>`;
+  `\n          <a class="all" href="solutions.html">All solutions &rarr;</a>`
+  + `\n          <a class="all" href="showroom.html">Explore in 3D &rarr;</a>`;
 
 const navMegaInd = INDUSTRIES.map(i =>
   `<a href="${i.slug}.html"><span class="t">${i.name}</span><span class="d">${i.short}</span></a>`).join('\n          ')
@@ -630,7 +631,7 @@ const navMegaInd = INDUSTRIES.map(i =>
 
 const HEADER = `
 <div class="ribbon">Design concept. Internal mockup, not the live O'Brien Systems website</div>
-<div class="announce">Free on-site space assessment. <a href="contact.html">Schedule yours</a> or call <a href="tel:6108253405">610.825.3405</a> <span class="sep">&middot;</span> <a href="service.html">Request service</a></div>
+<div class="announce">Free on-site space assessment. <a href="contact.html">Schedule yours</a> or call <a href="tel:6108253405">610.825.3405</a> <span class="sep">&middot;</span> <a href="service.html">Request service</a> <span class="sep">&middot;</span> <a href="showroom.html">3D showroom</a></div>
 <header>
   <div class="wrap nav">
     <a class="logo" href="index.html"><img src="${IMGS.logo}" alt="O'Brien Systems, Storage Redefined"></a>
@@ -668,6 +669,7 @@ const HEADER = `
       <a href="industries.html">Industries</a>
       <a href="projects.html">Projects</a>
       <a href="services.html">Services</a>
+      <a href="showroom.html">3D Showroom</a>
       <a href="design-specify.html">Design &amp; Specify</a>
       <a href="service.html">Request Service</a>
       <a href="partners.html">Partners</a>
@@ -712,7 +714,7 @@ const FOOTER = `
       </div>
       <div>
         <h4>Company</h4>
-        <a href="about.html">About Us</a><a href="projects.html">Projects</a><a href="services.html">Services</a><a href="partners.html">Manufacturer Partners</a><a href="design-specify.html">Design &amp; Specify</a><a href="service.html">Request Service</a><a href="resources.html">Resources &amp; Brochures</a><a href="blog.html">Blog</a><a href="contact.html">Contact</a>
+        <a href="about.html">About Us</a><a href="projects.html">Projects</a><a href="services.html">Services</a><a href="partners.html">Manufacturer Partners</a><a href="showroom.html">3D Showroom</a><a href="design-specify.html">Design &amp; Specify</a><a href="service.html">Request Service</a><a href="resources.html">Resources &amp; Brochures</a><a href="blog.html">Blog</a><a href="contact.html">Contact</a>
       </div>
     </div>
     <div class="legal">
@@ -777,7 +779,7 @@ function subpage(p) {
     ${faqs?`<div class="faq">\n      <h2>Frequently asked questions</h2>\n      ${faqs}\n    </div>`:''}
     ${chips?`<h2 style="margin-top:52px;font-size:1.25rem">${p.chipsTitle}</h2>\n    <div class="chips">\n      ${chips}\n    </div>`:''}
   </div>
-</section>`);
+</section>${p.slug ? X.viewer3d(p.slug, p.name) : ''}`);
 }
 
 /* ---------------- page content ---------------- */
@@ -2118,11 +2120,12 @@ const SITE_JS = `document.documentElement.classList.add('js');
 })();
 `;
 fs.mkdirSync(path.join(OUT,'assets'), {recursive:true});
-fs.writeFileSync(path.join(OUT,'assets','style.css'), CSS + X.CSS);
+fs.writeFileSync(path.join(OUT,'assets','style.css'), CSS + X.CSS + X.CSS3D);
 fs.writeFileSync(path.join(OUT,'assets','site.js'), SITE_JS);
 
 const pages = {
-  'index.html': shell(`O'Brien Systems | Custom Storage Solutions | Design Concept`, IMGS.heroHome, homeBody),
+  'index.html': shell(`O'Brien Systems | Custom Storage Solutions | Design Concept`, IMGS.heroHome, homeBody + X.home3d()),
+  'showroom.html': X.showroomPage(shell, IMGS.banMobile),
   'design-specify.html': X.designSpecifyPage(shell, IMGS.gcProject),
   'service.html': X.servicePage(shell, IMGS.banServices, PARTNERS),
   '404.html': X.notFound(shell, IMGS.heroHome),
@@ -2147,7 +2150,7 @@ for (const p of PRODUCTS) {
 }
 for (const i of INDUSTRIES) {
   const d = INDUSTRY_PAGES[i.slug];
-  pages[`${i.slug}.html`] = subpage({ ...d, eyebrow:'Industries', name:i.name, img:i.img, banner:i.banner, hub:'industries', hubName:'Industries' });
+  pages[`${i.slug}.html`] = subpage({ ...d, slug:i.slug, eyebrow:'Industries', name:i.name, img:i.img, banner:i.banner, hub:'industries', hubName:'Industries' });
 }
 BLOG.forEach((p, idx) => { pages[`post-${p.slug}.html`] = postPage(p, idx); });
 
@@ -2156,7 +2159,7 @@ for (const [file, html] of Object.entries(pages)) {
   // copy rules are enforced here: the build fails rather than publish a violation
   const bad = [/\u2014/, /&mdash;/, /nationwide/i].find(re => re.test(html.replace(/<script[\s\S]*?<\/script>/g, '')));
   if (bad) throw new Error(`${file}: copy rule violation (${bad})`);
-  fs.writeFileSync(path.join(OUT, file), X.enrich(file, X.photos(file, html)));
+  fs.writeFileSync(path.join(OUT, file), X.enrich(file, X.with3d(X.photos(file, html), VER)));
   n++;
 }
 fs.writeFileSync(path.join(OUT, 'sitemap.xml'), X.sitemap(Object.keys(pages)));
