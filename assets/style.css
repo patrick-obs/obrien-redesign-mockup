@@ -280,7 +280,7 @@ a.pt .ext{display:block;margin-top:10px;font-size:.75rem;font-weight:700;color:v
 .dl span{display:block;font-size:.75rem;color:var(--muted);font-weight:400}
 
 .cta{position:relative;color:#fff;overflow:hidden}
-.cta::before{content:"";position:absolute;inset:0;background:url('https://obriensys.patrick-obrien.com/wp-content/uploads/2026/06/7009b-mobile-storage-solutions.jpg') center/cover}
+.cta::before{content:"";position:absolute;inset:0;background:url('/assets/media/2026/06/7009b-mobile-storage-solutions.jpg') center/cover}
 .cta::after{content:"";position:absolute;inset:0;background:rgba(2,60,63,.9)}
 .cta .wrap{position:relative;z-index:2;padding:84px 24px;text-align:center}
 .cta h2{font-size:clamp(1.7rem,3.4vw,2.5rem)}

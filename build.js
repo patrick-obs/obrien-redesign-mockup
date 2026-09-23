@@ -5,8 +5,8 @@ const fs = require('fs');
 const path = require('path');
 const OUT = __dirname;
 
-const MEDIA = 'https://obriensys.patrick-obrien.com/wp-content/uploads/2026/06';
-const MEDIA8 = 'https://obriensys.patrick-obrien.com/wp-content/uploads/2026/08';
+const MEDIA = '/assets/media/2026/06';
+const MEDIA8 = '/assets/media/2026/08';
 const img = (f) => `${MEDIA}/${f}`;
 
 const IMGS = {
@@ -182,7 +182,7 @@ const COVERS = {
   lockers: img('10a31-obrien-system-lockers-brochure-cover.jpg'),
 };
 
-const PDF = 'https://obriensys.patrick-obrien.com/wp-content/uploads/2026/06';
+const PDF = '/assets/media/2026/06';
 const BROCHURES = [
   ['Museum Storage Brochure', 'assets/brochures/museum.pdf', 'museum'],
   ['Healthcare Brochure', 'assets/brochures/healthcare.pdf', 'healthcare'],
