@@ -4,6 +4,7 @@
 const fs = require('fs');
 const path = require('path');
 const OUT = __dirname;
+const X = require('./extras'); // Sept 2026 upgrades: specify panel, estimator, specify hub, service, SEO plumbing
 // Website assistant (same one as obriensys.com). Switch to 'https://obriensys.com' once the chat is live there.
 const CHAT_API = 'https://chatbot.obriensys-web.pages.dev';
 
@@ -627,7 +628,7 @@ const navMegaInd = INDUSTRIES.map(i =>
 
 const HEADER = `
 <div class="ribbon">Design concept. Internal mockup, not the live O'Brien Systems website</div>
-<div class="announce">Free on-site space assessment. <a href="contact.html">Schedule yours</a> or call <a href="tel:6108253405">610.825.3405</a></div>
+<div class="announce">Free on-site space assessment. <a href="contact.html">Schedule yours</a> or call <a href="tel:6108253405">610.825.3405</a> <span class="sep">&middot;</span> <a href="service.html">Request service</a> <span class="sep">&middot;</span> <a href="tools-space-estimator.html">Space estimator</a></div>
 <header>
   <div class="wrap nav">
     <a class="logo" href="index.html"><img src="${IMGS.logo}" alt="O'Brien Systems, Storage Redefined"></a>
@@ -646,6 +647,7 @@ const HEADER = `
       </div>
       <div><a class="top" href="projects.html">Projects</a></div>
       <div><a class="top" href="services.html">Services</a></div>
+      <div><a class="top" href="design-specify.html">Specify</a></div>
       <div><a class="top" href="partners.html">Partners</a></div>
       <div><a class="top" href="resources.html">Resources</a></div>
       <div><a class="top" href="blog.html">Blog</a></div>
@@ -664,6 +666,9 @@ const HEADER = `
       <a href="industries.html">Industries</a>
       <a href="projects.html">Projects</a>
       <a href="services.html">Services</a>
+      <a href="design-specify.html">Design &amp; Specify</a>
+      <a href="service.html">Request Service</a>
+      <a href="tools-space-estimator.html">Space Estimator</a>
       <a href="partners.html">Partners</a>
       <a href="resources.html">Resources</a>
       <a href="blog.html">Blog</a>
@@ -706,12 +711,12 @@ const FOOTER = `
       </div>
       <div>
         <h4>Company</h4>
-        <a href="about.html">About Us</a><a href="projects.html">Projects</a><a href="services.html">Services</a><a href="partners.html">Manufacturer Partners</a><a href="resources.html">Resources &amp; Brochures</a><a href="blog.html">Blog</a><a href="contact.html">Contact</a>
+        <a href="about.html">About Us</a><a href="projects.html">Projects</a><a href="services.html">Services</a><a href="partners.html">Manufacturer Partners</a><a href="design-specify.html">Design &amp; Specify</a><a href="service.html">Request Service</a><a href="tools-space-estimator.html">Space Estimator</a><a href="resources.html">Resources &amp; Brochures</a><a href="blog.html">Blog</a><a href="contact.html">Contact</a>
       </div>
     </div>
     <div class="legal">
       <span>&copy; 2026 O'Brien Systems.</span>
-      <span><a href="#">Privacy Policy</a> | <a href="#">Accessibility Statement</a> | <a href="#">Sitemap</a></span>
+      <span><a href="#">Privacy Policy</a> | <a href="#">Accessibility Statement</a> | <a href="sitemap.xml">Sitemap</a></span>
     </div>
   </div>
 </footer>
@@ -766,11 +771,12 @@ function subpage(p) {
       ${feats}
     </div>
     ${p.extra||''}
+    ${p.slug ? X.specPanel(p.slug, p.name, BROCHURES) : ''}
     ${gal?`<div class="gallery">\n      ${gal}\n    </div>`:''}
     ${faqs?`<div class="faq">\n      <h2>Frequently asked questions</h2>\n      ${faqs}\n    </div>`:''}
     ${chips?`<h2 style="margin-top:52px;font-size:1.25rem">${p.chipsTitle}</h2>\n    <div class="chips">\n      ${chips}\n    </div>`:''}
   </div>
-</section>`);
+</section>${p.slug === 'high-density-mobile-storage' ? X.estimatorTeaser() : ''}`);
 }
 
 /* ---------------- page content ---------------- */
@@ -1570,7 +1576,7 @@ const servicesPage = shell(`Services | O'Brien Systems`, IMGS.banServices, `
     <h1>From walkthrough to working storage</h1>
     <p>Buying storage isn't buying steel. It's buying a plan, an installation, and someone who answers the phone afterward.</p>
     <div class="ctas" style="display:flex;gap:14px;flex-wrap:wrap;margin-top:26px">
-      <a class="btn btn-white" href="contact.html?topic=service">Schedule Service</a>
+      <a class="btn btn-white" href="service.html">Request Service</a>
       <a class="btn btn-ghost" href="contact.html?topic=quote">Request a Quote or Proposal</a>
     </div>
   </div>
@@ -1579,10 +1585,10 @@ const servicesPage = shell(`Services | O'Brien Systems`, IMGS.banServices, `
   <span class="eyebrow">How Projects Run</span>
   <h2>Four steps, <em>one team</em></h2>
   <div class="steps">
-    <div class="step"><span class="n">01 &mdash; ASSESS</span><h3>Free Space Assessment</h3><p>We walk your space, measure what you store, and find the capacity you didn't know you had. No cost, no obligation.</p></div>
-    <div class="step"><span class="n">02 &mdash; DESIGN</span><h3>Layout &amp; Specification</h3><p>Drawings, equipment load data, and an itemized quote, matched to the right manufacturer line for the job.</p></div>
-    <div class="step"><span class="n">03 &mdash; INSTALL</span><h3>Factory-Trained Installation</h3><p>Our own crews deliver, anchor, and level, coordinated around your operating hours and site rules.</p></div>
-    <div class="step"><span class="n">04 &mdash; SUPPORT</span><h3>Service &amp; Relocation</h3><p>Maintenance, reconfiguration, teardown and moves, even for systems we didn't originally supply.</p></div>
+    <div class="step"><span class="n">01 &middot; ASSESS</span><h3>Free Space Assessment</h3><p>We walk your space, measure what you store, and find the capacity you didn't know you had. No cost, no obligation.</p></div>
+    <div class="step"><span class="n">02 &middot; DESIGN</span><h3>Layout &amp; Specification</h3><p>Drawings, equipment load data, and an itemized quote, matched to the right manufacturer line for the job.</p></div>
+    <div class="step"><span class="n">03 &middot; INSTALL</span><h3>Factory-Trained Installation</h3><p>Our own crews deliver, anchor, and level, coordinated around your operating hours and site rules.</p></div>
+    <div class="step"><span class="n">04 &middot; SUPPORT</span><h3>Service &amp; Relocation</h3><p>Maintenance, reconfiguration, teardown and moves, even for systems we didn't originally supply.</p></div>
   </div>
 </div></section>
 <section class="block projects-bg" style="padding-top:56px;padding-bottom:56px"><div class="wrap">
@@ -1783,7 +1789,8 @@ const resourcesPage = shell(`Resources & Brochures | O'Brien Systems`, IMGS.hami
   <div class="dl-grid">
     ${BROCHURES.map(b=>`<a class="dlc" href="${b[1]}" target="_blank" rel="noopener"><div class="cover" style="background-image:url('${COVERS[b[2]]}')"></div><div class="bd"><b>${b[0]}</b><span class="tag">PDF</span></div></a>`).join('\n    ')}
   </div>
-  <p class="lead" style="margin-top:40px">Need drawings, specifications, or manufacturer literature for a specific product line? <a href="contact.html">Ask us</a> and we'll pull the current documents from the manufacturer.</p>
+  <div class="chips" style="margin-top:36px"><a href="tools-space-estimator.html">Space savings estimator</a><a href="design-specify.html">Design &amp; Specify: CSI sections, CAD and Revit</a><a href="service.html">Request service</a></div>
+  <p class="lead" style="margin-top:28px">Need drawings, specifications, or manufacturer literature for a specific product line? <a href="contact.html">Ask us</a> and we'll pull the current documents from the manufacturer.</p>
 </div></section>`);
 
 /* ---------------- home page ---------------- */
@@ -1953,10 +1960,10 @@ const homeBody = `
     <h2>From walkthrough to <em>working storage</em></h2>
     <p class="lead">Buying storage isn't buying steel. It's buying a plan. Here's how we run every project, whether it's one evidence room or a whole facility.</p>
     <div class="steps">
-      <div class="step"><span class="n">01 &mdash; ASSESS</span><h3>Free Space Assessment</h3><p>We walk your space, measure what you store, and find the capacity you didn't know you had.</p></div>
-      <div class="step"><span class="n">02 &mdash; DESIGN</span><h3>Layout &amp; Specification</h3><p>Drawings, equipment load data, and an itemized quote, matched to the right manufacturer line.</p></div>
-      <div class="step"><span class="n">03 &mdash; INSTALL</span><h3>Factory-Trained Installation</h3><p>Our own crews deliver, anchor, and level, coordinated around your operating hours.</p></div>
-      <div class="step"><span class="n">04 &mdash; SUPPORT</span><h3>Service &amp; Relocation</h3><p>Maintenance, reconfiguration, teardown and moves, even for systems we didn't originally supply.</p></div>
+      <div class="step"><span class="n">01 &middot; ASSESS</span><h3>Free Space Assessment</h3><p>We walk your space, measure what you store, and find the capacity you didn't know you had.</p></div>
+      <div class="step"><span class="n">02 &middot; DESIGN</span><h3>Layout &amp; Specification</h3><p>Drawings, equipment load data, and an itemized quote, matched to the right manufacturer line.</p></div>
+      <div class="step"><span class="n">03 &middot; INSTALL</span><h3>Factory-Trained Installation</h3><p>Our own crews deliver, anchor, and level, coordinated around your operating hours.</p></div>
+      <div class="step"><span class="n">04 &middot; SUPPORT</span><h3>Service &amp; Relocation</h3><p>Maintenance, reconfiguration, teardown and moves, even for systems we didn't originally supply.</p></div>
     </div>
   </div>
 </section>
@@ -2110,11 +2117,16 @@ const SITE_JS = `document.documentElement.classList.add('js');
 })();
 `;
 fs.mkdirSync(path.join(OUT,'assets'), {recursive:true});
-fs.writeFileSync(path.join(OUT,'assets','style.css'), CSS);
+fs.writeFileSync(path.join(OUT,'assets','style.css'), CSS + X.CSS);
+fs.writeFileSync(path.join(OUT,'assets','estimator.js'), X.ESTIMATOR_JS);
 fs.writeFileSync(path.join(OUT,'assets','site.js'), SITE_JS);
 
 const pages = {
-  'index.html': shell(`O'Brien Systems | Custom Storage Solutions | Design Concept`, IMGS.heroHome, homeBody),
+  'index.html': shell(`O'Brien Systems | Custom Storage Solutions | Design Concept`, IMGS.heroHome, homeBody + X.estimatorTeaser()),
+  'tools-space-estimator.html': X.estimatorPage(shell, IMGS.banMobile),
+  'design-specify.html': X.designSpecifyPage(shell, IMGS.gcProject),
+  'service.html': X.servicePage(shell, IMGS.banServices, PARTNERS),
+  '404.html': X.notFound(shell, IMGS.heroHome),
   'solutions.html': solutionsHub,
   'industries.html': industriesHub,
   'projects.html': projectsPage,
@@ -2128,11 +2140,11 @@ const pages = {
 
 for (const s of SOLUTIONS) {
   const d = SOLUTION_PAGES[s.slug];
-  pages[`${s.slug}.html`] = subpage({ ...d, name:s.name, img:s.img, banner:s.banner, hub:'solutions', hubName:'Solutions' });
+  pages[`${s.slug}.html`] = subpage({ ...d, slug:s.slug, name:s.name, img:s.img, banner:s.banner, hub:'solutions', hubName:'Solutions' });
 }
 for (const p of PRODUCTS) {
   const d = PRODUCT_PAGES[p.slug];
-  pages[`${p.slug}.html`] = subpage({ ...d, name:p.name, img:p.img, banner:p.banner, hub:'solutions', hubName:'Solutions' });
+  pages[`${p.slug}.html`] = subpage({ ...d, slug:p.slug, name:p.name, img:p.img, banner:p.banner, hub:'solutions', hubName:'Solutions' });
 }
 for (const i of INDUSTRIES) {
   const d = INDUSTRY_PAGES[i.slug];
@@ -2142,9 +2154,14 @@ BLOG.forEach((p, idx) => { pages[`post-${p.slug}.html`] = postPage(p, idx); });
 
 let n = 0;
 for (const [file, html] of Object.entries(pages)) {
-  fs.writeFileSync(path.join(OUT, file), html);
+  // copy rules are enforced here: the build fails rather than publish a violation
+  const bad = [/\u2014/, /&mdash;/, /nationwide/i].find(re => re.test(html.replace(/<script[\s\S]*?<\/script>/g, '')));
+  if (bad) throw new Error(`${file}: copy rule violation (${bad})`);
+  fs.writeFileSync(path.join(OUT, file), X.enrich(file, html));
   n++;
 }
+fs.writeFileSync(path.join(OUT, 'sitemap.xml'), X.sitemap(Object.keys(pages)));
+fs.writeFileSync(path.join(OUT, 'robots.txt'), X.ROBOTS);
 { // chat-config.js: obriensys.com path <-> redesign page, so answers link here and prompts fit each page
   const files = fs.readdirSync(OUT).filter(f => f.endsWith('.html'));
   const ALIAS = { 'museum-storage': 'museums.html', 'contact-us': 'contact.html', 'about-us': 'about.html', '': 'index.html' };
