@@ -1,0 +1,745 @@
+[
+ {
+  "page": "four-post-shelving",
+  "kind": "hero",
+  "n": null,
+  "added": false,
+  "cur": "/assets/media/2026/06/68a93-shelving-background.jpg",
+  "file": "/assets/media/mfr/four-post-shelving--1.jpg",
+  "credit": "Borroughs"
+ },
+ {
+  "page": "four-post-shelving",
+  "kind": "gallery",
+  "n": 1,
+  "added": false,
+  "cur": "/assets/media/2026/08/IMG_9310.jpeg",
+  "file": "/assets/media/mfr/four-post-shelving--2.jpg",
+  "credit": "Borroughs"
+ },
+ {
+  "page": "four-post-shelving",
+  "kind": "gallery",
+  "n": 3,
+  "added": false,
+  "cur": "/assets/media/2026/06/baf21-bma_open-shelving-rotated-1.jpg",
+  "file": "/assets/media/mfr/four-post-shelving--3.jpeg",
+  "credit": "Borroughs"
+ },
+ {
+  "page": "wire-shelving",
+  "kind": "hero",
+  "n": null,
+  "added": false,
+  "cur": "/assets/media/2026/06/68a93-shelving-background.jpg",
+  "file": "/assets/media/mfr/wire-shelving--1.jpg",
+  "credit": "Metro"
+ },
+ {
+  "page": "wire-shelving",
+  "kind": "side",
+  "n": null,
+  "added": false,
+  "cur": "/assets/media/2026/08/IMG_1946-rotated-1.jpeg",
+  "file": "/assets/media/mfr/wire-shelving--2.png",
+  "credit": "Metro"
+ },
+ {
+  "page": "wire-shelving",
+  "kind": "gallery",
+  "n": 1,
+  "added": true,
+  "cur": "",
+  "file": "/assets/media/mfr/wire-shelving--3.jpg",
+  "credit": "Metro"
+ },
+ {
+  "page": "wire-shelving",
+  "kind": "gallery",
+  "n": 2,
+  "added": true,
+  "cur": "",
+  "file": "/assets/media/mfr/wire-shelving--4.jpg",
+  "credit": "Metro"
+ },
+ {
+  "page": "cantilever-shelving",
+  "kind": "hero",
+  "n": null,
+  "added": false,
+  "cur": "/assets/media/2026/06/68a93-shelving-background.jpg",
+  "file": "/assets/media/mfr/cantilever-shelving--1.jpeg",
+  "credit": "Aurora Storage"
+ },
+ {
+  "page": "cantilever-shelving",
+  "kind": "side",
+  "n": null,
+  "added": false,
+  "cur": "/assets/media/2026/06/4ff84-library-shelves.jpg",
+  "file": "/assets/media/mfr/cantilever-shelving--2.jpg",
+  "credit": "Estey"
+ },
+ {
+  "page": "bin-storage",
+  "kind": "hero",
+  "n": null,
+  "added": false,
+  "cur": "/assets/media/2026/06/68a93-shelving-background.jpg",
+  "file": "/assets/media/mfr/bin-storage--1.jpg",
+  "credit": "Aurora Storage"
+ },
+ {
+  "page": "bin-storage",
+  "kind": "side",
+  "n": null,
+  "added": false,
+  "cur": "/assets/media/2026/06/c59a6-quik-lok-shelving-product-guide-shelving.jpeg",
+  "file": "/assets/media/mfr/bin-storage--2.jpg",
+  "credit": "Borroughs"
+ },
+ {
+  "page": "bin-storage",
+  "kind": "gallery",
+  "n": 2,
+  "added": false,
+  "cur": "/assets/media/2026/06/a0b3f-storage-box.jpg",
+  "file": "/assets/media/mfr/bin-storage--3.jpg",
+  "credit": "Aurora Storage"
+ },
+ {
+  "page": "pallet-rack",
+  "kind": "hero",
+  "n": null,
+  "added": false,
+  "cur": "/assets/media/2026/06/2b147-warehouse-background.jpg",
+  "file": "/assets/media/mfr/pallet-rack--1.jpg",
+  "credit": "Steel King"
+ },
+ {
+  "page": "pallet-rack",
+  "kind": "side",
+  "n": null,
+  "added": false,
+  "cur": "/assets/media/2026/06/73f98-nga_pallet-rack-rotated-1.jpg",
+  "file": "/assets/media/mfr/pallet-rack--2.jpg",
+  "credit": "Steel King"
+ },
+ {
+  "page": "pallet-rack",
+  "kind": "gallery",
+  "n": 1,
+  "added": false,
+  "cur": "/assets/media/2026/06/f9947-bma_pallet-rack-on-mobile-rotated-1.jpg",
+  "file": "/assets/media/mfr/pallet-rack--3.jpg",
+  "credit": "Steel King"
+ },
+ {
+  "page": "mezzanines",
+  "kind": "hero",
+  "n": null,
+  "added": false,
+  "cur": "/assets/media/2026/06/2b147-warehouse-background.jpg",
+  "file": "/assets/media/mfr/mezzanines--1.jpg",
+  "credit": "Steele Solutions"
+ },
+ {
+  "page": "mezzanines",
+  "kind": "gallery",
+  "n": 2,
+  "added": false,
+  "cur": "/assets/media/2026/06/fdf08-mezzanine.jpg",
+  "file": "/assets/media/mfr/mezzanines--2.jpg",
+  "credit": "Steele Solutions"
+ },
+ {
+  "page": "mezzanines",
+  "kind": "gallery",
+  "n": 3,
+  "added": false,
+  "cur": "/assets/media/2026/06/87244-midproject2.jpg",
+  "file": "/assets/media/mfr/mezzanines--3.jpg",
+  "credit": "Steele Solutions"
+ },
+ {
+  "page": "wire-partitions",
+  "kind": "gallery",
+  "n": 1,
+  "added": true,
+  "cur": "",
+  "file": "/assets/media/mfr/wire-partitions--1.jpg",
+  "credit": "Metro"
+ },
+ {
+  "page": "wire-partitions",
+  "kind": "gallery",
+  "n": 2,
+  "added": true,
+  "cur": "",
+  "file": "/assets/media/mfr/wire-partitions--2.jpg",
+  "credit": "Metro"
+ },
+ {
+  "page": "evidence-lockers",
+  "kind": "hero",
+  "n": null,
+  "added": false,
+  "cur": "/assets/media/2026/06/75b97-lockers-background.jpg",
+  "file": "/assets/media/mfr/evidence-lockers--1.jpg",
+  "credit": "Steele Solutions"
+ },
+ {
+  "page": "evidence-lockers",
+  "kind": "side",
+  "n": null,
+  "added": false,
+  "cur": "/assets/media/2026/06/0900e-img_4533-scaled-e1774366531196.jpg",
+  "file": "/assets/media/mfr/evidence-lockers--2.jpg",
+  "credit": "Steele Solutions"
+ },
+ {
+  "page": "evidence-lockers",
+  "kind": "gallery",
+  "n": 1,
+  "added": false,
+  "cur": "/assets/media/2026/06/2d2e6-gun-storage.jpg",
+  "file": "/assets/media/mfr/evidence-lockers--3.jpg",
+  "credit": "Steele Solutions"
+ },
+ {
+  "page": "evidence-lockers",
+  "kind": "gallery",
+  "n": 2,
+  "added": false,
+  "cur": "/assets/media/2026/06/37162-evidence.jpg",
+  "file": "/assets/media/mfr/evidence-lockers--4.jpg",
+  "credit": "Steele Solutions"
+ },
+ {
+  "page": "evidence-lockers",
+  "kind": "gallery",
+  "n": 3,
+  "added": false,
+  "cur": "/assets/media/2026/06/0900e-img_4533-scaled-e1774366531196.jpg",
+  "file": "/assets/media/mfr/evidence-lockers--5.jpg",
+  "credit": "Steele Solutions"
+ },
+ {
+  "page": "weapons-storage",
+  "kind": "hero",
+  "n": null,
+  "added": false,
+  "cur": "/assets/media/2026/06/75b97-lockers-background.jpg",
+  "file": "/assets/media/mfr/weapons-storage--1.jpg",
+  "credit": "Montel"
+ },
+ {
+  "page": "weapons-storage",
+  "kind": "gallery",
+  "n": 1,
+  "added": false,
+  "cur": "/assets/media/2026/06/ece23-weapons-storage.jpg",
+  "file": "/assets/media/mfr/weapons-storage--2.jpg",
+  "credit": "Montel"
+ },
+ {
+  "page": "weapons-storage",
+  "kind": "gallery",
+  "n": 2,
+  "added": false,
+  "cur": "/assets/media/2026/06/1d70c-gun-storage-1.jpg",
+  "file": "/assets/media/mfr/weapons-storage--3.jpg",
+  "credit": "Montel"
+ },
+ {
+  "page": "weapons-storage",
+  "kind": "gallery",
+  "n": 3,
+  "added": false,
+  "cur": "/assets/media/2026/06/f4a57-weapons-storage-1.jpg",
+  "file": "/assets/media/mfr/weapons-storage--4.jpg",
+  "credit": "Datum"
+ },
+ {
+  "page": "rotary-cabinets",
+  "kind": "hero",
+  "n": null,
+  "added": false,
+  "cur": "/assets/media/2026/06/e7774-cabinets-background.jpg",
+  "file": "/assets/media/mfr/rotary-cabinets--4.webp",
+  "credit": "Datum"
+ },
+ {
+  "page": "rotary-cabinets",
+  "kind": "side",
+  "n": null,
+  "added": false,
+  "cur": "/assets/media/2026/06/7f9df-rotary-file-cabinets-1.jpg",
+  "file": "/assets/media/mfr/rotary-cabinets--1.jpg",
+  "credit": "Datum"
+ },
+ {
+  "page": "rotary-cabinets",
+  "kind": "gallery",
+  "n": 1,
+  "added": true,
+  "cur": "",
+  "file": "/assets/media/mfr/rotary-cabinets--2.png",
+  "credit": "Datum"
+ },
+ {
+  "page": "rotary-cabinets",
+  "kind": "gallery",
+  "n": 2,
+  "added": true,
+  "cur": "",
+  "file": "/assets/media/mfr/rotary-cabinets--3.jpg",
+  "credit": "Datum"
+ },
+ {
+  "page": "fireproof-cabinets",
+  "kind": "side",
+  "n": null,
+  "remove": true,
+  "cur": "/assets/media/2026/06/d7e6f-lateral-cabinet-th.jpg"
+ },
+ {
+  "page": "wardrobe-cabinets",
+  "kind": "gallery",
+  "n": 1,
+  "added": true,
+  "cur": "",
+  "file": "/assets/media/mfr/wardrobe-cabinets--1.jpg",
+  "credit": "Tennsco"
+ },
+ {
+  "page": "wardrobe-cabinets",
+  "kind": "gallery",
+  "n": 2,
+  "added": true,
+  "cur": "",
+  "file": "/assets/media/mfr/wardrobe-cabinets--2.jpg",
+  "credit": "Tennsco"
+ },
+ {
+  "page": "museum-cabinets",
+  "kind": "hero",
+  "n": null,
+  "added": false,
+  "cur": "/assets/media/2026/06/a1a5e-museum-background.jpg",
+  "file": "/assets/media/mfr/museum-cabinets--1.jpg",
+  "credit": "Delta Designs"
+ },
+ {
+  "page": "museum-cabinets",
+  "kind": "gallery",
+  "n": 2,
+  "added": false,
+  "cur": "/assets/media/2026/06/99962-12434.jpg",
+  "file": "/assets/media/mfr/museum-cabinets--2.jpg",
+  "credit": "Delta Designs"
+ },
+ {
+  "page": "art-screens",
+  "kind": "hero",
+  "n": null,
+  "added": false,
+  "cur": "/assets/media/2026/06/a1a5e-museum-background.jpg",
+  "file": "/assets/media/mfr/art-screens--1.jpg",
+  "credit": "Stabaarte"
+ },
+ {
+  "page": "mail-sorters",
+  "kind": "hero",
+  "n": null,
+  "added": false,
+  "cur": "/assets/media/2026/06/86c7f-modular-casework-background.jpg",
+  "file": "/assets/media/mfr/mail-sorters--1.jpg",
+  "credit": "Hamilton Casework"
+ },
+ {
+  "page": "mail-sorters",
+  "kind": "gallery",
+  "n": 1,
+  "added": true,
+  "cur": "",
+  "file": "/assets/media/mfr/mail-sorters--2.jpg",
+  "credit": "Hamilton Casework"
+ },
+ {
+  "page": "mail-sorters",
+  "kind": "gallery",
+  "n": 2,
+  "added": true,
+  "cur": "",
+  "file": "/assets/media/mfr/mail-sorters--3.jpg",
+  "credit": "Hamilton Casework"
+ },
+ {
+  "page": "high-density-mobile-storage",
+  "kind": "hero",
+  "n": null,
+  "added": false,
+  "cur": "/assets/media/2026/06/07c35-mobile-storage-backgroun.jpg",
+  "file": "/assets/media/mfr/high-density-mobile-storage--1.jpg",
+  "credit": "Montel"
+ },
+ {
+  "page": "static-shelving",
+  "kind": "hero",
+  "n": null,
+  "added": false,
+  "cur": "/assets/media/2026/06/68a93-shelving-background.jpg",
+  "file": "/assets/media/mfr/static-shelving--1.jpg",
+  "credit": "Borroughs"
+ },
+ {
+  "page": "static-shelving",
+  "kind": "gallery",
+  "n": 2,
+  "added": false,
+  "cur": "/assets/media/2026/06/4ea3b-pallet-rack-shelving.jpg",
+  "file": "/assets/media/mfr/static-shelving--2.jpg",
+  "credit": "Datum"
+ },
+ {
+  "page": "static-shelving",
+  "kind": "gallery",
+  "n": 3,
+  "added": false,
+  "cur": "/assets/media/2026/06/f5230-maximize-storage-space-1.jpg",
+  "file": "/assets/media/mfr/static-shelving--3.jpg",
+  "credit": "Borroughs"
+ },
+ {
+  "page": "lockers",
+  "kind": "hero",
+  "n": null,
+  "added": false,
+  "cur": "/assets/media/2026/06/75b97-lockers-background.jpg",
+  "file": "/assets/media/mfr/lockers--1.jpg",
+  "credit": "Hamilton Casework"
+ },
+ {
+  "page": "lockers",
+  "kind": "gallery",
+  "n": 2,
+  "added": false,
+  "cur": "/assets/media/2026/06/994db-agile-lockers-workplace-lockers.jpg",
+  "file": "/assets/media/mfr/lockers--2.jpg",
+  "credit": "Hamilton Casework"
+ },
+ {
+  "page": "cabinets",
+  "kind": "hero",
+  "n": null,
+  "added": false,
+  "cur": "/assets/media/2026/06/e7774-cabinets-background.jpg",
+  "file": "/assets/media/mfr/cabinets--1.jpg",
+  "credit": "Delta Designs"
+ },
+ {
+  "page": "cabinets",
+  "kind": "gallery",
+  "n": 3,
+  "added": false,
+  "cur": "/assets/media/2026/06/b8232-media-storage-cabinet.jpg",
+  "file": "/assets/media/mfr/cabinets--2.jpg",
+  "credit": "Delta Designs"
+ },
+ {
+  "page": "modular-casework",
+  "kind": "hero",
+  "n": null,
+  "added": false,
+  "cur": "/assets/media/2026/06/86c7f-modular-casework-background.jpg",
+  "file": "/assets/media/mfr/modular-casework--1.jpg",
+  "credit": "Hamilton Casework"
+ },
+ {
+  "page": "modular-casework",
+  "kind": "gallery",
+  "n": 3,
+  "added": false,
+  "cur": "/assets/media/2026/06/ee464-nemours5.jpg",
+  "file": "/assets/media/mfr/modular-casework--2.jpg",
+  "credit": "Hamilton Casework"
+ },
+ {
+  "page": "lifts-carousels",
+  "kind": "hero",
+  "n": null,
+  "added": false,
+  "cur": "/assets/media/2026/06/8cc7d-lifts-and-carousels.jpg",
+  "file": "/assets/media/mfr/lifts-carousels--1.jpg",
+  "credit": "Modula"
+ },
+ {
+  "page": "solutions",
+  "kind": "card",
+  "n": null,
+  "added": false,
+  "cur": "/assets/media/2026/08/IMG_9310.jpeg",
+  "file": "/assets/media/mfr/solutions--4post-1.jpg",
+  "credit": "Borroughs"
+ },
+ {
+  "page": "solutions",
+  "kind": "card",
+  "n": null,
+  "remove": true,
+  "cur": "/assets/media/2026/06/d7e6f-lateral-cabinet-th.jpg"
+ },
+ {
+  "page": "museums",
+  "kind": "hero",
+  "n": null,
+  "added": false,
+  "cur": "/assets/media/2026/06/a1a5e-museum-background.jpg",
+  "file": "/assets/media/mfr/museums--1.jpg",
+  "credit": "Delta Designs"
+ },
+ {
+  "page": "libraries",
+  "kind": "hero",
+  "n": null,
+  "added": false,
+  "cur": "/assets/media/2026/06/da6c4-high-density-shelves-library.jpg",
+  "file": "/assets/media/mfr/libraries--1.jpg",
+  "credit": "Aurora Storage"
+ },
+ {
+  "page": "libraries",
+  "kind": "gallery",
+  "n": 1,
+  "added": false,
+  "cur": "/assets/media/2026/06/4ff84-library-shelves.jpg",
+  "file": "/assets/media/mfr/libraries--2.jpeg",
+  "credit": "Aurora Storage"
+ },
+ {
+  "page": "libraries",
+  "kind": "gallery",
+  "n": 2,
+  "added": false,
+  "cur": "/assets/media/2026/06/da6c4-high-density-shelves-library.jpg",
+  "file": "/assets/media/mfr/libraries--3.jpg",
+  "credit": "Datum"
+ },
+ {
+  "page": "education",
+  "kind": "hero",
+  "n": null,
+  "added": false,
+  "cur": "/assets/media/2026/06/e3781-education-background.jpg",
+  "file": "/assets/media/mfr/education--1.jpg",
+  "credit": "Aurora Storage"
+ },
+ {
+  "page": "education",
+  "kind": "side",
+  "n": null,
+  "added": false,
+  "cur": "/assets/media/2026/06/46a58-education-storage-solutions.jpg",
+  "file": "/assets/media/mfr/education--2.jpg",
+  "credit": "Aurora Storage"
+ },
+ {
+  "page": "education",
+  "kind": "gallery",
+  "n": 1,
+  "added": false,
+  "cur": "/assets/media/2026/06/46a58-education-storage-solutions.jpg",
+  "file": "/assets/media/mfr/education--3.jpg",
+  "credit": "Estey"
+ },
+ {
+  "page": "government-public-safety",
+  "kind": "hero",
+  "n": null,
+  "added": false,
+  "cur": "/assets/media/2026/06/37162-evidence.jpg",
+  "file": "/assets/media/mfr/government-public-safety--1.jpg",
+  "credit": "Montel"
+ },
+ {
+  "page": "government-public-safety",
+  "kind": "gallery",
+  "n": 1,
+  "added": false,
+  "cur": "/assets/media/2026/06/1d70c-gun-storage-1.jpg",
+  "file": "/assets/media/mfr/government-public-safety--2.jpg",
+  "credit": "Montel"
+ },
+ {
+  "page": "government-public-safety",
+  "kind": "gallery",
+  "n": 3,
+  "added": false,
+  "cur": "/assets/media/2026/06/37162-evidence.jpg",
+  "file": "/assets/media/mfr/government-public-safety--3.jpg",
+  "credit": "Montel"
+ },
+ {
+  "page": "military",
+  "kind": "hero",
+  "n": null,
+  "added": false,
+  "cur": "/assets/media/2026/06/ece23-weapons-storage.jpg",
+  "file": "/assets/media/mfr/military--1.jpg",
+  "credit": "Montel"
+ },
+ {
+  "page": "military",
+  "kind": "side",
+  "n": null,
+  "added": false,
+  "cur": "/assets/media/2026/06/ece23-weapons-storage.jpg",
+  "file": "/assets/media/mfr/military--2.jpg",
+  "credit": "Steele Solutions"
+ },
+ {
+  "page": "military",
+  "kind": "gallery",
+  "n": 1,
+  "added": false,
+  "cur": "/assets/media/2026/06/2d2e6-gun-storage.jpg",
+  "file": "/assets/media/mfr/military--3.jpg",
+  "credit": "Datum"
+ },
+ {
+  "page": "military",
+  "kind": "gallery",
+  "n": 3,
+  "added": false,
+  "cur": "/assets/media/2026/06/f4a57-weapons-storage-1.jpg",
+  "file": "/assets/media/mfr/military--4.jpg",
+  "credit": "Datum"
+ },
+ {
+  "page": "pharmaceutical-healthcare",
+  "kind": "hero",
+  "n": null,
+  "added": false,
+  "cur": "/assets/media/2026/06/2174f-ph-background.jpg",
+  "file": "/assets/media/mfr/pharmaceutical-healthcare--1.jpg",
+  "credit": "Montel"
+ },
+ {
+  "page": "pharmaceutical-healthcare",
+  "kind": "gallery",
+  "n": 1,
+  "added": false,
+  "cur": "/assets/media/2026/06/Pharmaceutical-and-Healthcare-Solutions.jpg",
+  "file": "/assets/media/mfr/pharmaceutical-healthcare--2.jpg",
+  "credit": "Hamilton Casework"
+ },
+ {
+  "page": "pharmaceutical-healthcare",
+  "kind": "gallery",
+  "n": 3,
+  "added": false,
+  "cur": "/assets/media/2026/06/8f557-healthcare-hdms.jpg",
+  "file": "/assets/media/mfr/pharmaceutical-healthcare--3.jpg",
+  "credit": "Hamilton Casework"
+ },
+ {
+  "page": "corporate-legal",
+  "kind": "hero",
+  "n": null,
+  "added": false,
+  "cur": "/assets/media/2026/06/2f71f-corporate-and-legal-background.jpg",
+  "file": "/assets/media/mfr/corporate-legal--1.jpg",
+  "credit": "Montel"
+ },
+ {
+  "page": "retail",
+  "kind": "hero",
+  "n": null,
+  "added": false,
+  "cur": "/assets/media/2026/06/9c891-retail-background.jpg",
+  "file": "/assets/media/mfr/retail--1.jpg",
+  "credit": "Montel"
+ },
+ {
+  "page": "retail",
+  "kind": "gallery",
+  "n": 2,
+  "added": false,
+  "cur": "/assets/media/2026/06/b3839-retail-storage-1.jpg",
+  "file": "/assets/media/mfr/retail--2.jpg",
+  "credit": "Montel"
+ },
+ {
+  "page": "automotive",
+  "kind": "hero",
+  "n": null,
+  "added": false,
+  "cur": "/assets/media/2026/06/9c210-obrien-automotive-banner.jpg",
+  "file": "/assets/media/mfr/automotive--1.jpg",
+  "credit": "Borroughs"
+ },
+ {
+  "page": "material-handling-warehouse",
+  "kind": "hero",
+  "n": null,
+  "added": false,
+  "cur": "/assets/media/2026/06/2b147-warehouse-background.jpg",
+  "file": "/assets/media/mfr/material-handling-warehouse--1.png",
+  "credit": "Steel King"
+ },
+ {
+  "page": "material-handling-warehouse",
+  "kind": "gallery",
+  "n": 1,
+  "added": false,
+  "cur": "/assets/media/2026/06/5bfc2-mhw.jpg",
+  "file": "/assets/media/mfr/material-handling-warehouse--2.jpg",
+  "credit": "Steel King"
+ },
+ {
+  "page": "material-handling-warehouse",
+  "kind": "gallery",
+  "n": 2,
+  "added": false,
+  "cur": "/assets/media/2026/06/3b792-pallet-rack.jpg",
+  "file": "/assets/media/mfr/material-handling-warehouse--3.jpg",
+  "credit": "Steel King"
+ },
+ {
+  "page": "material-handling-warehouse",
+  "kind": "gallery",
+  "n": 3,
+  "added": false,
+  "cur": "/assets/media/2026/06/e5232-warehouse-solutions.jpg",
+  "file": "/assets/media/mfr/material-handling-warehouse--4.jpg",
+  "credit": "Steele Solutions"
+ },
+ {
+  "page": "vertical-farming",
+  "kind": "hero",
+  "n": null,
+  "added": false,
+  "cur": "/assets/media/2026/06/f982d-vertical-farming-background-1.jpg",
+  "file": "/assets/media/mfr/vertical-farming--1.jpg",
+  "credit": "Montel"
+ },
+ {
+  "page": "general-contractors",
+  "kind": "gallery",
+  "n": 2,
+  "added": false,
+  "cur": "/assets/media/2026/06/f5230-maximize-storage-space-1.jpg",
+  "file": "/assets/media/mfr/general-contractors--1.jpg",
+  "credit": "Borroughs"
+ },
+ {
+  "page": "general-contractors",
+  "kind": "gallery",
+  "n": 3,
+  "added": false,
+  "cur": "/assets/media/2026/06/235ee-system.jpg",
+  "file": "/assets/media/mfr/general-contractors--2.jpg",
+  "credit": "Borroughs"
+ }
+]

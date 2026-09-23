@@ -4,6 +4,8 @@
 const fs = require('fs');
 const path = require('path');
 const OUT = __dirname;
+// every build gets a new asset version so browsers never mix new pages with an old cached stylesheet
+const VER = Date.now().toString(36);
 const X = require('./extras'); // Sept 2026 upgrades: specify panel, estimator, specify hub, service, SEO plumbing
 // Website assistant (same one as obriensys.com). Switch to 'https://obriensys.com' once the chat is live there.
 const CHAT_API = 'https://chatbot.obriensys-web.pages.dev';
@@ -155,7 +157,7 @@ const IMGS = {
   mezz2: img('fdf08-mezzanine.jpg'),
   midproject2: img('87244-midproject2.jpg'),
   installer: img('748ef-midproject.jpg'),
-  tennscoWardrobe: 'https://www.tennsco.com/AppFiles/PRODUCT_IMAGES/CVD1871.jpg',
+  tennscoWardrobe: '/assets/media/ext/CVD1871.jpg',
   evidRoom: img('0900e-img_4533-scaled-e1774366531196.jpg'),
   rotary2: img('7f9df-rotary-file-cabinets-1.jpg'),
   musSlots: img('99962-12434.jpg'),
@@ -164,13 +166,13 @@ const IMGS = {
   hdmsArtScreen: img('eb764-hdms-art-screen.jpg'),
   artHD: img('9c939-high-density-art-screens.jpg'),
   // manufacturer photos, credited on-page (mockup placeholders until we shoot our own)
-  montelSharks: 'https://www.montel.com/media/ddsfkhcw/mobilex_san_jose_sharks_3.png',
-  montelFAU: 'https://www.montel.com/media/k14d3az4/florida-atlantic-university-3.jpg',
-  montelKnights: 'https://www.montel.com/media/fhhj4jx0/montel-case-study-golden_knight_vignette.jpg',
-  montelWisconsin: 'https://www.montel.com/media/clklncjm/montel-case-study-university-of-wisconsin.jpg',
-  hamMailroom: 'https://hamiltoncs.com/wp-content/uploads/2026/07/mail-sorter-indexed-shelving-mailroom.jpg',
-  hamMailGlass: 'https://hamiltoncs.com/wp-content/uploads/2026/07/mail-sorter-glass-door-executive-casework.jpg',
-  wcCage: 'https://www.wirecrafters.com/wp-content/uploads/WireCrafters-DEA-Storage-Cage.jpg',
+  montelSharks: '/assets/media/ext/mobilex_san_jose_sharks_3.png',
+  montelFAU: '/assets/media/ext/florida-atlantic-university-3.jpg',
+  montelKnights: '/assets/media/ext/montel-case-study-golden_knight_vignette.jpg',
+  montelWisconsin: '/assets/media/ext/montel-case-study-university-of-wisconsin.jpg',
+  hamMailroom: '/assets/media/ext/mail-sorter-indexed-shelving-mailroom.jpg',
+  hamMailGlass: '/assets/media/ext/mail-sorter-glass-door-executive-casework.jpg',
+  wcCage: '/assets/media/ext/WireCrafters-DEA-Storage-Cage.jpg',
 };
 
 const COVERS = {
@@ -729,9 +731,9 @@ const shell = (title, heroImgUrl, body) => `<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
 <title>${title}</title>
-<link rel="stylesheet" href="assets/style.css">
-<script src="assets/site.js" defer></script>
-<script src="assets/chat-config.js"></script>
+<link rel="stylesheet" href="assets/style.css?v=${VER}">
+<script src="assets/site.js?v=${VER}" defer></script>
+<script src="assets/chat-config.js?v=${VER}"></script>
 <script type="module" src="${CHAT_API}/_chat/embed.js"></script>
 <style>:root{--hero-img:url('${heroImgUrl}')}</style>
 </head>
@@ -2157,7 +2159,7 @@ for (const [file, html] of Object.entries(pages)) {
   // copy rules are enforced here: the build fails rather than publish a violation
   const bad = [/\u2014/, /&mdash;/, /nationwide/i].find(re => re.test(html.replace(/<script[\s\S]*?<\/script>/g, '')));
   if (bad) throw new Error(`${file}: copy rule violation (${bad})`);
-  fs.writeFileSync(path.join(OUT, file), X.enrich(file, html));
+  fs.writeFileSync(path.join(OUT, file), X.enrich(file, X.photos(file, html)));
   n++;
 }
 fs.writeFileSync(path.join(OUT, 'sitemap.xml'), X.sitemap(Object.keys(pages)));
