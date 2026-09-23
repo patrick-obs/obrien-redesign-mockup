@@ -363,14 +363,15 @@ function photos(file, html) {
 // which interactive models appear on which page (ids live in assets/3d/models.js)
 const VIEW3D = {
   'four-post-shelving': 'four-post', 'bin-storage': 'bin-shelving', 'wire-shelving': 'wire-shelving', 'cantilever-shelving': 'library',
-  'static-shelving': 'four-post,bin-shelving,wire-shelving,library', 'high-density-mobile-storage': 'hd-mobile', 'lockers': 'lockers,evidence-lockers', 'evidence-lockers': 'evidence-lockers',
-  'cabinets': 'flat-files,rotary,museum-cabinet', 'rotary-cabinets': 'rotary', 'museum-cabinets': 'museum-cabinet', 'art-screens': 'art-screens',
+  'static-shelving': 'four-post,bin-shelving,wire-shelving,library', 'high-density-mobile-storage': 'hd-mobile', 'lockers': 'lockers,athletic,evidence-lockers', 'evidence-lockers': 'evidence-lockers',
+  'cabinets': 'flat-files,fireproof,rotary,museum-cabinet', 'rotary-cabinets': 'rotary', 'museum-cabinets': 'museum-cabinet,textile-rack', 'art-screens': 'art-screens,wall-art',
   'pallet-rack': 'pallet-rack', 'mezzanines': 'mezzanine', 'lifts-carousels': 'vlm', 'modular-casework': 'casework', 'wire-partitions': 'wire-cage',
-  'museums': 'art-screens,museum-cabinet,hd-mobile', 'libraries': 'library,hd-mobile', 'material-handling-warehouse': 'pallet-rack,mezzanine,vlm,wire-cage',
-  'pharmaceutical-healthcare': 'casework,wire-shelving', 'education': 'lockers,library', 'government-public-safety': 'evidence-lockers,hd-mobile,wire-cage',
-  'corporate-legal': 'hd-mobile,rotary,flat-files', 'automotive': 'bin-shelving,pallet-rack,vlm', 'retail': 'four-post,bin-shelving',
+  'weapons-storage': 'weapons', 'athletic-storage': 'athletic,lockers', 'athletics': 'athletic,lockers', 'mail-sorters': 'mail-sorter', 'fireproof-cabinets': 'fireproof',
+  'military': 'weapons,hd-mobile,pallet-rack', 'museums': 'art-screens,wall-art,museum-cabinet,textile-rack,hd-mobile', 'libraries': 'library,hd-mobile', 'material-handling-warehouse': 'pallet-rack,mezzanine,vlm,workstation,wire-cage',
+  'pharmaceutical-healthcare': 'casework,wire-shelving', 'education': 'lockers,athletic,library,mail-sorter', 'government-public-safety': 'evidence-lockers,weapons,hd-mobile,wire-cage',
+  'corporate-legal': 'hd-mobile,rotary,fireproof,mail-sorter', 'automotive': 'bin-shelving,workstation,pallet-rack,vlm', 'retail': 'four-post,bin-shelving',
 };
-const ALL3D = 'hd-mobile,vlm,art-screens,four-post,bin-shelving,wire-shelving,library,lockers,evidence-lockers,flat-files,rotary,museum-cabinet,casework,pallet-rack,mezzanine,wire-cage';
+const ALL3D = 'hd-mobile,vlm,rotary,four-post,bin-shelving,wire-shelving,library,lockers,athletic,evidence-lockers,weapons,flat-files,fireproof,museum-cabinet,art-screens,wall-art,textile-rack,casework,workstation,mail-sorter,pallet-rack,mezzanine,wire-cage';
 const viewer3d = (slug, name) => VIEW3D[slug] ? `
 <section class="v3d-sec">
   <div class="wrap">
@@ -381,7 +382,7 @@ const viewer3d = (slug, name) => VIEW3D[slug] ? `
 const home3d = () => `
 <section class="v3d-sec v3d-home">
   <div class="wrap">
-    <div class="v3d-head"><div><span class="eyebrow">3D showroom</span><h2>Spin it, open it, see how it works</h2><p>Drag to look at every side. Tap a carriage to open an aisle, pull a drawer, swing a door.</p></div><a class="v3d-all" href="showroom.html">All 16 models &rarr;</a></div>
+    <div class="v3d-head"><div><span class="eyebrow">3D showroom</span><h2>Spin it, open it, see how it works</h2><p>Drag to look at every side. Tap a carriage to open an aisle, pull a drawer, swing a door.</p></div><a class="v3d-all" href="showroom.html">All 23 models &rarr;</a></div>
     <div class="v3d" data-models="hd-mobile,four-post,lockers,flat-files,vlm"></div>
   </div>
 </section>`;
@@ -392,7 +393,7 @@ function showroomPage(shell, heroImg) {
   <div class="wrap">
     <span class="eyebrow">3D showroom</span>
     <h1>Walk around the products</h1>
-    <p>Sixteen of the systems we plan and install, as interactive models. Drag to see every side, zoom in on the details, and try how they move.</p>
+    <p>Twenty-three of the systems we plan and install, as interactive models. Drag to see every side, zoom in on the details, and try how they move.</p>
   </div>
 </div>
 <section class="v3d-sec v3d-room"><div class="wrap">

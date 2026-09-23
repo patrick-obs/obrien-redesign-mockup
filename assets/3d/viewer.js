@@ -40,10 +40,12 @@ function bake(THREE, root) {
 }
 
 const GROUPS = [
-  { name: 'Mobile & automated', ids: ['hd-mobile', 'vlm', 'art-screens'] },
+  { name: 'Mobile & automated', ids: ['hd-mobile', 'vlm', 'rotary'] },
   { name: 'Shelving', ids: ['four-post', 'bin-shelving', 'wire-shelving', 'library'] },
-  { name: 'Lockers', ids: ['lockers', 'evidence-lockers'] },
-  { name: 'Cabinets & casework', ids: ['flat-files', 'rotary', 'museum-cabinet', 'casework'] },
+  { name: 'Lockers & security', ids: ['lockers', 'athletic', 'evidence-lockers', 'weapons'] },
+  { name: 'Cabinets', ids: ['flat-files', 'fireproof', 'museum-cabinet'] },
+  { name: 'Museum & art', ids: ['art-screens', 'wall-art', 'textile-rack'] },
+  { name: 'Workspace', ids: ['casework', 'workstation', 'mail-sorter'] },
   { name: 'Industrial', ids: ['pallet-rack', 'mezzanine', 'wire-cage'] },
 ];
 
@@ -110,17 +112,21 @@ function viewer(el) {
 
   // tiny tween system shared with the models
   const tweens = [];
-  const tween = (obj, key, to, ms = 700) => {
-    if (reduce) { obj[key] = to; wake(); return; }
-    const from = obj[key]; if (from === to) return;
-    for (let i = tweens.length - 1; i >= 0; i--) if (tweens[i].obj === obj && tweens[i].key === key) tweens.splice(i, 1);
-    tweens.push({ obj, key, from, to, ms, t0: performance.now() }); wake();
-  };
+  const EASE = { io: ease, out: t => 1 - Math.pow(1 - t, 3), lin: t => t };
+  const tween = (obj, key, to, ms = 700, how = 'io') => new Promise(done => {
+    if (reduce) { obj[key] = to; wake(); return done(); }
+    const from = obj[key]; if (Math.abs(from - to) < 1e-6) return done();
+    for (let i = tweens.length - 1; i >= 0; i--) if (tweens[i].obj === obj && tweens[i].key === key) { tweens[i].done(); tweens.splice(i, 1); }
+    tweens.push({ obj, key, from, to, ms, t0: null, fn: EASE[how] || ease, done }); wake();
+  });
+  // wait on the render clock, so chained steps stay in step with the animation
+  const wait = ms => tween({ t: 0 }, 't', 1, ms, 'lin');
 
-  let current = null, frame = 0, dirty = true, home = null;
+  let current = null, frame = 0, dirty = true, home = null, clickables = [], slow = 0, pr = Math.min(devicePixelRatio, 2), last = 0;
   const wake = () => { dirty = true; if (!frame) frame = requestAnimationFrame(loop); };
   controls.addEventListener('change', wake);
 
+  const scan = () => { clickables = []; current?.group.traverse(o => { if (o.userData.onClick) clickables.push(o); }); };
   function fit(group, view) {
     const box = new THREE.Box3().setFromObject(group), size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
     const r = size.length() / 2;
@@ -139,7 +145,8 @@ function viewer(el) {
   function load(id) {
     if (current) { scene.remove(current.group); current.group.traverse(o => { o.geometry?.dispose?.(); }); }
     const def = MODELS[id];
-    current = def.build({ THREE, tween, wake, bake: g => bake(THREE, g) });
+    current = def.build({ THREE, tween, wait, wake, bake: g => bake(THREE, g), refit: () => { if (current) { fit(current.group, current.view); wake(); } } });
+    scan();
     current.group.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
     bake(THREE, current.group);
     scene.add(current.group);
@@ -151,7 +158,7 @@ function viewer(el) {
     const acts = el.querySelector('.v3d-acts');
     acts.replaceChildren(...(current.actions || []).map(a => {
       const b = document.createElement('button'); b.type = 'button'; b.textContent = a.label;
-      b.addEventListener('click', () => { const r = a.run(); if (typeof r === 'string') b.textContent = r; wake(); });
+      b.addEventListener('click', () => { const r = a.run(); if (typeof r === 'string') b.textContent = r; scan(); wake(); });
       return b;
     }));
     const fin = el.querySelector('.v3d-fin');
@@ -170,10 +177,14 @@ function viewer(el) {
     frame = 0;
     let active = false;
     for (let i = tweens.length - 1; i >= 0; i--) {
-      const tw = tweens[i], k = Math.min(1, (now - tw.t0) / tw.ms);
-      tw.obj[tw.key] = tw.from + (tw.to - tw.from) * ease(k);
-      if (k >= 1) tweens.splice(i, 1); else active = true;
+      const tw = tweens[i]; if (tw.t0 === null) tw.t0 = now;
+      const k = Math.min(1, (now - tw.t0) / tw.ms);
+      tw.obj[tw.key] = tw.from + (tw.to - tw.from) * tw.fn(k);
+      if (k >= 1) { tweens.splice(i, 1); tw.done(); } else active = true;
     }
+    // slow machine: step the render resolution down instead of dropping frames
+    if (last && now - last > 26) { if (++slow > 24 && pr > 1) { pr = Math.max(1, pr - 0.25); renderer.setPixelRatio(pr); resize(); slow = 0; } } else slow = Math.max(0, slow - 1);
+    last = active || controls.autoRotate ? now : 0;
     const moving = controls.update();
     if (dirty || active || moving || controls.autoRotate) { renderer.render(scene, camera); dirty = false; }
     if (active || moving || controls.autoRotate) frame = requestAnimationFrame(loop);
@@ -199,13 +210,16 @@ function viewer(el) {
       if (o) { o.userData.onClick(); wake(); break; }
     }
   });
+  let hoverQ = null;
   canvas.addEventListener('pointermove', e => {
-    if (e.buttons || !current) return;
-    const r = canvas.getBoundingClientRect();
-    ptr.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
-    ray.setFromCamera(ptr, camera);
-    const hit = ray.intersectObject(current.group, true).find(h => { let o = h.object; while (o && !o.userData.onClick) o = o.parent; return !!o; });
-    canvas.style.cursor = hit ? 'pointer' : 'grab';
+    if (e.buttons || !current || !clickables.length) return;
+    if (!hoverQ) requestAnimationFrame(() => {
+      const r = canvas.getBoundingClientRect(), p = hoverQ; hoverQ = null;
+      ptr.set(((p[0] - r.left) / r.width) * 2 - 1, -((p[1] - r.top) / r.height) * 2 + 1);
+      ray.setFromCamera(ptr, camera);
+      canvas.style.cursor = ray.intersectObjects(clickables, true).length ? 'pointer' : 'grab';
+    });
+    hoverQ = [e.clientX, e.clientY];
   });
 
   el.querySelector('[data-v=reset]').addEventListener('click', () => { if (home) { camera.position.copy(home.pos); controls.target.copy(home.target); controls.update(); wake(); } });
