@@ -1622,34 +1622,54 @@ def('ss-table', 'Stainless Steel Work Table', '60" W x 30" D x 34" H: stainless 
 });
 
 /* ---------------- 27. install sequence ---------------- */
-def('install', 'Mobile Storage Install, Step by Step', 'From slab to working system: rails, carriages, shelving, end panels, then the first aisle', ({ THREE, tween, wait, wake }) => {
+def('install', 'Mobile Storage Install, Step by Step', 'From bare slab to working system: layout, rails, shims, grout, deck, fasteners, carriages, shelving', ({ THREE, tween, wait, wake }) => {
   const k = kit(THREE), { M, bx, cyl, group } = k, root = new THREE.Group();
   const paint = k.std(0xbfc4c7, 0.5, 0.3), panel = k.std(0x2c2f31, 0.45, 0.25), black = k.std(0x1c1e20, 0.45, 0.15);
-  const L = 108, d = 15, h = 84, N = 4, aisle = 36, cH = 5;
+  const chalk = k.std(0x2f6fdf, 0.6, 0, { emissive: 0x1b3f8a, emissiveIntensity: 0.4 }), shimM = k.std(0x9aa1a6, 0.4, 0.7), grout = k.std(0x8d9091, 0.95, 0);
+  const masonite = k.std(0x6b4a2f, 0.75, 0), ply = k.std(0xd9b27c, 0.8, 0), railM = k.std(0x7d858a, 0.35, 0.8), hole = k.std(0x2b2d2f, 0.9, 0), toolM = k.std(0x1f6fb3, 0.5, 0.2), alu = k.std(0xc9ced2, 0.3, 0.85);
+  const L = 108, d = 15, h = 84, N = 4, aisle = 36, cH = 5, RH = 1.25;
   const depths = [d + 1, ...Array(N).fill(2 * d + 1), d + 1];
   const base = []; let acc = 0; for (const dd of depths) { base.push(acc); acc += dd + 0.5; }
-  const total = acc + aisle;
-  // slab with rail channels cut in
-  bx(root, L + 40, 4, total + 40, k.std(0xb9bcbc, 0.9, 0), -20, -4, -20);
-  for (const rx of [8, L / 2 - 10, L / 2 + 10, L - 8]) bx(root, 3, 0.05, total + 8, M.dark, rx - 1.5, 0.01, -4);
+  const total = acc + aisle, z0 = -6, z1 = total + 6, x0 = -8, x1 = L + 10;
+  const rails = [8, L / 2 - 10, L / 2 + 10, L - 8];
+  bx(root, L + 60, 4, total + 60, k.std(0xb9bcbc, 0.9, 0), -30, -4, -30);
   // step placard
   const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 256; const cx = cv.getContext('2d');
   const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8;
-  const sign = new THREE.Mesh(new THREE.PlaneGeometry(96, 24), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }));
-  sign.position.set(L / 2, h + 40, -30); sign.rotation.y = 0.9; root.add(sign);
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(110, 27.5), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }));
+  sign.position.set(L / 2, h + 44, -34); sign.rotation.y = 0.9; root.add(sign);
   const say = (a, b) => {
     cx.fillStyle = '#023c3f'; cx.fillRect(0, 0, 1024, 256); cx.fillStyle = '#e8a33d'; cx.fillRect(0, 0, 14, 256);
-    cx.fillStyle = '#9fd3d5'; cx.font = 'bold 44px system-ui, sans-serif'; cx.fillText(a, 48, 92);
-    cx.fillStyle = '#ffffff'; cx.font = 'bold 64px system-ui, sans-serif'; cx.fillText(b, 48, 186);
+    cx.fillStyle = '#9fd3d5'; cx.font = 'bold 42px system-ui, sans-serif'; cx.fillText(a, 48, 90);
+    cx.fillStyle = '#ffffff'; cx.font = 'bold ' + (b.length > 30 ? 50 : 60) + 'px system-ui, sans-serif'; cx.fillText(b, 48, 184);
     tex.needsUpdate = true; wake();
   };
-  const rails = group(root); rails.userData.dyn = true;
-  for (const rx of [8, L / 2 - 10, L / 2 + 10, L - 8]) bx(rails, 1.2, 0.4, total + 8, M.steel, rx - 0.6, 0, -4);
+  const stage = () => { const g = group(root); g.userData.dyn = true; g.visible = false; return g; };
+  // 1 layout lines, 2 rails, 3 shims, 4 grout
+  const lines = stage(); for (const rx of rails) bx(lines, 0.3, 0.05, z1 - z0, chalk, rx - 0.15, 0.01, z0);
+  for (const z of [z0, z1]) bx(lines, x1 - x0, 0.05, 0.3, chalk, x0, 0.01, z);
+  const railG = rails.map(rx => { const g = stage(); bx(g, 2, 1, z1 - z0 - 4, railM, rx - 1, 0.25, z0 + 2); bx(g, 0.8, 0.3, z1 - z0 - 4, alu, rx - 0.4, 1.25, z0 + 2); return g; });
+  const shims = stage(); for (const rx of rails) for (let z = z0 + 4; z < z1 - 3; z += 24) bx(shims, 2.4, 0.25, 3, shimM, rx - 1.2, 0, z);
+  const groutG = stage(); for (const rx of rails) for (const sx of [-1.6, 1]) bx(groutG, 0.6, 0.35, z1 - z0 - 4, grout, rx + sx, 0, z0 + 2);
+  // 5 masonite, 6 saw cut, 7 plywood between the rails
+  const bays = []; { let a = x0; for (const rx of rails) { bays.push([a, rx - 1.6]); a = rx + 1.6; } bays.push([a, x1]); }
+  const sheets = (m, t, y) => { const out = []; for (const [a, b] of bays) for (let z = z0; z < z1; z += 48) { const g = stage(); bx(g, b - a, t, Math.min(48, z1 - z) - 0.1, m, a, y, z); out.push(g); } return out; };
+  const mason = sheets(masonite, 0.25, 0), plyG = sheets(ply, 1, 0.25);
+  const saw = stage(); { const s = group(saw, 0, 0, 0); bx(s, 8, 3, 6, toolM, -4, 1.25, -3); cyl(s, 3.2, 0.2, alu, 0, 2.2, 0, 24, 'x'); bx(s, 2, 4, 2, black, -1, 4.2, -1); saw.userData.tool = s; }
+  const stack = stage(); bx(stack, 48, 4, 96, ply, x1 + 20, 0, 20);
+  // 8 hammer drill, 9 Tapcons: one pattern of points across the deck, revealed row by row
+  const pts = []; for (let z = z0 + 6; z < z1 - 4; z += 16) for (const [a, b] of bays) for (let x = a + 5; x < b - 3; x += 16) pts.push([x, z]);
+  const mk = (geo, m, y) => { const im = new THREE.InstancedMesh(geo, m, pts.length), o = new THREE.Object3D(); pts.forEach(([x, z], i) => { o.position.set(x, y, z); o.updateMatrix(); im.setMatrixAt(i, o.matrix); }); im.instanceMatrix.needsUpdate = true; im.count = 0; root.add(im); return im; };
+  const holes = mk(new THREE.CylinderGeometry(0.35, 0.35, 0.05, 10), hole, RH + 0.02), screws = mk(new THREE.CylinderGeometry(0.55, 0.55, 0.15, 6), alu, RH + 0.08);
+  const drill = stage(); { bx(drill, 3, 8, 3, toolM, -1.5, RH + 6, -1.5); bx(drill, 6, 3, 3, toolM, -1.5, RH + 11, -1.5); cyl(drill, 0.3, 6, alu, 0, RH + 3, 0, 8); }
+  // 10 aluminum ramp edges on the open sides
+  const ramps = stage(); { const s = new THREE.Shape(); s.moveTo(0, 0); s.lineTo(5, 0); s.lineTo(0, RH); s.closePath(); for (const [xx, rot] of [[x1, 0], [x0, Math.PI]]) { const m = new THREE.Mesh(new THREE.ExtrudeGeometry(s, { depth: z1 - z0, bevelEnabled: false }), alu); m.rotation.y = rot; m.position.set(xx, 0, rot ? z1 : z0); ramps.add(m); } }
+  // 11 to 14: carriages, shelving, end panels, load, first aisle
   const parts = { carriage: [], frame: [], panels: [], loaded: [] };
   const ranges = depths.map((dd, j) => {
-    const g = group(root, 0, 0.4, base[j]), fixed = j === 0 || j === depths.length - 1, last = j === depths.length - 1;
+    const g = group(root, 0, RH, base[j]), fixed = j === 0 || j === depths.length - 1, last = j === depths.length - 1;
     g.userData.dyn = true; g.userData.z0 = base[j] + (last ? aisle : 0);
-    const c = group(g); bx(c, L, cH, dd, M.dark, 0, 0, 0); parts.carriage.push(c);
+    const c = group(g); bx(c, L, cH, dd, M.dark, 0, 0, 0); for (const rx of rails) cyl(c, 2, 1.4, black, rx, 1.6, dd / 2, 16, 'x'); parts.carriage.push(c);
     const shelves = (contents) => {
       const s = group(g, 0, cH, 0);
       if (!fixed || j === 0) shelving(k, s, { bays: 3, w: 36, d, h, closed: true, shelves: 7, paint, contents, seed: 3 + j, z: fixed ? 0.5 : d + 1 });
@@ -1659,30 +1679,39 @@ def('install', 'Mobile Storage Install, Step by Step', 'From slab to working sys
     parts.frame.push(shelves(null)); parts.loaded.push(shelves('boxes'));
     const p = group(g);
     bx(p, 1.6, h + cH + 1, dd - 0.3, panel, L, 0, 0.15); bx(p, 1.6, h + cH + 1, dd - 0.3, panel, -1.6, 0, 0.15);
-    if (!fixed) { const hub = group(p, L + 1.8, 50, dd / 2); cyl(hub, 2.6, 2, black, 1, 0, 0, 28, 'x'); for (let s = 0; s < 3; s++) { const arm = new THREE.Group(); arm.rotation.x = (s * Math.PI * 2) / 3; hub.add(arm); const a = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 1.1, 8.4, 16), black); a.position.set(1.2, 4.6, 0); arm.add(a); const ball = new THREE.Mesh(new THREE.SphereGeometry(1.4, 20, 14), black); ball.position.set(1.2, 9.4, 0); arm.add(ball); } }
+    if (!fixed) { const hub = group(p, L + 1.8, 50, dd / 2); cyl(hub, 2.6, 2, black, 1, 0, 0, 28, 'x'); for (let q = 0; q < 3; q++) { const arm = new THREE.Group(); arm.rotation.x = (q * Math.PI * 2) / 3; hub.add(arm); const a = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 1.1, 8.4, 16), black); a.position.set(1.2, 4.6, 0); arm.add(a); const ball = new THREE.Mesh(new THREE.SphereGeometry(1.4, 20, 14), black); ball.position.set(1.2, 9.4, 0); arm.add(ball); } }
     parts.panels.push(p);
     for (const o of [c, p, ...g.children]) o.userData.dyn = true;
     return g;
   });
-  const all = [rails, ...parts.carriage, ...parts.frame, ...parts.loaded, ...parts.panels];
-  all.forEach(o => { o.userData.home = o.position.clone(); });
+  const staged = [lines, ...railG, shims, groutG, ...mason, ...plyG, saw, stack, drill, ramps, ...parts.carriage, ...parts.frame, ...parts.loaded, ...parts.panels];
+  staged.forEach(o => { o.userData.home = o.position.clone(); });
+  const drop = async (list, from, ms, gap) => { for (const o of list) { o.visible = true; o.position.y = o.userData.home.y + from; tween(o.position, 'y', o.userData.home.y, ms, 'out'); await wait(gap); } await wait(ms); };
   const STEPS = [
-    ['Step 1 of 6', 'Rails set level in the slab', async () => { rails.visible = true; rails.position.y = -3; await tween(rails.position, 'y', 0, 900, 'out'); }],
-    ['Step 2 of 6', 'Carriages set on the rails', async () => { for (const c of parts.carriage) { c.visible = true; c.position.y = 40; tween(c.position, 'y', c.userData.home.y, 800, 'out'); await wait(140); } await wait(700); }],
-    ['Step 3 of 6', 'Shelving frames and shelves', async () => { for (const s of parts.frame) { s.visible = true; s.scale.y = 0.01; tween(s.scale, 'y', 1, 900, 'out'); await wait(150); } await wait(800); }],
-    ['Step 4 of 6', 'End panels and handles', async () => { for (const p of parts.panels) { p.visible = true; p.position.x = 30; tween(p.position, 'x', 0, 700, 'out'); await wait(120); } await wait(600); }],
-    ['Step 5 of 6', 'Loaded and handed over', async () => { parts.loaded.forEach((s, i) => { s.visible = true; parts.frame[i].visible = false; }); wake(); await wait(300); }],
-    ['Step 6 of 6', 'First aisle opened', async () => { for (let j = 2; j < depths.length - 1; j++) tween(ranges[j].position, 'z', base[j] + aisle, 1500); await wait(1500); }],
+    ['Lay out', 'Snap chalk lines for every rail', async () => { lines.visible = true; lines.scale.z = 0.01; await tween(lines.scale, 'z', 1, 900, 'out'); }],
+    ['Rails', 'Set the rails on the slab', async () => { await drop(railG, 14, 700, 160); }],
+    ['Level', 'Shim each rail dead level', async () => { shims.visible = true; railG.forEach(g => { g.position.y = -0.25; }); await wait(250); for (const g of railG) { tween(g.position, 'y', 0, 600, 'out'); await wait(120); } await wait(600); }],
+    ['Grout', 'Grout under the rails', async () => { groutG.visible = true; groutG.scale.z = 0.01; await tween(groutG.scale, 'z', 1, 1100); }],
+    ['Underlayment', 'Lay masonite between the rails', async () => { await drop(mason, 6, 450, 45); }],
+    ['Cut to fit', 'Cut plywood to size between the track', async () => { stack.visible = true; saw.visible = true; saw.position.set(x1 + 44, 4, 20); await tween(saw.position, 'z', 116, 1200, 'lin'); saw.visible = false; }],
+    ['Deck', 'Set the plywood flush with the rails', async () => { stack.visible = false; await drop(plyG, 8, 450, 45); }],
+    ['Drill', 'Hammer drill through the plywood into the slab', async () => { drill.visible = true; const rows = [...new Set(pts.map(p => p[1]))]; let n = 0; for (const z of rows) { const idx = pts.findIndex(p => p[1] === z); drill.position.set(pts[idx][0], 0, z); n = pts.filter(p => p[1] <= z).length; holes.count = n; wake(); await wait(110); } drill.visible = false; }],
+    ['Fasten', 'Drive Tapcon screws into the concrete', async () => { for (let n = 0; n <= pts.length; n += 6) { screws.count = Math.min(n, pts.length); wake(); await wait(40); } screws.count = pts.length; wake(); }],
+    ['Edges', 'Aluminum ramp edges on the open sides', async () => { ramps.visible = true; ramps.position.y = 6; await tween(ramps.position, 'y', 0, 700, 'out'); }],
+    ['Carriages', 'Set the carriages on the rails', async () => { await drop(parts.carriage, 30, 800, 140); }],
+    ['Shelving', 'Build the shelving on the carriages', async () => { for (const s of parts.frame) { s.visible = true; s.scale.y = 0.01; tween(s.scale, 'y', 1, 900, 'out'); await wait(150); } await wait(800); }],
+    ['Finish', 'End panels and handles', async () => { for (const p of parts.panels) { p.visible = true; p.position.x = 30; tween(p.position, 'x', 0, 700, 'out'); await wait(120); } await wait(600); }],
+    ['Turnover', 'Loaded, tested, first aisle opened', async () => { parts.loaded.forEach((s, i) => { s.visible = true; parts.frame[i].visible = false; }); wake(); await wait(400); for (let j = 2; j < depths.length - 1; j++) tween(ranges[j].position, 'z', base[j] + aisle, 1500); await wait(1500); }],
   ];
   let at = 0, busy = false;
-  const reset = () => { at = 0; all.forEach(o => { o.visible = false; o.position.copy(o.userData.home); o.scale.set(1, 1, 1); }); ranges.forEach(g => { g.position.z = g.userData.z0; }); say('Install sequence', 'Press Next step to start'); };
-  const next = async () => { if (busy || at >= STEPS.length) return; busy = true; const [a, b, fn] = STEPS[at++]; say(a, b); await fn(); busy = false; };
+  const reset = () => { at = 0; staged.forEach(o => { o.visible = false; o.position.copy(o.userData.home); o.scale.set(1, 1, 1); }); ranges.forEach(g => { g.position.z = g.userData.z0; }); holes.count = 0; screws.count = 0; say('Install sequence', 'Press Next step to start'); };
+  const next = async () => { if (busy || at >= STEPS.length) return; busy = true; const [a, b, fn] = STEPS[at]; at++; say('Step ' + at + ' of ' + STEPS.length + ' · ' + a, b); await fn(); busy = false; };
   reset();
   return {
     group: root, view: [1.45, 0.62, 0.62],
     actions: [
       { label: 'Next step', run: () => { next(); return at >= STEPS.length ? 'Done' : 'Next step'; } },
-      { label: 'Play the whole install', run: async () => { if (busy) return; if (at >= STEPS.length) reset(); while (at < STEPS.length) await next(); } },
+      { label: 'Play the whole install', run: async () => { if (busy) return; if (at >= STEPS.length) reset(); while (at < STEPS.length) { await next(); await wait(500); } } },
       { label: 'Start over', run: () => { if (!busy) reset(); } },
     ],
   };
