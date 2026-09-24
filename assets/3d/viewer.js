@@ -250,8 +250,10 @@ function viewer(el) {
     ptr.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
     ray.setFromCamera(ptr, camera);
     for (const hit of ray.intersectObject(current.group, true)) {
+      const m = hit.object.material; if (!hit.object.visible || (m && (m.transparent && m.opacity < 0.6 || m.alphaTest > 0 && !hit.object.userData.onClick && !hit.object.parent?.userData.onClick))) continue;
       let o = hit.object; while (o && !o.userData.onClick) o = o.parent;
-      if (o) { o.userData.onClick(hit); modelWake(); break; }
+      if (o) { o.userData.onClick(hit); modelWake(); }
+      break;
     }
   });
   let hoverQ = null;
