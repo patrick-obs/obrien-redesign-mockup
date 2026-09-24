@@ -89,6 +89,7 @@ function viewer(el) {
         <div class="v3d-fsask" hidden><b>Walk it full screen?</b><span>It feels more like being there.</span><div><button type="button" data-fs="1">Go full screen</button><button type="button" data-fs="0">Stay here</button></div></div>
         <div class="v3d-walkbar" hidden><span>Arrow keys or WASD to walk, drag to look, tap a circle to move</span><button type="button" class="v3d-exit">Exit <kbd>Esc</kbd></button></div>
         <div class="v3d-toast" hidden></div>
+        <button type="button" class="v3d-optbtn" aria-expanded="false">Options</button>
       </div>
       <div class="v3d-presets" hidden></div>
       <div class="v3d-bar">
@@ -142,7 +143,7 @@ function viewer(el) {
   const wake = () => { dirty = true; if (!frame) frame = requestAnimationFrame(loop); };
   const modelWake = () => { sceneDirty = true; wake(); };
   // while anything moves, render a little softer; one crisp frame when it settles
-  const setRes = (low) => { if (low === lowRes) return; lowRes = low; renderer.setPixelRatio(low ? Math.min(pr, heavy ? 1 : 1.25) : pr); renderer.setSize(stage.clientWidth, stage.clientHeight, false); };
+  const setRes = (low) => { if (low === lowRes) return; lowRes = low; renderer.setPixelRatio(low ? Math.min(pr, 1) : pr); renderer.setSize(stage.clientWidth, stage.clientHeight, false); };
   controls.addEventListener('change', wake);
 
   let ovClean = null;
@@ -163,13 +164,13 @@ function viewer(el) {
   };
   const syncActs = () => el.querySelectorAll('.v3d-acts .v3d-ctl').forEach(b => b._sync?.());
   const scan = () => { clickables = []; current?.group.traverse(o => { if (o.userData.onClick) clickables.push(o); }); };
-  let walking = false, walkB = null, rings = null;
+  let walking = false, walkB = null, rings = null, walkFloor = null;
   const keys = new Set(), peg = el.querySelector('.v3d-peg'), walkbar = el.querySelector('.v3d-walkbar'), toastEl = el.querySelector('.v3d-toast');
   let toastT = 0;
   const toast = (msg) => { toastEl.textContent = msg; toastEl.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { toastEl.hidden = true; }, 3200); };
   // glide the camera to a point and look at another; eye level views look around from where you stand
   const fly = (pos, target, ms = 1300) => {
-    walking = true; controls.minDistance = 0.5; controls.autoRotate = false; tween(camera, 'fov', 80, ms);
+    walking = true; controls.minDistance = 0.5; controls.autoRotate = false; tween(camera, 'fov', 96, ms);
     // keep the look point close only once the glide is over, or the orbit limit snaps the camera mid-flight
     setTimeout(() => { if (walking) controls.maxDistance = 10; }, ms + 50);
     // pivot a few inches in front of the eye, so dragging looks around instead of orbiting
@@ -178,46 +179,73 @@ function viewer(el) {
     el.querySelector('.v3d-main').classList.add('v3d-walk');
   };
   const overview = (ms = 1100) => {
-    if (!home) return; walking = false; walkB = null; keys.clear(); if (rings) { scene.remove(rings); rings = null; } controls.minDistance = home.r * 0.6; controls.maxDistance = home.r * 4; tween(camera, 'fov', 32, ms);
-    walkbar.hidden = true; peg.hidden = !current?.walk; el.querySelector('.v3d-fsask').hidden = true;
+    if (!home) return; walking = false; walkB = null; keys.clear(); if (rings) { scene.remove(rings); rings = null; } if (walkFloor) { scene.remove(walkFloor); walkFloor = null; } controls.minDistance = home.r * 0.6; controls.maxDistance = home.r * 4; tween(camera, 'fov', 32, ms);
+    walkbar.hidden = true; peg.hidden = !current; el.querySelector('.v3d-fsask').hidden = true;
     ['x', 'y', 'z'].forEach(a => { tween(camera.position, a, home.pos[a], ms); tween(controls.target, a, home.target[a], ms); });
     el.querySelector('.v3d-main').classList.remove('v3d-walk');
   };
-  // step inside: stand where the model says, rings on the floor to hop along, keys to walk within its bounds
+  // step inside: stand at eye level anywhere around the model and walk it like a sim. The model can say where to start
+  // (walk(): eye, look, floor, spots); walls, shelving and carriages block you, and you can always walk all the way around
+  const wray = new THREE.Raycaster();
+  const solid = h => { let q = h.object; while (q) { if (!q.visible) return false; q = q.parent; } const m = h.object.material; return !h.object.userData.noShadow && !(m && m.transparent && m.opacity < 0.5 && !m.isMeshPhysicalMaterial); };
+  // only parts near the walker are tested, so walking stays smooth in big systems
+  let colliders = [];
+  const sph = new THREE.Sphere();
+  const blocked = (from, dir, len) => {
+    if (len < 1e-4) return false;
+    const near = colliders.filter(o => { const bs = o.isInstancedMesh ? (o.boundingSphere || (o.computeBoundingSphere(), o.boundingSphere)) : (o.geometry.boundingSphere || (o.geometry.computeBoundingSphere(), o.geometry.boundingSphere)); sph.copy(bs).applyMatrix4(o.matrixWorld); const dy = Math.max(0, Math.abs(sph.center.y - (walkB.floor + 31)) - 29); return dy < sph.radius && Math.hypot(sph.center.x - from.x, sph.center.z - from.z) < sph.radius + len + 12; });
+    if (!near.length) return false;
+    for (const hgt of [18, 44]) { wray.set(new THREE.Vector3(from.x, walkB.floor + hgt, from.z), dir); wray.far = len + 10; if (wray.intersectObjects(near, false).some(solid)) return true; }
+    return false;
+  };
   const enterWalk = () => {
-    const w = current?.walk?.(); if (!w) return;
+    if (!current) return;
     stopDemo(); closePanel();
-    const m = current.group.matrixWorld, V = a => new THREE.Vector3(...a).applyMatrix4(m);
-    walkB = { x: w.x, z: w.z };
-    fly(V(w.eye), V(w.look));
+    const m = current.group.matrixWorld, V = a => new THREE.Vector3(...a).applyMatrix4(m), w = current.walk?.() || {};
+    const box = new THREE.Box3().setFromObject(current.group), c = box.getCenter(new THREE.Vector3()), floor = w.floor != null ? V([0, w.floor, 0]).y : box.min.y;
+    walkB = { x: [box.min.x - 96, box.max.x + 96], z: [box.min.z - 96, box.max.z + 96], floor };
+    colliders = []; current.group.traverse(o => { if (o.isMesh && !o.userData.noShadow) colliders.push(o); });
+    const eye = w.eye ? V(w.eye) : new THREE.Vector3(c.x, floor + 64, box.max.z + 54), look = w.look ? V(w.look) : new THREE.Vector3(c.x, floor + 50, c.z);
+    fly(eye, look);
+    // floor circles: the model's own spots (an aisle), plus a loop all the way around the system
     rings = new THREE.Group(); const ringM = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, depthWrite: false }), dotM = new THREE.MeshBasicMaterial({ color: 0x0f7377, transparent: true, opacity: 0.35, depthWrite: false });
-    const zc = (w.z[0] + w.z[1]) / 2;
-    for (let x = w.x[0] + 18; x < w.x[1] - 6; x += 30) {
+    const spots = (w.spots || []).map(([x, z]) => V([x, 0, z])), o = 40;
+    const x0 = box.min.x - o, x1 = box.max.x + o, z0 = box.min.z - o, z1 = box.max.z + o;
+    for (const [ax, az, bx2, bz] of [[x0, z1, x1, z1], [x1, z1, x1, z0], [x1, z0, x0, z0], [x0, z0, x0, z1]]) { const len = Math.hypot(bx2 - ax, bz - az), n = Math.max(1, Math.round(len / 54)); for (let i = 0; i < n; i++) spots.push(new THREE.Vector3(ax + ((bx2 - ax) * i) / n, 0, az + ((bz - az) * i) / n)); }
+    for (const p of spots) {
       const g = new THREE.Group(), r1 = new THREE.Mesh(new THREE.RingGeometry(6, 7.4, 40), ringM), r2 = new THREE.Mesh(new THREE.CircleGeometry(6, 40), dotM);
-      [r1, r2].forEach(q => { q.rotation.x = -Math.PI / 2; g.add(q); }); g.position.copy(V([x, (w.floor || 0) + 0.3, zc])); g.userData.spot = [x, zc]; rings.add(g);
+      [r1, r2].forEach(q => { q.rotation.x = -Math.PI / 2; g.add(q); }); g.position.set(p.x, floor + 0.3, p.z); g.userData.spot = [p.x, p.z]; rings.add(g);
     }
     scene.add(rings);
+    // a real floor to stand on, with a faint grid so walking reads as motion
+    const fw = walkB.x[1] - walkB.x[0] + 200, fd = walkB.z[1] - walkB.z[0] + 200;
+    const fl = new THREE.Mesh(new THREE.PlaneGeometry(fw, fd), new THREE.MeshLambertMaterial({ color: 0xd3d7d6 })); fl.rotation.x = -Math.PI / 2;
+    const grid = new THREE.GridHelper(Math.max(fw, fd), Math.round(Math.max(fw, fd) / 24), 0xbfc5c4, 0xc7cccb); grid.position.y = 0.02;
+    walkFloor = new THREE.Group(); walkFloor.add(fl, grid); walkFloor.position.set((walkB.x[0] + walkB.x[1]) / 2, floor - 0.08, (walkB.z[0] + walkB.z[1]) / 2); scene.add(walkFloor);
     peg.hidden = true; walkbar.hidden = false; el.querySelector('.v3d-prompt')?.classList.add('gone'); fsAsk.hidden = !!document.fullscreenElement || !(el.querySelector('.v3d-main').requestFullscreen || el.querySelector('.v3d-main').webkitRequestFullscreen); el.focus({ preventScroll: true }); modelWake();
   };
   const toLocal = () => camera.position.clone().applyMatrix4(new THREE.Matrix4().copy(current.group.matrixWorld).invert());
-  // move the eye (and the look point with it) by dx, dz in model inches, kept inside the walkable area
+  // move the eye (and the look point with it) by dx, dz in world inches: stay in the area, slide along anything in the way
   const stepBy = (dx, dz) => {
     if (!walkB) return;
-    const p = toLocal(), nx = Math.max(walkB.x[0], Math.min(walkB.x[1], p.x + dx)), nz = Math.max(walkB.z[0], Math.min(walkB.z[1], p.z + dz));
-    const d = new THREE.Vector3(nx, p.y, nz).applyMatrix4(current.group.matrixWorld).sub(camera.position);
-    camera.position.add(d); controls.target.add(d);
+    const p = camera.position, clampX = v => Math.max(walkB.x[0], Math.min(walkB.x[1], v)), clampZ = v => Math.max(walkB.z[0], Math.min(walkB.z[1], v));
+    let mx = clampX(p.x + dx) - p.x, mz = clampZ(p.z + dz) - p.z;
+    const tryMove = (ax, az) => { const len = Math.hypot(ax, az); return len > 1e-4 && !blocked(p, new THREE.Vector3(ax / len, 0, az / len), len); };
+    if (!tryMove(mx, mz)) { if (tryMove(mx, 0)) mz = 0; else if (tryMove(0, mz)) mx = 0; else return false; }
+    camera.position.x += mx; camera.position.z += mz; controls.target.x += mx; controls.target.z += mz;
+    return true;
   };
   const hopTo = (x, z) => {
-    const p = toLocal(), o = { t: 0 }, sx = p.x, sz = p.z; let lx = sx, lz = sz; tween(o, 't', 1, 700);
-    const step = () => { const nx = sx + (x - sx) * ease(o.t), nz = sz + (z - sz) * ease(o.t); stepBy(nx - lx, nz - lz); lx = nx; lz = nz; wake(); if (o.t < 1 && walking) requestAnimationFrame(step); };
+    const o = { t: 0 }, sx = camera.position.x, sz = camera.position.z; let lx = sx, lz = sz; tween(o, 't', 1, Math.min(1600, 400 + Math.hypot(x - sx, z - sz) * 6));
+    const step = () => { const nx = sx + (x - sx) * ease(o.t), nz = sz + (z - sz) * ease(o.t); stepBy(nx - lx, nz - lz); lx = camera.position.x; lz = camera.position.z; wake(); if (o.t < 1 && walking) requestAnimationFrame(step); };
     step();
   };
   let lastT = 0;
   const walkKeys = (now) => {
     if (!walking || !keys.size) { lastT = 0; return false; }
     const dt = lastT ? Math.min(0.05, (now - lastT) / 1000) : 0.016; lastT = now;
-    const fwd = controls.target.clone().sub(camera.position); fwd.y = 0; fwd.normalize();
-    const f = fwd.clone().transformDirection(new THREE.Matrix4().copy(current.group.matrixWorld).invert()), sp = 55 * dt, on = k => keys.has(k);
+    const f = controls.target.clone().sub(camera.position); f.y = 0; f.normalize();
+    const sp = (keys.has('shift') ? 110 : 60) * dt, on = k => keys.has(k);
     let dx = 0, dz = 0;
     if (on('w') || on('arrowup')) { dx += f.x * sp; dz += f.z * sp; } if (on('s') || on('arrowdown')) { dx -= f.x * sp; dz -= f.z * sp; }
     if (on('a')) { dx += f.z * sp; dz -= f.x * sp; } if (on('d')) { dx -= f.z * sp; dz += f.x * sp; }
@@ -226,8 +254,8 @@ function viewer(el) {
     if (dx || dz) stepBy(dx, dz);
     return true;
   };
-  el.tabIndex = -1;
-  const WALK_KEYS = ['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'];
+  el.tabIndex = -1; el.v3dState = () => ({ cam: camera.position.toArray().map(Math.round), walking, keys: [...keys], walkB, active: document.activeElement?.className });
+  const WALK_KEYS = ['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'shift'];
   addEventListener('keydown', e => {
     if (!walking || !(el.contains(document.activeElement) || el.matches(':hover') || document.fullscreenElement)) return;
     const k = e.key.toLowerCase();
@@ -236,6 +264,8 @@ function viewer(el) {
   });
   addEventListener('keyup', e => keys.delete(e.key.toLowerCase())); addEventListener('blur', () => keys.clear());
   peg.addEventListener('click', enterWalk);
+  // full screen keeps the view clean: the settings open on demand over the model
+  el.querySelector('.v3d-optbtn').addEventListener('click', e => { const m = el.querySelector('.v3d-main'), on = m.classList.toggle('v3d-opts'); e.currentTarget.setAttribute('aria-expanded', String(on)); e.currentTarget.textContent = on ? 'Hide options' : 'Options'; });
   const fsAsk = el.querySelector('.v3d-fsask');
   fsAsk.addEventListener('click', e => { const b = e.target.closest('[data-fs]'); if (!b) return; fsAsk.hidden = true; if (b.dataset.fs === '1') { const box = el.querySelector('.v3d-main'); (box.requestFullscreen || box.webkitRequestFullscreen)?.call(box); } el.focus({ preventScroll: true }); });
   el.querySelector('.v3d-exit').addEventListener('click', () => { overview(); syncActs(); showActs(); });
@@ -265,7 +295,7 @@ function viewer(el) {
   function fit(group, view) {
     const box = new THREE.Box3().setFromObject(group), size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
     const r = size.length() / 2;
-    const dist = r / Math.sin((camera.fov * Math.PI) / 360) * 1.02;
+    const dist = r / Math.sin((camera.fov * Math.PI) / 360) * 1.22;
     const dir = new THREE.Vector3(...(view || [0.9, 0.55, 1.25])).normalize();
     home = { pos: c.clone().add(dir.multiplyScalar(dist)), target: c.clone() };
     camera.fov = 32; camera.near = r / 50; camera.far = r * 40; camera.updateProjectionMatrix();
@@ -281,7 +311,7 @@ function viewer(el) {
     closePanel();
     if (current) { scene.remove(current.group); current.group.traverse(o => { o.geometry?.dispose?.(); }); }
     const def = MODELS[id];
-    current = def.build({ THREE, tween, wait, wake: modelWake, bake: g => bake(THREE, g), panel, toast, lite: el.dataset.lite === '1', fly: (p, t) => { const m = current.group.matrixWorld; fly(new THREE.Vector3(...p).applyMatrix4(m), new THREE.Vector3(...t).applyMatrix4(m)); }, overview: () => overview(), isWalking: () => walking, refresh: () => { syncActs(); showActs(); }, refit: () => { if (current) { fit(current.group, current.view); wake(); } } });
+    current = def.build({ THREE, tween, wait, wake: modelWake, bake: g => bake(THREE, g), panel, toast, lite: el.dataset.lite === '1', fly: (p, t) => { const m = current.group.matrixWorld; fly(new THREE.Vector3(...p).applyMatrix4(m), new THREE.Vector3(...t).applyMatrix4(m)); }, overview: () => overview(), isWalking: () => walking, playerPos: () => (walking ? toLocal() : null), refresh: () => { syncActs(); showActs(); }, refit: () => { if (current) { if (walking) overview(1); fit(current.group, current.view); wake(); } } });
     scan();
     current.group.traverse(o => { if (o.isMesh && !o.userData.noShadow) { o.castShadow = true; o.receiveShadow = true; } });
     bake(THREE, current.group);
@@ -303,13 +333,13 @@ function viewer(el) {
         node = document.createElement('label'); node.className = 'v3d-opt';
         const sel = document.createElement('select'); sel.setAttribute('aria-label', a.label);
         a.options.forEach((o, i) => sel.add(new Option(o, i)));
-        sel.addEventListener('change', () => { a.set(+sel.value); after(); });
+        sel.addEventListener('change', () => { if (walking) overview(1); a.set(+sel.value); after(); });
         node.append(Object.assign(document.createElement('span'), { textContent: a.label }), sel);
         node._sync = () => { sel.value = String(a.get()); };
       } else if (a.toggle) {
         node = document.createElement('label'); node.className = 'v3d-chk';
         const cb = document.createElement('input'); cb.type = 'checkbox';
-        cb.addEventListener('change', () => { a.set(cb.checked); after(); });
+        cb.addEventListener('change', () => { if (walking) overview(1); a.set(cb.checked); after(); });
         node.append(cb, document.createTextNode(a.label));
         node._sync = () => { cb.checked = !!a.get(); };
       } else {
@@ -322,9 +352,9 @@ function viewer(el) {
     const mb = document.createElement('button'); mb.type = 'button'; mb.className = 'v3d-more'; mb.addEventListener('click', () => { moreOpen = !moreOpen; showActs(); }); btnRow.appendChild(mb);
     syncActs();
     showActs();
-    peg.hidden = !current.walk; walkbar.hidden = true; if (rings) { scene.remove(rings); rings = null; } walkB = null;
+    peg.hidden = false; walkbar.hidden = true; if (rings) { scene.remove(rings); rings = null; } if (walkFloor) { scene.remove(walkFloor); walkFloor = null; } walkB = null;
     const pr = el.querySelector('.v3d-presets'), pl = el.dataset.lite === '1' ? [] : current.presets || [];
-    pr.hidden = !pl.length; pr.replaceChildren(...(pl.length ? [Object.assign(document.createElement('span'), { textContent: 'Start from' })] : []), ...pl.map(p => { const b = document.createElement('button'); b.type = 'button'; b.textContent = p.label; b.addEventListener('click', () => { pr.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); p.run(); after(); }); return b; }));
+    pr.hidden = !pl.length; pr.replaceChildren(...(pl.length ? [Object.assign(document.createElement('span'), { textContent: 'Start from' })] : []), ...pl.map(p => { const b = document.createElement('button'); b.type = 'button'; b.textContent = p.label; b.addEventListener('click', () => { if (walking) overview(1); pr.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); p.run(); after(); }); return b; }));
     const pm = el.querySelector('.v3d-prompt'), ptxt = current.prompt || (clickables.length ? 'Tap parts of the model to open or move them' : '');
     pm.textContent = ptxt; pm.hidden = !ptxt; pm.classList.remove('gone');
     const fin = el.querySelector('.v3d-fin');
@@ -352,10 +382,11 @@ function viewer(el) {
     if (last && now - last > 26) { if (++slow > 24 && pr > 1) { pr = Math.max(1, pr - 0.25); renderer.setPixelRatio(pr); resize(); slow = 0; } } else slow = Math.max(0, slow - 1);
     last = active || controls.autoRotate || lowRes ? now : 0;
     if (stepped) { current?.tick?.(); camera.updateProjectionMatrix(); }
-    const stepping = walkKeys(now), moving = controls.update(), busy = active || moving || controls.autoRotate || stepping;
+    let stepping = false; try { stepping = walkKeys(now); } catch (err) { console.error('walk', err.message, String(err.stack).slice(0, 300)); keys.clear(); }
+    const moving = controls.update(), busy = active || moving || controls.autoRotate || stepping;
     if (busy) setRes(true);
     // moving parts refresh shadows every few frames; a settled frame always gets a fresh shadow map
-    if (sceneDirty || (active && ++shadowTick % (heavy ? 4 : 2) === 0)) { renderer.shadowMap.needsUpdate = true; sceneDirty = false; }
+    if (sceneDirty || (active && !walking && ++shadowTick % (heavy ? 8 : 4) === 0)) { renderer.shadowMap.needsUpdate = true; sceneDirty = false; }
     const idleSpin = demoOn && !active && !stepping && !dirty && now - lastDraw < 32;
     if ((dirty || busy) && !idleSpin) { lastDraw = now; renderer.render(scene, camera); dirty = false; if (!measured) { measured = true; heavy = renderer.info.render.calls > 110; } }
     if (busy) frame = requestAnimationFrame(loop);
@@ -387,16 +418,19 @@ function viewer(el) {
       if (o) { o.userData.onClick(hit); modelWake(); el.querySelector('.v3d-prompt')?.classList.add('gone'); }
     }
   });
-  let hoverQ = null;
+  // hover cursor: at most about 8 checks a second, always on the latest pointer position
+  let hoverQ = null, hoverT = 0, hoverOn = false;
+  const hoverCheck = () => {
+    hoverOn = false; if (!hoverQ || !current) return; hoverT = performance.now();
+    const r = canvas.getBoundingClientRect(), p = hoverQ; hoverQ = null;
+    ptr.set(((p[0] - r.left) / r.width) * 2 - 1, -((p[1] - r.top) / r.height) * 2 + 1);
+    ray.setFromCamera(ptr, camera);
+    canvas.style.cursor = ray.intersectObjects(clickables, true).length ? 'pointer' : 'grab';
+  };
   canvas.addEventListener('pointermove', e => {
     if (e.buttons || !current || !clickables.length) return;
-    if (!hoverQ) requestAnimationFrame(() => {
-      const r = canvas.getBoundingClientRect(), p = hoverQ; hoverQ = null;
-      ptr.set(((p[0] - r.left) / r.width) * 2 - 1, -((p[1] - r.top) / r.height) * 2 + 1);
-      ray.setFromCamera(ptr, camera);
-      canvas.style.cursor = ray.intersectObjects(clickables, true).length ? 'pointer' : 'grab';
-    });
     hoverQ = [e.clientX, e.clientY];
+    if (!hoverOn) { hoverOn = true; setTimeout(() => requestAnimationFrame(hoverCheck), Math.max(0, 120 - (performance.now() - hoverT))); }
   });
 
   el.querySelector('[data-v=reset]').addEventListener('click', () => { if (walking) { overview(); syncActs(); showActs(); return; } if (home) { camera.position.copy(home.pos); controls.target.copy(home.target); controls.update(); wake(); } });

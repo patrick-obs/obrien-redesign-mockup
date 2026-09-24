@@ -23,6 +23,78 @@ function footballHelmet(THREE, shellM, x, y, z, rotY = 0, s = 1) {
 }
 let FB_MASK = null, FB_WHITE = null, FB_DARK = null;
 
+// athletic gear, shared by the team lockers and mobile athletic storage
+const GEAR = {};
+function gearKit(THREE) {
+  if (GEAR.pad) return GEAR;
+  const std = (c, r = 0.6, m = 0.05) => new THREE.MeshStandardMaterial({ color: c, roughness: r, metalness: m });
+  const tex = (draw, w = 128, h = 64) => { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d')); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; };
+  Object.assign(GEAR, {
+    pad: std(0x1d1f22, 0.55), padTrim: std(0xe8e8e4, 0.6), hanger: std(0x9aa1a6, 0.3, 0.8), lace: std(0xf4f4f0, 0.7),
+    football: new THREE.MeshStandardMaterial({ roughness: 0.75, map: tex(g => { g.fillStyle = '#6b3a1f'; g.fillRect(0, 0, 128, 64); g.strokeStyle = '#4a2612'; g.lineWidth = 2; for (let x = 0; x < 128; x += 7) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x + 3, 64); g.stroke(); } g.fillStyle = '#f4f4f0'; g.fillRect(12, 0, 4, 64); g.fillRect(76, 0, 4, 64); }) }),
+    bag: [0x1c1d1f, 0x2a4d7a, 0x8c1d2c, 0xe7e4dc, 0x2f5a3e].map(c => std(c, 0.45, 0.1)), trim: [std(0x111213, 0.5), std(0xf2f2ee, 0.5), std(0x9aa1a6, 0.4, 0.5)],
+    shaft: std(0xc9ced2, 0.25, 0.9), iron: std(0xb9bfc3, 0.2, 0.95), covers: [0xc4382c, 0x2d4a7c, 0xe8b923, 0xf2f2ee, 0x2f8a4f].map(c => std(c, 0.95)),
+    mats: {}, numMat: (n) => GEAR.mats[n] || (GEAR.mats[n] = new THREE.MeshBasicMaterial({ map: GEAR.numTex(n, '#ffffff'), transparent: true, depthWrite: false })),
+    nums: {}, numTex: (n, color) => GEAR.nums[n + color] || (GEAR.nums[n + color] = tex(g => { g.clearRect(0, 0, 128, 128); g.fillStyle = color; g.font = 'bold 84px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(String(n), 64, 70); }, 128, 128)),
+  });
+  return GEAR;
+}
+// a jersey on a hanger: body, sleeves, collar and a printed number; hangs from (x, y, z) in the yz plane (rotY turns it)
+function jersey(THREE, parent, x, y, z, m, num, rotY = 0) {
+  const G = gearKit(THREE), g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = rotY; parent.add(g);
+  const box = (w, h, d, mm, px, py, pz, rx = 0) => { const me = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mm); me.position.set(px, py, pz); me.rotation.x = rx; g.add(me); return me; };
+  const hook = new THREE.Mesh(new THREE.TorusGeometry(0.9, 0.12, 6, 14, Math.PI * 1.3), G.hanger); hook.rotation.y = Math.PI / 2; hook.position.y = 0.4; g.add(hook);
+  box(0.3, 0.3, 15, G.hanger, 0, -1.4, 0); box(0.3, 1.6, 0.3, G.hanger, 0, -0.6, 0);
+  box(1.2, 24, 15, m, 0, -13.6, 0); for (const s of [1, -1]) box(1.2, 8, 5, m, 0, -4.6, s * 8.4, s * 0.7);
+  box(1.3, 1.4, 5, G.padTrim, 0, -1.9, 0);
+  for (const s of [1, -1]) { const d = new THREE.Mesh(new THREE.PlaneGeometry(9, 9), G.numMat(num)); d.rotation.y = s * Math.PI / 2; d.position.set(s * 0.62, -12, 0); g.add(d); }
+  return g;
+}
+// football shoulder pads: two domed caps over the shoulders, chest and back plates, white trim, hung by the neck opening
+function shoulderPads(THREE, parent, x, y, z, rotY = 0) {
+  const G = gearKit(THREE), g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = rotY; parent.add(g);
+  for (const s of [1, -1]) {
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(4.2, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), G.pad); cap.scale.set(1.05, 0.65, 1.15); cap.position.set(0, -3, s * 5.2); g.add(cap);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(4.3, 0.25, 6, 20), G.padTrim); rim.rotation.x = Math.PI / 2; rim.scale.set(1.05, 1.15, 1); rim.position.set(0, -3, s * 5.2); g.add(rim);
+  }
+  for (const s of [1, -1]) { const pl = new THREE.Mesh(new THREE.BoxGeometry(0.9, 9, 12), G.pad); pl.position.set(s * 3.6, -8, 0); pl.rotation.z = s * 0.18; g.add(pl); }
+  const neck = new THREE.Mesh(new THREE.TorusGeometry(2.6, 0.7, 8, 18), G.pad); neck.rotation.x = Math.PI / 2; neck.position.y = -2.2; g.add(neck);
+  return g;
+}
+// a football with laces, long axis along x
+function football(THREE, parent, x, y, z, rot = 0) {
+  const G = gearKit(THREE), b = new THREE.Mesh(new THREE.SphereGeometry(3.4, 20, 14), G.football); b.scale.set(1.6, 1, 1); b.position.set(x, y, z); b.rotation.y = rot; parent.add(b);
+  const l = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.2, 0.5), G.lace); l.position.set(0, 3.35, 0); b.add(l);
+  return b;
+}
+// a golf bag: base, body, side pocket, padded cuff, carry strap, and clubs out the top (headcovers on the woods)
+function golfBag(THREE, parent, x, y, z, i, h = 34, lean = 0) {
+  const G = gearKit(THREE), g = new THREE.Group(); g.position.set(x, y, z); g.rotation.x = lean; parent.add(g);
+  const m = G.bag[i % G.bag.length], trim = G.trim[(i + 1) % 3];
+  const cyl = (r1, r2, hh, mm, py, seg = 20) => { const me = new THREE.Mesh(new THREE.CylinderGeometry(r1, r2, hh, seg), mm); me.position.y = py; g.add(me); return me; };
+  cyl(4.3, 4.3, 2.2, G.trim[0], 1.1); cyl(4.2, 4.4, h - 5.5, m, 2.2 + (h - 5.5) / 2); cyl(4.6, 4.3, 3.3, trim, h - 1.65);
+  const pocket = new THREE.Mesh(new THREE.BoxGeometry(5.5, h * 0.42, 2.2), trim); pocket.position.set(0, h * 0.38, 4.2); g.add(pocket);
+  const zip = new THREE.Mesh(new THREE.BoxGeometry(0.25, h * 0.4, 0.2), G.hanger); zip.position.set(2.2, h * 0.38, 5.35); g.add(zip);
+  const strap = new THREE.Mesh(new THREE.TorusGeometry(6, 0.45, 6, 20, Math.PI), G.trim[0]); strap.rotation.set(0, Math.PI / 2, Math.PI / 2); strap.position.set(0, h * 0.55, -4.4); strap.scale.set(1.4, 1, 1); g.add(strap);
+  const top = h;
+  for (let c = 0; c < 3; c++) { // woods with knit headcovers
+    const cx = -2 + c * 2, cz = -1.6, sh = 9 + c;
+    const s = cyl(0.22, 0.22, sh, G.shaft, top + sh / 2, 6); s.position.set(cx, top + sh / 2 - 1, cz);
+    // knit sock cover: a neck down the shaft and the rounded head tipped toward the front
+    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.95, 3, 10), G.covers[(i + c) % 5]); neck.position.set(cx, top + sh - 2.4, cz); g.add(neck);
+    const cov = new THREE.Mesh(new THREE.SphereGeometry(1.5, 14, 10), G.covers[(i + c) % 5]); cov.scale.set(1.1, 0.9, 1.45); cov.position.set(cx, top + sh, cz + 0.8); cov.rotation.x = 0.35; g.add(cov);
+    const pom = new THREE.Mesh(new THREE.SphereGeometry(0.45, 8, 6), G.covers[(i + c + 2) % 5]); pom.position.set(cx, top + sh + 1.3, cz + 0.5); g.add(pom);
+  }
+  for (let c = 0; c < 6; c++) { // irons and a putter, blades out the front
+    const cx = -2.6 + (c % 3) * 2.6, cz = 0.8 + Math.floor(c / 3) * 1.6, sh = 5.5 + (c % 3) * 0.8;
+    const s = cyl(0.18, 0.18, sh, G.shaft, 0, 6); s.position.set(cx, top + sh / 2 - 1, cz);
+    // iron heads are thin blades set at an angle to the shaft; the putter is a small flat mallet
+    const head = new THREE.Mesh(new THREE.BoxGeometry(c === 5 ? 3 : 2.3, c === 5 ? 0.8 : 1.3, c === 5 ? 1.2 : 0.3), G.iron); head.position.set(cx + 0.9, top + sh - 0.3, cz); head.rotation.set(0.2, 0, c === 5 ? 0.05 : -0.45); g.add(head);
+  }
+  return g;
+}
+
+
 // small artworks as textures: paintings, architectural drawings, maps, prints
 const ART = [];
 function artMat(THREE, i) {
@@ -56,6 +128,22 @@ function painting(THREE) {
     else { const t = PAINT_TEX.clone(); t.offset.set(u, v); t.repeat.set(w, h); t.anisotropy = 4; PAINT_CLONES.push(t); PAINT_M[i] = new THREE.MeshStandardMaterial({ map: t, roughness: 0.75 }); }
   }
   return { m: PAINT_M[i], a };
+}
+
+// rolled textiles: quilts, rugs, flags, kilims and runners as canvas patterns, shared by every textile rack
+const TEX = [];
+function textileMats(THREE) {
+  if (TEX.length) return TEX;
+  const draws = [
+    g => { const cs = ['#b5563a', '#e8d6a8', '#2d4a7c', '#6b8f71', '#c9a227', '#8c3b2f', '#f2efe6', '#5e4a7a']; for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) { g.fillStyle = cs[(x * 3 + y * 5) % cs.length]; g.fillRect(x * 16, y * 16, 16, 16); } g.strokeStyle = 'rgba(255,255,255,.55)'; g.setLineDash([2, 2]); for (let i = 0; i <= 128; i += 16) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i, 128); g.moveTo(0, i); g.lineTo(128, i); g.stroke(); } }, // quilt
+    g => { g.fillStyle = '#8e2323'; g.fillRect(0, 0, 128, 128); g.fillStyle = '#1f2f55'; g.fillRect(0, 0, 128, 14); g.fillRect(0, 114, 128, 14); g.fillStyle = '#d9b36c'; for (const y of [18, 108]) g.fillRect(0, y, 128, 3); for (const [cx, cy] of [[32, 64], [96, 64]]) { g.save(); g.translate(cx, cy); g.rotate(Math.PI / 4); g.fillStyle = '#1f2f55'; g.fillRect(-22, -22, 44, 44); g.fillStyle = '#d9b36c'; g.fillRect(-12, -12, 24, 24); g.fillStyle = '#8e2323'; g.fillRect(-5, -5, 10, 10); g.restore(); } }, // oriental rug
+    g => { for (let i = 0; i < 13; i++) { g.fillStyle = i % 2 ? '#f4f1ea' : '#b3202a'; g.fillRect(0, (i * 128) / 13, 128, 128 / 13 + 1); } g.fillStyle = '#23336b'; g.fillRect(0, 0, 58, 69); g.fillStyle = '#f4f1ea'; for (let y = 0; y < 5; y++) for (let x = 0; x < 6; x++) { g.beginPath(); g.arc(6 + x * 9.5 + (y % 2) * 4, 7 + y * 13, 2, 0, 7); g.fill(); } }, // flag
+    g => { g.fillStyle = '#e9dcc0'; g.fillRect(0, 0, 128, 128); const cs = ['#a3462c', '#2f4f6f', '#c9a227', '#3d3a36']; for (let b = 0; b < 4; b++) { g.fillStyle = cs[b]; g.beginPath(); for (let x = 0; x <= 128; x += 16) g.lineTo(x, b * 32 + (x % 32 ? 8 : 22)); for (let x = 128; x >= 0; x -= 16) g.lineTo(x, b * 32 + (x % 32 ? 14 : 28)); g.fill(); } }, // kilim
+    g => { const cs = ['#2f5a3e', '#e8e0cc', '#a6832f', '#e8e0cc', '#6b1f2a']; let y = 0; for (let i = 0; y < 128; i++) { const h = [14, 4, 8, 4, 22][i % 5]; g.fillStyle = cs[i % 5]; g.fillRect(0, y, 128, h); y += h; } }, // striped runner
+    g => { g.fillStyle = '#e6dcc6'; g.fillRect(0, 0, 128, 128); g.fillStyle = '#6a7f9a'; for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) { const cx = x * 32 + (y % 2) * 16 + 8, cy = y * 32 + 16; g.beginPath(); g.ellipse(cx, cy, 7, 11, 0.5, 0, 7); g.fill(); g.beginPath(); g.ellipse(cx + 8, cy - 4, 4, 7, -0.6, 0, 7); g.fill(); } }, // toile
+  ];
+  for (const d of draws) { const c = document.createElement('canvas'); c.width = c.height = 128; d(c.getContext('2d')); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(2, 3); t.anisotropy = 8; TEX.push(new THREE.MeshStandardMaterial({ map: t, roughness: 0.9 })); }
+  return TEX;
 }
 
 // a framed painting sized to its real proportions, no wider than maxW: { m, fw, fh } (frame adds 1.5" a side)
@@ -822,7 +910,7 @@ function tireMesh(THREE, parent, list) {
   lm.instanceMatrix.needsUpdate = true; parent.add(lm);
 }
 function hdMobile(id, name, dims, start, opts = {}) {
-  def(id, name, dims, ({ THREE, tween, wake, bake, refit, overview, isWalking, lite, toast }) => {
+  def(id, name, dims, ({ THREE, tween, wake, bake, refit, overview, isWalking, playerPos, lite, toast }) => {
     const k = kit(THREE), { M, bx, cyl, group, many } = k, root = new THREE.Group();
     const paint = k.std(0xbfc4c7, 0.5, 0.3), panel = k.std(0x2c2f31, 0.45, 0.25), ff = k.std(0xeeefed, 0.45, 0.3);
     const up = k.std(0x1f4e8c, 0.45, 0.35), beam = k.std(0xe3671c, 0.45, 0.35);
@@ -869,7 +957,7 @@ function hdMobile(id, name, dims, start, opts = {}) {
           for (const xs of [xa, xb]) bx(p, 2, 5.2, 3, tFrame, Math.max(0, Math.min(xs - 1, C.L - 2)), y0 + y + 2.2, z - 1.5);
           // tubes stop inside the end frames, never through the end panel
           const ta = Math.max(0.6, xa - 2), tb = Math.min(C.L - 0.6, xb + 2); cyl(p, 1.5, tb - ta, tTube, (ta + tb) / 2, y0 + y + 7.8, z, 14, 'x');
-          if (r() > 0.15) { const room = xb - xa - 8, len = room * (0.55 + r() * 0.4), x0 = xa + 4 + r() * (room - len), rad = 2.6 + r() * 2.8, wrapped = r() > 0.4; cyl(p, rad, len, wrapped ? tWraps[Math.floor(r() * 2)] : tBare[Math.floor(r() * tBare.length)], x0 + len / 2, y0 + y + 7.8, z, 22, 'x'); }
+          if (r() > 0.15) { const room = xb - xa - 8, len = room * (0.55 + r() * 0.4), x0 = xa + 4 + r() * (room - len), rad = 2.6 + r() * 2.8, wrapped = r() > 0.55, pat = r() > 0.3 ? textileMats(THREE)[Math.floor(r() * 6)] : tBare[Math.floor(r() * tBare.length)]; cyl(p, rad, len, wrapped ? tWraps[Math.floor(r() * 2)] : pat, x0 + len / 2, y0 + y + 7.8, z, 22, 'x'); if (!wrapped && pat.map && r() > 0.6) bx(p, len - 2, 5.5, 0.12, pat, x0 + 1, y0 + y + 7.8 - 5.5, dir > 0 ? z + rad : z - rad - 0.12); }
         }
       }
     };
@@ -925,9 +1013,16 @@ function hdMobile(id, name, dims, start, opts = {}) {
       const doors = [];
       for (const side of [0, 1]) {
         const pv = group(p, side ? x + cw : x, y0, fz), dw = cw / 2 - 0.1, sx = side ? -dw : 0; pv.userData.dyn = true;
-        if (glass) { bx(pv, dw, 4, 0.9, frameM, sx, H - 4, 0); bx(pv, dw, 4, 0.9, frameM, sx, 0, 0); bx(pv, 4, H, 0.9, frameM, sx, 0, 0); bx(pv, 4, H, 0.9, frameM, sx + dw - 4, 0, 0); bx(pv, dw - 8, H - 8, 0.2, M.glass, sx + 4, 4, 0.35); }
-        else { bx(pv, dw, H - 0.4, 0.8, frameM, sx, 0.2, 0); for (let v = 0; v < 5; v++) bx(pv, dw - 6, 0.3, 0.1, M.dark, sx + 3, H - 5 - v * 0.9, dir > 0 ? 0.82 : -0.02); }
-        bx(pv, 1, 7, 0.8, M.chrome, side ? -dw + 1.2 : dw - 2.2, H / 2 - 3.5, dir > 0 ? 0.9 : -0.8);
+        const fo = dir > 0 ? 1 : -1, fz0 = dir > 0 ? 1.2 : -0.3; // outer face offset
+        if (glass) {
+          // wide white stiles and rails around full-height glass, a gasket line, and a latch plate with a label card and twist handle
+          const st = 4.2; bx(pv, dw, st, 1.2, frameM, sx, H - st, dir > 0 ? 0 : -0.3); bx(pv, dw, st, 1.2, frameM, sx, 0, dir > 0 ? 0 : -0.3); bx(pv, st, H, 1.2, frameM, sx, 0, dir > 0 ? 0 : -0.3); bx(pv, st, H, 1.2, frameM, sx + dw - st, 0, dir > 0 ? 0 : -0.3);
+          bx(pv, dw - 2 * st, H - 2 * st, 0.25, M.glass, sx + st, st, 0.45);
+          const px = side ? -dw + 0.6 : dw - 3.6, fz = dir > 0 ? 1.2 : -0.55;
+          bx(pv, 3, 11, 0.25, mPlate, px, H / 2 - 6, fz); bx(pv, 2.4, 3.2, 0.1, M.label, px + 0.3, H / 2 + 1.2, fz + fo * 0.25);
+          cyl(pv, 1.25, 0.35, mPlate, px + 1.5, H / 2 - 2.8, fz + fo * 0.3, 28, 'z'); cyl(pv, 1, 0.25, M.dark, px + 1.5, H / 2 - 2.8, fz + fo * 0.55, 24, 'z'); bx(pv, 0.55, 2.1, 0.5, M.chrome, px + 1.225, H / 2 - 3.85, fz + fo * 0.6);
+        } else { bx(pv, dw, H - 0.4, 0.8, frameM, sx, 0.2, 0); for (let v = 0; v < 5; v++) bx(pv, dw - 6, 0.3, 0.1, M.dark, sx + 3, H - 5 - v * 0.9, dir > 0 ? 0.82 : -0.02); bx(pv, 1, 7, 0.8, M.chrome, side ? -dw + 1.2 : dw - 2.2, H / 2 - 3.5, dir > 0 ? 0.9 : -0.8); }
+        void fz0;
         doors.push(pv);
       }
       const api = { busy: false, isOpen: () => !!doors[0].userData.open };
@@ -944,21 +1039,23 @@ function hdMobile(id, name, dims, start, opts = {}) {
         const x = u * 49;
         bx(p, 48, 1, D, mWhite, x, y0, z0); bx(p, 48, 1, D, mWhite, x, y0 + H - 1, z0); bx(p, 1, H, D, mWhite, x, y0, z0); bx(p, 1, H, D, mWhite, x + 47, y0, z0); bx(p, 48, H, 1, mWhite, x, y0, back);
         const dz = dir > 0 ? z0 + D - 3 : z0 + 2.5, bank = group(p), pulled = {}; let dp = null;
-        for (let i = 0; i < 5; i++) bx(bank, 44, 5.4, 0.5, mWhite, x + 2, y0 + 2 + i * 6.2, dz);
+        const hw = (p2, yy) => { const fz = dir > 0 ? dz + 0.5 : dz - 0.15, pz = dir > 0 ? dz + 0.5 : dz - 0.6; bx(p2, 3.6, 2, 0.15, mPlate, x + 22.2, yy + 3, fz); bx(p2, 3, 1.4, 0.05, M.label, x + 22.5, yy + 3.3, dir > 0 ? fz + 0.15 : fz - 0.05); bx(p2, 8, 0.7, 0.6, mPlate, x + 20, yy + 1.1, pz); };
+        for (let i = 0; i < 5; i++) { bx(bank, 44, 5.4, 0.5, mWhite, x + 2, y0 + 2 + i * 6.2, dz); hw(bank, y0 + 2 + i * 6.2); }
         bank.userData.onClick = (hit) => {
           if (!hit || !dp || dp.busy) return; const q = bank.worldToLocal(hit.point.clone()), i = Math.max(0, Math.min(4, Math.floor((q.y - y0 - 2) / 6.2)));
           // the glass doors come first: a click behind closed doors opens them
           if (!dp.isOpen()) { dp.open(); return; }
           if (pulled[i]) { pulled[i].userData.close(); return; }
           const dr = group(p); dr.userData.dyn = true; const yy = y0 + 2 + i * 6.2;
-          bx(dr, 44, 5.4, 0.5, mWhite, x + 2, yy, dz); k.tray(dr, 43, 3.6, D - 7, ffIn, x + 2.5, yy + 0.4, dir > 0 ? dz - (D - 7) : dz + 0.5, 0.15);
+          bx(dr, 44, 5.4, 0.5, mWhite, x + 2, yy, dz); hw(dr, yy); k.tray(dr, 43, 3.6, D - 7, ffIn, x + 2.5, yy + 0.4, dir > 0 ? dz - (D - 7) : dz + 0.5, 0.15);
           smallThings(THREE, dr, x + 3, yy + 0.55, dir > 0 ? dz - (D - 7) + 1 : dz + 1.5, 40, D - 9, rng(60 + i + u * 7), 3, true);
           const gap = bx(bank, 43.6, 5, 0.05, ffGap, x + 2.2, yy + 0.2, dir > 0 ? dz + 0.52 : dz - 0.07);
-          pulled[i] = dr; tween(dr.position, 'z', dir * 20, 700, 'out');
+          pulled[i] = dr; dr.userData.onClick = () => dr.userData.close(); tween(dr.position, 'z', dir * 20, 700, 'out');
           dr.userData.close = () => { if (pulled[i] !== dr) return; delete pulled[i]; openParts.delete(dr.userData.close); tween(dr.position, 'z', 0, 600, 'out').then(() => { bank.remove(gap); p.remove(dr); wake(); }); };
           wake();
         };
-        for (const sy of [42, 56]) { bx(p, 46, 0.6, D - 4, mWhite, x + 1, y0 + sy, z0 + 2); smallThings(THREE, p, x + 2, y0 + sy + 0.6, z0 + 4, 44, D - 8, rng(80 + u * 3 + sy), 11); }
+        bx(p, 46, 0.8, D - 2, mWhite, x + 1, y0 + 33.2, z0 + 1); smallThings(THREE, p, x + 2, y0 + 34, z0 + 4, 44, D - 8, rng(70 + u), 7);
+        for (const sy of [44, 57]) { bx(p, 46, 0.6, D - 4, mWhite, x + 1, y0 + sy, z0 + 2); smallThings(THREE, p, x + 2, y0 + sy + 0.6, z0 + 4, 44, D - 8, rng(80 + u * 3 + sy), 11); }
         dp = doorPair(p, x, 48, y0, H, fz, dir, true, mWhite, () => { const n = Object.keys(pulled).length; Object.values(pulled).forEach(d => d.userData.close()); return n; });
       }
     };
@@ -974,25 +1071,25 @@ function hdMobile(id, name, dims, start, opts = {}) {
       for (let b = 0; b < 3; b++) {
         const x0 = b * bw + 1.25, w = bw - 1.25;
         if (C.gear === 0) {
-          // helmet shelf up top, shoulder pads and jerseys on hangers, ball cradle rack at the bottom
+          // football room: helmet shelf up top, jerseys and shoulder pads on hangers, cleats on the low shelf, footballs in a cradle rack
           bx(p, w, 0.6, D - 1, paint, x0, y0 + 60, z0 + 0.5);
           for (let q = 0; q < 3; q++) p.add(footballHelmet(THREE, team, x0 + 6 + q * 11.5, y0 + 63.6, z0 + D / 2, dir > 0 ? 0 : Math.PI));
           cyl(p, 0.5, w, M.chrome, x0 + w / 2, y0 + 56, z0 + D / 2, 12, 'x');
-          for (let q = 0; q < 3; q++) { bx(p, 1, 24, 14, jerseyM, x0 + 5 + q * 11, y0 + 30, z0 + D / 2 - 7); bx(p, 9, 6, 11, padM, x0 + 1 + q * 11, y0 + 48, z0 + D / 2 - 5.5); }
+          jersey(THREE, p, x0 + 6, y0 + 56, z0 + D / 2, team, 10 + b * 3 + (dir > 0 ? 1 : 2)); jersey(THREE, p, x0 + 13, y0 + 56, z0 + D / 2, jerseyM, 20 + b * 7);
+          shoulderPads(THREE, p, x0 + 26, y0 + 55.2, z0 + D / 2);
           bx(p, w, 0.6, D - 1, paint, x0, y0 + 14, z0 + 0.5);
-          for (const zz of [dir > 0 ? front - 2 : front + 1.2]) cyl(p, 0.4, w, rackM, x0 + w / 2, y0 + 3, zz, 8, 'x');
-          for (let q = 0; q < 3; q++) for (const zz of [0.3, 0.7]) { const bl = new THREE.Mesh(new THREE.SphereGeometry(4.7, 18, 12), ballM); bl.position.set(x0 + 6 + q * 11.5, y0 + 5.5, z0 + D * zz); p.add(bl); }
+          for (let q = 0; q < 3; q++) for (const s2 of [0, 1]) { bx(p, 3.6, 3.4, 11, M.black, x0 + 2 + q * 11 + s2 * 4.2, y0 + 14.6, z0 + D / 2 - 5.5); bx(p, 3.6, 0.6, 10.6, M.chrome, x0 + 2 + q * 11 + s2 * 4.2, y0 + 14.6, z0 + D / 2 - 5.3); }
+          for (const zz of [z0 + 3, z0 + D - 3]) cyl(p, 0.4, w, rackM, x0 + w / 2, y0 + 3, zz, 8, 'x');
+          for (let q = 0; q < 4; q++) for (const zz of [0.32, 0.68]) football(THREE, p, x0 + 5 + q * 8.5, y0 + 4.2, z0 + D * zz, 0.1 * q);
         } else if (C.gear === 1) {
-          // golf bag bays: a divider every 12", a strap bar across the front, bags standing with clubs showing
-          for (let q = 1; q < 3; q++) bx(p, 0.12, 44, D - 2, paint, x0 + q * 12, y0, z0 + 1);
-          bx(p, w, 0.6, D - 1, paint, x0, y0 + 46, z0 + 0.5);
-          cyl(p, 0.4, w, rackM, x0 + w / 2, y0 + 30, dir > 0 ? front - 1 : front + 1, 8, 'x');
-          for (const ly of [0, 46.6]) for (let q = 0; q < 3; q++) {
-            if (ly && r() > 0.7) continue;
-            const bh = ly ? 25 : 34, m = bagMs[Math.floor(r() * bagMs.length)], g2 = group(p, x0 + 6 + q * 12, y0 + ly, z0 + D / 2); g2.rotation.x = dir * -0.12;
-            cyl(g2, 4.5, bh, m, 0, bh / 2, 0, 18); cyl(g2, 4.8, 3, m, 0, bh - 1.5, 0, 18);
-            for (let c = 0; c < 5; c++) { cyl(g2, 0.25, 6, clubM, -2 + (c % 3) * 2, bh + 3, -1.4 + Math.floor(c / 3) * 2.6, 6); bx(g2, 1.6, 1, 2.2, clubM, -2.8 + (c % 3) * 2, bh + 5.6, -2.5 + Math.floor(c / 3) * 2.6); }
-          }
+          // golf bag bays: a divider every 12" to shoulder height, a strap bar across the front, one full-size bag per bay,
+          // and shelves above for shoes and ball boxes
+          for (let q = 1; q < 3; q++) bx(p, 0.12, 48, D - 2, paint, x0 + q * 12, y0, z0 + 1);
+          for (let q = 0; q < 3; q++) bx(p, 4, 1.2, 0.1, M.label, x0 + q * 12 + 4, y0 + 44, dir > 0 ? front + 0.02 : front - 0.12);
+          cyl(p, 0.35, w, M.black, x0 + w / 2, y0 + 26, dir > 0 ? front - 1 : front + 1, 8, 'x');
+          for (let q = 0; q < 3; q++) golfBag(THREE, p, x0 + 6 + q * 12, y0 + 0.4, z0 + D / 2, b * 3 + q + (dir > 0 ? 0 : 7), 34, dir * -0.1);
+          for (const sy of [58, 71]) bx(p, w, 0.6, D - 1, paint, x0, y0 + sy, z0 + 0.5);
+          for (let q = 0; q < 3; q++) { bx(p, 10, 4.5, 7, [M.black, M.white, M.dark][q % 3], x0 + 1 + q * 11.5, y0 + 58.6, inZ(7)); bx(p, 5, 3.5, 5, M.white, x0 + 2 + q * 11.5, y0 + 71.6, inZ(5)); }
         } else {
           // instrument cubbies: shelves at three levels, cases sized to each instrument
           for (const sy of [0, 28, 56]) bx(p, w, 0.6, D - 1, paint, x0, y0 + sy, z0 + 0.5);
@@ -1210,7 +1307,7 @@ function hdMobile(id, name, dims, start, opts = {}) {
           hub.visible = !electric; pad.visible = electric;
           hub.userData.dyn = pad.userData.dyn = true;
           // standing in an aisle, the carriages stay put: nobody closes an aisle on themselves
-          g.userData.onClick = () => { if (isWalking?.()) { toast?.('The carriages stay locked while you are in the aisle. Press Esc or tap Exit to step out.'); return; } open = open === j - 1 ? j : j - 1; move(); };
+          g.userData.onClick = () => { if (inside()) { toast?.(electric ? 'Safety engaged: someone is in the system, so the carriages will not move. Step out to the walkway first.' : 'The aisles stay locked while you are in the system. Step out to the walkway to move them.'); return; } open = open === j - 1 ? j : j - 1; move(); };
           g.userData.wheel = hub; g.userData.pad = pad;
         }
         g.userData.fixed = fixed;
@@ -1272,6 +1369,8 @@ function hdMobile(id, name, dims, start, opts = {}) {
       unit.traverse(o => { if (o.isMesh) { o.castShadow = o.receiveShadow = true; } });
       bake?.(unit); wake();
     };
+    // standing within the system footprint (in an aisle, between carriages) locks it; the walkway around it does not
+    const inside = () => { const p = playerPos?.(); if (!p || !C) return false; const last = ranges[ranges.length - 1]; return p.x > -6 && p.x < C.L + 6 && p.z > -4 && p.z < (last ? last.position.z + last.userData.dd + 4 : 0); };
     const boxPull = { tween, reg: openParts, gate: () => !!isWalking?.() };
     const moveList = (list, op) => list.forEach((g, j) => {
       if (g.userData.fixed) return;
@@ -1319,7 +1418,8 @@ function hdMobile(id, name, dims, start, opts = {}) {
       walk: () => {
         const a = ranges[open], b = ranges[open + 1]; if (!a || !b) return null;
         const z0 = a.userData.base + a.userData.dd + 0.8, z1 = b.userData.base + (aisleW ?? C.aisle), zc = (z0 + z1) / 2, eye = 1.85 + 64;
-        return { eye: [C.L + 14, eye, zc], look: [C.L * 0.3, eye - 6, zc], x: [3, C.L + 40], z: [z0 + 5, z1 - 5], floor: 1.9 };
+        const spots = []; for (let x = 20; x < C.L + 30; x += 32) spots.push([x, zc]);
+        return { eye: [C.L + 34, eye, zc], look: [C.L * 0.3, eye - 8, zc], floor: 1.9, spots };
       },
       presets: lite ? [] : [
         ['Records room', { kind: 'shelving', electric: false, twoLevel: false }],
@@ -1631,10 +1731,12 @@ def('museum-cabinet', 'Museum Storage Cabinet', '48" W x 30" D x 88" H, full-hei
   bx(root, W, t, D, paint, 0, y0 + H - t, 0); bx(root, t, H, D, paint, 0, y0, 0); bx(root, t, H, D, paint, W - t, y0, 0); bx(root, W, H, t, paint, 0, y0, 0); bx(root, W, t, D, paint, 0, y0, 0);
   for (const y of [y0 + 0.4, y0 + H - 1.4]) bx(root, W - 2, 0.7, 0.7, M.rubber, 1, y, D - 1.6);
   // upper shelves with objects, lower bank of drawers with label holders
-  for (const y of [y0 + 42, y0 + 54, y0 + 66]) {
+  smallThings(THREE, root, 2, y0 + 40.4, 4, W - 4, D - 8, r, 10);
+  for (const y of [y0 + 53, y0 + 67]) {
     bx(root, W - 2, 0.6, D - 4, paint, 1, y, 1.5); bx(root, W - 2, 1.4, 0.4, paint, 1, y - 0.8, D - 2.9);
     smallThings(THREE, root, 2, y + 0.6, 4, W - 4, D - 8, r, 10);
   }
+  bx(root, W - 2, 0.8, D - 3, paint, 1, y0 + 39.6, 1.5);
   const drawers = [];
   for (let i = 0; i < 6; i++) {
     const y = y0 + 1.6 + i * 6.3, dr = group(root);
@@ -2247,7 +2349,7 @@ def('weapons', 'Weapons Storage Cabinet', '48" W x 20" D x 78" H: rifle rack wit
 /* ---------------- 18. athletic team lockers ---------------- */
 def('athletic', 'Athletic Team Lockers', 'Four 24" W x 24" D x 72" H lockers: foot locker seat, helmet shelf, pad hooks, security box', ({ THREE, tween }) => {
   const k = kit(THREE), { M, bx, cyl, group } = k, root = new THREE.Group();
-  const paint = k.std(0x2c2f31, 0.45, 0.35), team = k.std(0x8c1d2c, 0.4, 0.1), jersey = k.std(0xf2f2ee, 0.85, 0), pads = k.std(0x2f3336, 0.7, 0.05), mesh = k.meshMat(24, 50, 0.6, '#b9bec1', 0.6);
+  const paint = k.std(0x2c2f31, 0.45, 0.35), team = k.std(0x8c1d2c, 0.4, 0.1), jersey_ = k.std(0xf2f2ee, 0.85, 0), mesh = k.meshMat(24, 50, 0.6, '#b9bec1', 0.6);
   const n = 4, w = 24, d = 24, h = 72;
   const lids = [], boxes = [], doorG = group(root); doorG.userData.dyn = true; doorG.visible = false;
   bx(root, n * w, h, 0.6, paint, 0, 0, 0); bx(root, n * w, 0.8, d, paint, 0, h - 0.8, 0);
@@ -2264,10 +2366,10 @@ def('athletic', 'Athletic Team Lockers', 'Four 24" W x 24" D x 72" H lockers: fo
     lids.push(lid);
     // hanging: garment rod, jersey, shoulder pad hook
     cyl(root, 0.5, iw, M.chrome, x0 + iw / 2, 49.5, d / 2, 16, 'x');
-    bx(root, 16, 22, 0.8, jersey, x0 + (iw - 16) / 2, 26.5, d / 2 + 2);
-    bx(root, 6, 3, 0.9, team, x0 + (iw - 6) / 2, 39.5, d / 2 + 2.4);
+    // game jersey on a hanger facing out, shoulder pads hung on the back hook
     bx(root, 2, 2, 6, M.chrome, x0 + iw / 2 - 1, 44, 0.6);
-    bx(root, 16, 6, 9, pads, x0 + (iw - 16) / 2, 38, 2);
+    shoulderPads(THREE, root, x0 + iw / 2, 47, 6.5, Math.PI / 2);
+    jersey(THREE, root, x0 + iw / 2, 49.5, d / 2 + 1.5, i % 2 ? team : jersey_, [7, 12, 23, 44][i], Math.PI / 2);
     // helmet shelf with a helmet, clear of the security box shelf at 64"
     bx(root, iw, 0.4, d - 2, paint, x0, 52, 0.6);
     root.add(footballHelmet(THREE, team, x0 + iw / 2, 52.4 + 3.2, 11));
@@ -2412,7 +2514,7 @@ def('fireproof', 'Fireproof File Cabinets', 'A 4-drawer vertical (21" W x 31" D)
 /* ---------------- 22. wall-mounted art screens ---------------- */
 def('wall-art', 'Stationary Art Screens', 'White mesh panels fixed to the wall on standoffs, or freestanding double-sided screens on feet; picture ledges and wall-mounted sculpture', ({ THREE, tween, wake, refit, bake }) => {
   const k = kit(THREE), { M, bx, cyl, group } = k, root = new THREE.Group();
-  const white = k.std(0xf3f4f2, 0.45, 0.25), wall = k.std(0xe9e6df, 0.9, 0), gilt = k.std(0xa6832f, 0.35, 0.7), mesh = k.meshMat(48, 96, 2, '#c3c9cd', 0.85), ledgeM = k.std(0xf6f6f3, 0.5, 0.15);
+  const white = k.std(0xf3f4f2, 0.45, 0.25), wall = k.std(0x56606a, 0.85, 0), gilt = k.std(0xa6832f, 0.35, 0.7), mesh = k.meshMat(48, 96, 2, '#c3c9cd', 0.85), ledgeM = k.std(0xf6f6f3, 0.5, 0.15);
   const PW = 48, PH = 96;
   let mount = 0, ledges = false, reliefs = true, unit, wallG;
   // frames stay inside the panel: width and height are clipped to the panel edges; with ledges, art hangs above them
@@ -2514,8 +2616,10 @@ def('textile-rack', 'Rolled Textile Storage', '12 ft double-sided cantilever rac
       for (const xs of [xa, xb]) bx(root, 2, 5.2, 3, frame, xs - 1, y + 2.2, s * z - 1.5);
       cyl(g, 1.5, xb - xa + 8, tube, (xa + xb) / 2, 0, 0, 18, 'x');
       if (r() > 0.1) {
-        const room = xb - xa - 8, len = room * (0.55 + r() * 0.4), x0 = xa + 4 + r() * (room - len), rad = 2.6 + r() * 2.8, wrapped = r() > 0.4;
-        cyl(g, rad, len, wrapped ? wraps[Math.floor(r() * 3)] : bare[Math.floor(r() * bare.length)], x0 + len / 2, 0, 0, 28, 'x');
+        const room = xb - xa - 8, len = room * (0.55 + r() * 0.4), x0 = xa + 4 + r() * (room - len), rad = 2.6 + r() * 2.8, wrapped = r() > 0.55, pat = r() > 0.3 ? textileMats(THREE)[Math.floor(r() * 6)] : bare[Math.floor(r() * bare.length)];
+        cyl(g, rad, len, wrapped ? wraps[Math.floor(r() * 3)] : pat, x0 + len / 2, 0, 0, 28, 'x');
+        // an unrolled lip hangs off some rolls so the weave, print or pattern shows flat
+        if (!wrapped && pat.map && r() > 0.55) bx(g, len - 2, 6, 0.12, pat, x0 + 1, -6, s > 0 ? rad : -rad - 0.12);
         for (const e of [x0, x0 + len]) cyl(g, rad * 0.92, 0.2, wrapped ? wraps[1] : k.std(0xefe9dc, 0.9, 0), e + (e === x0 ? -0.1 : 0.1), 0, 0, 28, 'x');
         bx(g, 1.6, 2.2, 0.1, M.label, x0 + 3, -1.1, s > 0 ? rad + 0.05 : -rad - 0.15);
       }
@@ -2827,7 +2931,10 @@ def('painting-bins', 'Painting Storage Bins', 'Steel shelving with dividers on 1
         // framed works on edge in each 12" slot
         for (let slot = 0; slot < 4; slot++) {
           let x = x0 + slot * 12 + 1.2; const n = 1 + Math.floor(r() * 3);
-          for (let q = 0; q < n && x < x0 + slot * 12 + 10.5; q++) { const t = 1.8 + r() * 1.4, ph = Math.min(yb - ya - 2, 18 + r() * 40), pd = Math.min(D - 6, 20 + r() * 24); frames.push({ x, y: ya, z: D - 3 - pd, w: t, h: ph, d: pd, sec: s, color: ['#a6832f', '#6b4428', '#2b2d2f', '#c9b79a'][Math.floor(r() * 4)] }); x += t + 0.6; }
+          for (let q = 0; q < n && x < x0 + slot * 12 + 10.5; q++) {
+            // each frame is cut to its painting's proportions, with a 1 1/2" moulding all around
+            const t = 1.8 + r() * 1.4, pt = painting(THREE); let iw = Math.min(D - 9, 17 + r() * 24), ih = iw / pt.a; if (ih > yb - ya - 5) { ih = yb - ya - 5; iw = ih * pt.a; }
+            const pd = iw + 3, ph = ih + 3; frames.push({ x, y: ya, z: D - 3 - pd, w: t, h: ph, d: pd, sec: s, pm: pt.m, color: ['#a6832f', '#6b4428', '#2b2d2f', '#c9b79a'][Math.floor(r() * 4)] }); x += t + 0.6; }
         }
       }
       // roll-up door: side guides, slats, bottom bar, and the coil hood sitting on the top shelf
@@ -2851,9 +2958,9 @@ def('painting-bins', 'Painting Storage Bins', 'Steel shelving with dividers on 1
     const im = k.pullMany(unit, frames, k.std(0xffffff, 0.6, 0.1), {
       reg, ms: 900,
       spawn: (b) => {
-        const g = group(null), pt = painting(THREE), fw = b.d - 2.4, fh = b.h - 2.4, iw = Math.min(fw, fh * pt.a), ih = iw / pt.a;
+        const g = group(null), iw = b.d - 3, ih = b.h - 3;
         bx(g, b.w, b.h, b.d, k.std(new THREE.Color(b.color).getHex(), 0.5, 0.25), b.x, b.y, b.z);
-        bx(g, 0.05, ih, iw, pt.m, b.x + b.w, b.y + (b.h - ih) / 2, b.z + (b.d - iw) / 2); bx(g, 0.05, b.h - 1, b.d - 1, k.std(0xb89a6a, 0.9, 0), b.x - 0.05, b.y + 0.5, b.z + 0.5);
+        bx(g, 0.05, ih, iw, b.pm, b.x + b.w, b.y + 1.5, b.z + 1.5); bx(g, 0.05, b.h - 1, b.d - 1, k.std(0xb89a6a, 0.9, 0), b.x - 0.05, b.y + 0.5, b.z + 0.5);
         g.traverse(o => { if (o.isMesh) o.castShadow = o.receiveShadow = true; });
         return g;
       },
