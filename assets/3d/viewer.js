@@ -96,6 +96,8 @@ function viewer(el) {
   renderer.toneMappingExposure = 1.05;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  // shadows only re-render when the model changes, not when the camera turns
+  renderer.shadowMap.autoUpdate = false;
 
   const scene = new THREE.Scene();
   const pmrem = new THREE.PMREMGenerator(renderer);
@@ -124,7 +126,11 @@ function viewer(el) {
   const wait = ms => tween({ t: 0 }, 't', 1, ms, 'lin');
 
   let current = null, frame = 0, dirty = true, home = null, clickables = [], slow = 0, pr = Math.min(devicePixelRatio, 2), last = 0;
+  let sceneDirty = true, lowRes = false;
   const wake = () => { dirty = true; if (!frame) frame = requestAnimationFrame(loop); };
+  const modelWake = () => { sceneDirty = true; wake(); };
+  // while anything moves, render a little softer; one crisp frame when it settles
+  const setRes = (low) => { if (low === lowRes) return; lowRes = low; renderer.setPixelRatio(low ? Math.min(pr, 1.25) : pr); renderer.setSize(stage.clientWidth, stage.clientHeight, false); };
   controls.addEventListener('change', wake);
 
   let ovClean = null;
@@ -136,6 +142,7 @@ function viewer(el) {
     stage.appendChild(ov); ov.querySelector('.v3d-ov-x').addEventListener('click', closePanel);
     ovClean = build(ov.querySelector('.v3d-ov-b'), closePanel) || null;
   };
+  const showActs = () => el.querySelectorAll('.v3d-acts button').forEach(b => { b.hidden = !!(b._act?.when && !b._act.when()); });
   const scan = () => { clickables = []; current?.group.traverse(o => { if (o.userData.onClick) clickables.push(o); }); };
   function fit(group, view) {
     const box = new THREE.Box3().setFromObject(group), size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
@@ -156,7 +163,7 @@ function viewer(el) {
     closePanel();
     if (current) { scene.remove(current.group); current.group.traverse(o => { o.geometry?.dispose?.(); }); }
     const def = MODELS[id];
-    current = def.build({ THREE, tween, wait, wake, bake: g => bake(THREE, g), panel, refit: () => { if (current) { fit(current.group, current.view); wake(); } } });
+    current = def.build({ THREE, tween, wait, wake: modelWake, bake: g => bake(THREE, g), panel, refit: () => { if (current) { fit(current.group, current.view); wake(); } } });
     scan();
     current.group.traverse(o => { if (o.isMesh && !o.userData.noShadow) { o.castShadow = true; o.receiveShadow = true; } });
     bake(THREE, current.group);
@@ -169,9 +176,11 @@ function viewer(el) {
     const acts = el.querySelector('.v3d-acts');
     acts.replaceChildren(...(current.actions || []).map(a => {
       const b = document.createElement('button'); b.type = 'button'; b.textContent = a.label;
-      b.addEventListener('click', () => { const r = a.run(); if (typeof r === 'string') b.textContent = r; scan(); wake(); });
+      b.addEventListener('click', () => { const r = a.run(); if (typeof r === 'string') b.textContent = r; scan(); showActs(); modelWake(); });
+      b._act = a;
       return b;
     }));
+    showActs();
     const fin = el.querySelector('.v3d-fin');
     const swatches = (current.finishes || []).map((f, i) => {
       const b = document.createElement('button'); b.type = 'button'; b.className = 'v3d-sw'; b.title = f.name; b.setAttribute('aria-label', `Finish: ${f.name}`);
@@ -181,7 +190,7 @@ function viewer(el) {
     });
     fin.replaceChildren(...(swatches.length ? [Object.assign(document.createElement('span'), { textContent: 'Finish' }), ...swatches, Object.assign(document.createElement('em'), { textContent: current.finishes[0].name })] : []));
     el.querySelector('.v3d-load').hidden = true;
-    wake();
+    modelWake();
   }
 
   function loop(now) {
@@ -195,10 +204,13 @@ function viewer(el) {
     }
     // slow machine: step the render resolution down instead of dropping frames
     if (last && now - last > 26) { if (++slow > 24 && pr > 1) { pr = Math.max(1, pr - 0.25); renderer.setPixelRatio(pr); resize(); slow = 0; } } else slow = Math.max(0, slow - 1);
-    last = active || controls.autoRotate ? now : 0;
-    const moving = controls.update();
-    if (dirty || active || moving || controls.autoRotate) { renderer.render(scene, camera); dirty = false; }
-    if (active || moving || controls.autoRotate) frame = requestAnimationFrame(loop);
+    last = active || controls.autoRotate || lowRes ? now : 0;
+    const moving = controls.update(), busy = active || moving || controls.autoRotate;
+    if (busy) setRes(true);
+    if (active || sceneDirty) { renderer.shadowMap.needsUpdate = true; sceneDirty = false; }
+    if (dirty || busy) { renderer.render(scene, camera); dirty = false; }
+    if (busy) frame = requestAnimationFrame(loop);
+    else if (lowRes) { setRes(false); renderer.shadowMap.needsUpdate = true; renderer.render(scene, camera); }
   }
 
   function resize() {
@@ -218,7 +230,7 @@ function viewer(el) {
     ray.setFromCamera(ptr, camera);
     for (const hit of ray.intersectObject(current.group, true)) {
       let o = hit.object; while (o && !o.userData.onClick) o = o.parent;
-      if (o) { o.userData.onClick(); wake(); break; }
+      if (o) { o.userData.onClick(); modelWake(); break; }
     }
   });
   let hoverQ = null;

@@ -187,15 +187,15 @@ def('bin-shelving', 'Bin & Parts Shelving', 'Closed 36" W x 18" D x 84" H units 
 
 /* ---------------- 3. wire shelving ---------------- */
 // chrome wire: one builder for a pair, a wall run, L and U room layouts, and a top-track front row
-function wireModel(id, name, dims0, start) {
+function wireModel(id, name, dims0, start, layouts) {
   def(id, name, dims0, ({ THREE, tween, wake, bake, refit }) => {
     const k = kit(THREE), { M, bx, cyl, group, many } = k, root = new THREE.Group();
     const w = 48, d = 18, h = 74, lift = 5.5, pitch = w + 1, navy = k.std(0x243447, 0.5, 0.2);
     const LAYOUTS = { pair: 'Layout: pair', wall: 'Layout: wall run', L: 'Layout: L-shaped room', U: 'Layout: walk-in (U)', track: 'Layout: top-track mobile' };
-    const ORDER = ['pair', 'wall', 'L', 'U', 'track'];
+    const ORDER = layouts;
     const cols = ['#c49a64', '#ece8de', '#e9eef2', '#2f6fb3', '#b58a55', '#f3f1ea'];
     let layout = start, casters = false, dims = false, unit, movers = [], X1 = 0;
-    const SLOTS = 4, mw = 36, mp = mw + 1, gaps = { f: 3, b: 0 };
+    const SLOTS = 4, mw = 24, md = 48, mp = mw + 1, gaps = { f: 0 };
     const unitAt = (p, x, z, rot, wheels, seed, uw = w, ud = d, tall = 0) => {
       const g = group(p, x, 0, z); g.rotation.y = rot;
       const r = rng(seed), wires = [], items = [], lf = wheels ? lift : 1.2, ph = h + tall;
@@ -211,12 +211,15 @@ function wireModel(id, name, dims0, start) {
         for (const zz of [0, ud]) cyl(g, 0.28, uw, M.chrome, uw / 2, y, zz, 8, 'x');
         for (const xx of [0, uw]) cyl(g, 0.28, ud, M.chrome, xx, y, ud / 2, 8, 'z');
         for (let xx = 1; xx < uw; xx += 1.4) wires.push({ x: xx - 0.09, y: y - 0.09, z: 0, w: 0.18, h: 0.18, d: ud, color: '#e3e7ea' });
+        // support wires across the shelf, under the deck wires, for strength
+        for (let c = 1, n = Math.max(2, Math.round(ud / 16)); c <= n; c++) cyl(g, 0.22, uw, M.chrome, uw / 2, y - 0.32, (ud * c) / (n + 1), 8, 'x');
         if (q === 4) return;
+        if (ud > uw) { let zz = 1.5; while (zz < ud - 8) { const bd = 7 + Math.floor(r() * 3) * 3; if (r() > 0.25) items.push({ x: 1.5, y: y + 0.2, z: zz, w: uw - 3, h: 6 + r() * 7, d: bd - 0.6, color: cols[Math.floor(r() * cols.length)] }); zz += bd; } return; }
         let xx = 1;
         while (xx < uw - 8) { const bw = 7 + Math.floor(r() * 3) * 3; if (r() > 0.25) items.push({ x: xx, y: y + 0.2, z: 1.5, w: bw - 0.6, h: 6 + r() * 7, d: ud - 3, color: cols[Math.floor(r() * cols.length)] }); xx += bw; }
       });
       many(g, wires, M.chrome); many(g, items, k.std(0xffffff, 0.7, 0));
-      g.userData.ys = ys; g.userData.lf = lf;
+      g.userData.ys = ys; g.userData.lf = lf; g.userData.uw = uw; g.userData.ud = ud; g.userData.ph = ph;
       return g;
     };
     const make = () => {
@@ -233,29 +236,26 @@ function wireModel(id, name, dims0, start) {
         for (let i = 0; i < sideN; i++) unitAt(unit, 0, d + 1 + (i + 1) * pitch, Math.PI / 2, casters, seed++);
         if (layout === 'U') for (let i = 0; i < sideN; i++) unitAt(unit, X + d, d + 1 + i * pitch, -Math.PI / 2, casters, seed++);
       } else {
-        // tall fixed end units span both rows and carry two tracks; front and back rows of mobile units roll sideways underneath
-        const ew = 36, D2 = 2 * d + 2, tall = 14, ty = lift + h + 3, trackM = k.std(0xc9ced2, 0.3, 0.8);
-        X1 = ew + 1; const X2 = X1 + SLOTS * mp;
-        for (const ex of [0, X2]) { const u = unitAt(unit, ex, 0, 0, false, seed++, ew, D2, tall); first = first || u; }
-        for (const [row, zr] of [['b', 0], ['f', d + 2]]) {
-          const gp = gaps[row];
-          for (let q = 0; q < SLOTS; q++) {
-            if (q === gp) continue;
-            const u = unitAt(unit, X1 + q * mp, zr, 0, true, seed++, mw); u.userData.slot = q; u.userData.row = row;
-            bx(u, 1, ty - (lift + h), 1, M.chrome, mw / 2 - 0.5, lift + h, d / 2 - 0.5); cyl(u, 1.8, 0.9, navy, mw / 2, ty - 0.2, d / 2, 20);
-            u.userData.onClick = () => slide(u);
-            movers.push(u);
-          }
-          bx(unit, X2 - X1 + 1, 3, 2.6, trackM, X1 - 0.5, ty, zr + d / 2 - 1.3);
+        // units turned short end out roll sideways under two track runs, one over their front ends and one over the back;
+        // the tracks span between tall fixed end units
+        const tall = 14, ty = lift + h + 3, trackM = k.std(0xc9ced2, 0.3, 0.8), runs = [3, md - 3];
+        X1 = mw + 1; const X2 = X1 + SLOTS * mp;
+        for (const ex of [0, X2]) { const u = unitAt(unit, ex, 0, 0, false, seed++, mw, md, tall); first = first || u; }
+        for (let q = 0; q < SLOTS; q++) {
+          if (q === gaps.f) continue;
+          const u = unitAt(unit, X1 + q * mp, 0, 0, true, seed++, mw, md); u.userData.slot = q; u.userData.row = 'f';
+          for (const zz of runs) { bx(u, 1, ty - (lift + h), 1, M.chrome, mw / 2 - 0.5, lift + h, zz - 0.5); cyl(u, 1.8, 0.9, navy, mw / 2, ty - 0.2, zz, 20); }
+          u.userData.onClick = () => slide(u);
+          movers.push(u);
         }
-        for (const x of [ew, X2]) cyl(unit, 0.5, D2, M.chrome, x, ty + 1.5, D2 / 2, 10, 'z');
+        for (const zz of runs) { bx(unit, X2 - X1 + 1, 3, 2.6, trackM, X1 - 0.5, ty, zz - 1.3); for (const x of [mw, X2]) bx(unit, 1.2, 1.2, 4.2, M.chrome, x - 0.6, ty + 0.9, zz < md / 2 ? 0 : zz - 1.2); }
       }
       if (dims && first) {
-        const dg = group(unit); dg.userData.dyn = true; const ys = first.userData.ys, x0 = first.position.x, z0 = first.position.z;
-        for (let i = 0; i < ys.length - 1; i++) k.dim(dg, [x0 - 4, ys[i], z0 + d], [x0 - 4, ys[i + 1], z0 + d], k.inch(ys[i + 1] - ys[i]), 1, [-7, 0, 0]);
-        k.dim(dg, [x0, first.userData.lf + h + 4, z0 + d], [x0 + w, first.userData.lf + h + 4, z0 + d], k.inch(w), 1, [0, 3, 0]);
-        k.dim(dg, [x0 + w + 3, 0, z0 + d], [x0 + w + 3, first.userData.lf + h, z0 + d], k.inch(first.userData.lf + h), 1, [7, 0, 0]);
-        k.dim(dg, [x0 + w + 2, first.userData.lf + h + 4, z0], [x0 + w + 2, first.userData.lf + h + 4, z0 + d], k.inch(d), 1, [4, 2, 0]);
+        const dg = group(unit), { ys, lf, uw, ud, ph } = first.userData; dg.userData.dyn = true; const x0 = first.position.x, z0 = first.position.z;
+        for (let i2 = 0; i2 < ys.length - 1; i2++) k.dim(dg, [x0 - 4, ys[i2], z0 + ud], [x0 - 4, ys[i2 + 1], z0 + ud], k.inch(ys[i2 + 1] - ys[i2]), 1, [-7, 0, 0]);
+        k.dim(dg, [x0, lf + ph + 4, z0 + ud], [x0 + uw, lf + ph + 4, z0 + ud], k.inch(uw), 1, [0, 3, 0]);
+        k.dim(dg, [x0 + uw + 3, 0, z0 + ud], [x0 + uw + 3, lf + ph, z0 + ud], k.inch(lf + ph), 1, [7, 0, 0]);
+        k.dim(dg, [x0 + uw + 2, lf + ph + 4, z0], [x0 + uw + 2, lf + ph + 4, z0 + ud], k.inch(ud), 1, [4, 2, 0]);
       }
       unit.traverse(q => { if (q.isMesh && !q.userData.noShadow) { q.castShadow = q.receiveShadow = true; } });
       bake?.(unit); wake();
@@ -264,18 +264,17 @@ function wireModel(id, name, dims0, start) {
     const slideRow = (r) => { const u = movers.find(m => m.userData.row === r && Math.abs(m.userData.slot - gaps[r]) === 1); if (u) slide(u); };
     make();
     return {
-      group: root, view: layout === 'track' ? [0.9, 0.55, 1.3] : [0.9, 0.55, 1.25],
+      group: root, view: layout === 'track' ? [0.45, 0.35, 1.3] : [0.9, 0.55, 1.25],
       actions: [
-        { label: LAYOUTS[start], run: () => { layout = ORDER[(ORDER.indexOf(layout) + 1) % ORDER.length]; make(); refit?.(); return LAYOUTS[layout]; } },
-        { label: 'Slide the front row', run: () => { if (layout !== 'track') { layout = 'track'; make(); refit?.(); return 'Slide the front row'; } slideRow('f'); } },
-        { label: 'Slide the back row', run: () => { if (layout !== 'track') { layout = 'track'; make(); refit?.(); return 'Slide the back row'; } slideRow('b'); } },
-        { label: 'Add casters', run: () => { casters = !casters; make(); return casters ? 'Remove casters' : 'Add casters'; } },
+        { label: LAYOUTS[start], when: () => ORDER.length > 1, run: () => { layout = ORDER[(ORDER.indexOf(layout) + 1) % ORDER.length]; make(); refit?.(); return LAYOUTS[layout]; } },
+        { label: 'Slide the units', when: () => layout === 'track', run: () => { const u = movers.find(m => Math.abs(m.userData.slot - gaps.f) === 1); if (u) slide(u); } },
+        { label: 'Add casters', when: () => layout !== 'track', run: () => { casters = !casters; make(); return casters ? 'Remove casters' : 'Add casters'; } },
         { label: 'Show dimensions', run: () => { dims = !dims; make(); return dims ? 'Hide dimensions' : 'Show dimensions'; } },
       ],
     };
   });
 }
-wireModel('wire-shelving', 'Chrome Wire Shelving', 'Chrome wire units, from a pair to a walk-in room layout', 'pair');
+wireModel('wire-shelving', 'Chrome Wire Shelving', 'Chrome wire units, from a pair to a walk-in room layout', 'pair', ['pair', 'wall', 'L', 'U']);
 
 /* ---------------- 4. library cantilever shelving ---------------- */
 def('library', 'Library Cantilever Shelving', 'Double-faced cantilever shelving, counter height to 90", three to eight sections', ({ THREE, wake, bake, refit }) => {
@@ -531,7 +530,7 @@ function hdMobile(id, name, dims, start) {
       actions: [
         { label: 'Open next aisle', run: () => { open = (open + 1) % (C.N + 1); move(); } },
         { label: 'Close all aisles', run: () => { open = C.N; move(); } },
-        { label: 'Electric drive', run: () => { if (C.electricOnly) return 'Electric only'; electric = !electric; ranges.forEach(g => { if (g.userData.fixed) return; g.userData.wheel.visible = !electric; g.userData.pad.visible = electric; }); return electric ? 'Mechanical assist' : 'Electric drive'; } },
+        { label: 'Electric drive', when: () => !C.electricOnly, run: () => { if (C.electricOnly) return 'Electric only'; electric = !electric; ranges.forEach(g => { if (g.userData.fixed) return; g.userData.wheel.visible = !electric; g.userData.pad.visible = electric; }); return electric ? 'Mechanical assist' : 'Electric drive'; } },
         { label: HD_KINDS[start].label, run: () => { const was = HD_KINDS[kind].electricOnly; kind = HD_ORDER[(HD_ORDER.indexOf(kind) + 1) % HD_ORDER.length]; if (HD_KINDS[kind].electricOnly) electric = true; else if (was) electric = false; open = 1; make(); refit?.(); return HD_KINDS[kind].label; } },
       ],
     };
@@ -1585,7 +1584,7 @@ def('tire-rack', 'Tire Storage Rack', 'Two 48" bays, three levels: tires cradled
 });
 
 /* ---------------- 25. mobile wire shelving on a top track ---------------- */
-wireModel('wire-track', 'Mobile Wire Shelving on Overhead Track', 'A sliding front row on casters under an overhead track, fixed units behind', 'track');
+wireModel('wire-track', 'Mobile Wire Shelving on Overhead Track', 'Units on casters slide side to side under two overhead track runs, between tall fixed end units', 'track', ['track']);
 
 /* ---------------- 26. stainless steel work table ---------------- */
 def('ss-table', 'Stainless Steel Work Table', '60" W x 30" D x 34" H: stainless top, undershelf, casters or bullet feet', ({ THREE, wake, bake }) => {

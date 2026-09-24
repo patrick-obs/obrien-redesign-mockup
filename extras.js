@@ -462,6 +462,7 @@ const CSS3D = `.v3d-ov{position:absolute;inset:4% 5%;z-index:6;background:#0c1a2
 .v3d-bar{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;justify-content:space-between;padding:14px 18px 6px}
 .v3d-acts{display:flex;flex-wrap:wrap;gap:8px}
 .v3d-acts button{border:0;background:var(--teal);color:#fff;border-radius:999px;padding:9px 16px;font:inherit;font-size:.88rem;font-weight:700;cursor:pointer;transition:transform .15s,box-shadow .15s,background .15s}
+.v3d-acts button[hidden]{display:none}
 .v3d-acts button:hover{background:var(--teal-dark);transform:translateY(-1px);box-shadow:0 6px 14px rgba(2,60,63,.18)}
 .v3d-fin{display:flex;gap:8px;align-items:center;font-size:.84rem;color:var(--muted)}
 .v3d-fin>span{font-weight:600;margin-right:2px}
