@@ -364,10 +364,10 @@ function photos(file, html) {
 const VIEW3D = {
   'four-post-shelving': 'four-post', 'bin-storage': 'bin-shelving', 'wire-shelving': 'wire-shelving,wire-track', 'cantilever-shelving': 'library,hd-mobile-library',
   'static-shelving': 'four-post,bin-shelving,wire-shelving,library,tire-rack', 'high-density-mobile-storage': 'hd-mobile,wire-track', 'lockers': 'lockers,athletic,evidence-lockers,weapons', 'evidence-lockers': 'evidence-lockers',
-  'cabinets': 'flat-files,fireproof,rotary,museum-cabinet', 'rotary-cabinets': 'rotary', 'museum-cabinets': 'museum-cabinet,hd-mobile-museum,textile-rack,hd-mobile-textile', 'art-screens': 'art-screens,hd-mobile-art,wall-art',
+  'cabinets': 'flat-files,fireproof,rotary,museum-cabinet', 'rotary-cabinets': 'rotary', 'museum-cabinets': 'museum-cabinet,hd-mobile-museum,four-post-solander,textile-rack,hd-mobile-textile', 'art-screens': 'art-screens,hd-mobile-art,wall-art',
   'pallet-rack': 'pallet-rack', 'mezzanines': 'mezzanine', 'lifts-carousels': 'vlm', 'modular-casework': 'casework,ss-table', 'wire-partitions': 'wire-cage',
   'weapons-storage': 'weapons,hd-mobile', 'athletic-storage': 'athletic,lockers', 'athletics': 'athletic,lockers,hd-mobile', 'mail-sorters': 'mail-sorter', 'fireproof-cabinets': 'fireproof',
-  'military': 'weapons,hd-mobile,pallet-rack', 'museums': 'art-screens,hd-mobile-art,museum-cabinet,hd-mobile-museum,textile-rack,hd-mobile-textile', 'libraries': 'library,hd-mobile-library', 'material-handling-warehouse': 'hd-mobile-open,pallet-rack,mezzanine,vlm,workstation,wire-cage',
+  'military': 'weapons,hd-mobile,pallet-rack', 'museums': 'four-post-solander,art-screens,hd-mobile-art,museum-cabinet,hd-mobile-museum,textile-rack,hd-mobile-textile', 'libraries': 'library,hd-mobile-library', 'material-handling-warehouse': 'hd-mobile-open,pallet-rack,mezzanine,vlm,workstation,wire-cage',
   'vertical-farming': 'hd-mobile-grow,ss-table,wire-track', 'pharmaceutical-healthcare': 'casework,ss-table,wire-track,hd-mobile', 'education': 'lockers,athletic,library,hd-mobile,mail-sorter', 'government-public-safety': 'evidence-lockers,weapons,hd-mobile,wire-cage',
   'corporate-legal': 'hd-mobile,rotary,fireproof,hd-mobile-flat,mail-sorter', 'automotive': 'tire-rack,hd-mobile-tire,bin-shelving,workstation,pallet-rack,vlm', 'retail': 'hd-mobile,four-post,bin-shelving,wire-track',
   'general-contractors': 'install,hd-mobile,mezzanine', 'design-specify': 'install,hd-mobile',

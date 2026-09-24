@@ -104,12 +104,13 @@ function kit(THREE) {
 }
 
 const KRAFT = ['#b58a55', '#c49a64', '#a97d49', '#d1ab77', '#e4e1d6', '#ffffff'];
+const SOLANDER = ['#3b3f44', '#2d3136', '#4a4f55', '#565b61', '#6b4f3a', '#43464a'];
 const BOOKS = ['#7c2d2d', '#2d4a7c', '#2f6b4f', '#a3782b', '#5a3d6e', '#1f1f1f', '#b5563a', '#35667a', '#8d8d86', '#c7b58f'];
 
 /* four-post / closed steel shelving unit, min corner at origin, open face toward +z */
 function shelving(k, parent, o) {
   const { M, bx, bar, group, many } = k;
-  const { bays = 3, w = 36, d = 18, h = 84, shelves = 6, closed = false, paint = M.paint, contents = null, seed = 7, labels = false } = o;
+  const { bays = 3, w = 36, d = 18, h = 84, shelves = 6, closed = false, paint = M.paint, contents = null, seed = 7, labels = false, dividers = false, pass = false, pull = null } = o;
   const post = o.postPaint || paint;
   const g = group(parent, o.x || 0, o.y || 0, o.z || 0), W = bays * w, r = rng(seed);
   for (let i = 0; i <= bays; i++) {
@@ -120,7 +121,7 @@ function shelving(k, parent, o) {
     }
     if (closed) bx(g, 0.05, h, d, paint, i === bays ? W - 0.05 : x, 0, 0);
   }
-  if (closed) bx(g, W, h, 0.05, paint, 0, 0, 0);
+  if (closed && !pass) bx(g, W, h, 0.05, paint, 0, 0, 0);
   const ys = []; for (let s = 0; s < shelves; s++) ys.push(3 + (s * (h - 4.5)) / (shelves - 1));
   const items = [];
   for (let b = 0; b < bays; b++) {
@@ -131,21 +132,29 @@ function shelving(k, parent, o) {
       if (labels) bx(g, 4, 0.9, 0.05, M.label, x0 + w / 2 - 2, y - 1.1, d - 0.1);
       bx(g, w - 0.2, 1.4, 0.06, paint, x0, y - 1.34, 0.1);
       if (!closed && si === 0) { bar(g, b * w + 1, 4, (b + 1) * w - 1, h - 4, 0.3, 0.35, paint); bar(g, b * w + 1, h - 4, (b + 1) * w - 1, 4, 0.5, 0.35, paint); }
-      const top = si === ys.length - 1, gap = top ? 0 : ys[si + 1] - y - 2;
+      const top = si === ys.length - 1, clear = top ? 0 : ys[si + 1] - y - 1.45, gap = clear - 0.55;
+      if (dividers && !top && clear > 3) for (let dx = 12; dx < w - 6; dx += 12) bx(g, 0.08, Math.min(clear - 0.3, 9), d - 1.5, paint, x0 + dx, y + 0.06, 0.7);
+      const add = (it) => { if (pull && !g.userData.pull && pull.b === b && pull.si === si) g.userData.pull = it; else items.push(it); };
+      if (contents === 'solander' && !top && clear >= 3.3) {
+        const sw = d >= 24 ? 16 : 12, sd = d >= 24 ? 20 : 15, n = Math.floor((w - 1) / (sw + 0.6));
+        let x = x0 + (w - n * (sw + 0.6)) / 2;
+        for (let q = 0; q < n; q++) { if (r() > 0.1) add({ x, y: y + 0.06, z: d - sd - 0.8, w: sw, h: 3, d: sd, color: SOLANDER[Math.floor(r() * SOLANDER.length)] }); x += sw + 0.6; }
+        continue;
+      }
       if (!contents || top || gap < 6) continue;
       if (contents === 'boxes') {
         let x = x0 + 0.6; const bw = 12.25, bh = Math.min(10.25, gap - 0.5), bd = Math.min(15.25, d - 1.5);
-        while (x + bw < x0 + w - 0.8) { if (r() > 0.18) items.push({ x, y: y + 0.06, z: d - bd - 0.5, w: bw, h: bh, d: bd, color: KRAFT[Math.floor(r() * 4)] }); x += bw + 0.3; }
+        while (x + bw < x0 + w - 0.8) { if (r() > 0.18) add({ x, y: y + 0.06, z: d - bd - 0.5, w: bw, h: bh, d: bd, color: KRAFT[Math.floor(r() * 4)] }); if ((pass || d >= 30) && r() > 0.25) items.push({ x, y: y + 0.06, z: 0.5, w: bw, h: bh, d: bd, color: KRAFT[Math.floor(r() * 4)] }); x += bw + 0.3; }
       } else if (contents === 'bins') {
         let x = x0 + 0.5; const bw = 6.5, bh = Math.min(5, gap - 0.8), bd = d - 1.2;
-        while (x + bw < x0 + w - 0.6) { items.push({ x, y: y + 0.06, z: 0.5, w: bw, h: bh, d: bd, color: '#2f6fb3' }); x += bw + 0.35; }
+        while (x + bw < x0 + w - 0.6) { add({ x, y: y + 0.06, z: 0.5, w: bw, h: bh, d: bd, color: '#2f6fb3' }); x += bw + 0.35; }
       } else if (contents === 'binders') {
         let x = x0 + 0.8;
         while (x < x0 + w - 3) { const t = 1.6 + r() * 1.4; if (r() > 0.12) items.push({ x, y: y + 0.06, z: d - 11.5, w: t - 0.15, h: Math.min(11.5, gap - 0.5), d: 10.5, color: BOOKS[Math.floor(r() * BOOKS.length)] }); x += t; }
       }
     }
   }
-  if (contents) many(g, items, contents === 'bins' ? k.std(0xffffff, 0.35, 0) : M.kraft);
+  if (contents) many(g, items, contents === 'bins' ? k.std(0xffffff, 0.35, 0) : contents === 'solander' ? k.std(0xffffff, 0.85, 0) : M.kraft);
   g.userData.W = W; g.userData.D = d; g.userData.H = h; g.userData.ys = ys; g.userData.w = w; g.userData.bays = bays;
   return g;
 }
@@ -161,22 +170,54 @@ function shelvingDims(k, g) {
 }
 
 /* ---------------- 1. four-post shelving ---------------- */
-def('four-post', '4-Post Steel Shelving', 'Three 36" W x 18" D x 84" H sections', ({ THREE, wake, bake }) => {
-  const k = kit(THREE), root = new THREE.Group();
-  const paint = k.std(0xbfc4c7, 0.5, 0.3), post = k.postMat(paint);
-  let closed = true, shelves = 7, contents = true, dims = false, unit = null;
-  const make = () => { if (unit) root.remove(unit); unit = shelving(k, root, { bays: 3, closed, shelves, paint, postPaint: post, labels: true, contents: contents ? 'boxes' : null }); if (dims) shelvingDims(k, unit); unit.traverse(o => { if (o.isMesh && !o.userData.noShadow) { o.castShadow = o.receiveShadow = true; } }); unit.userData.dyn = true; bake?.(unit); wake(); };
-  make();
-  return {
-    group: root, finishes: k.FIN.shelving, setFinish: k.finisher(paint, post),
-    actions: [
-      { label: 'Open style', run: () => { closed = !closed; make(); return closed ? 'Open style' : 'Closed style'; } },
-      { label: 'Shelves: 7', run: () => { shelves = shelves >= 8 ? 5 : shelves + 1; make(); return `Shelves: ${shelves}`; } },
-      { label: 'Show dimensions', run: () => { dims = !dims; make(); return dims ? 'Hide dimensions' : 'Show dimensions'; } },
-      { label: 'Hide boxes', run: () => { contents = !contents; make(); return contents ? 'Hide boxes' : 'Show boxes'; } },
-    ],
-  };
-});
+// 4-post shelving at standard sizes; what it holds sets the shelf spacing unless you pick a shelf count
+function fourPost(id, name, dims0, preset) {
+  def(id, name, dims0, ({ THREE, tween, wake, bake, refit }) => {
+    const k = kit(THREE), { bx, group } = k, root = new THREE.Group();
+    const paint = k.std(0xbfc4c7, 0.5, 0.3), post = k.postMat(paint);
+    const SIZES = [[36, 18, '36" W x 18" D'], [36, 12, '36" W x 12" D'], [42, 24, '42" W x 24" D'], [48, 24, '48" W x 24" D']];
+    const HEIGHTS = [72, 84, 96], BAYS = [1, 3, 5, 8], SHELVES = [0, 5, 6, 7, 8, 10, 12, 16];
+    const CONTENTS = [['boxes', 'Record storage boxes'], ['solander', 'Solander boxes'], ['bins', 'Bins'], [null, 'Nothing']];
+    const LAYOUTS = ['Single run', 'Pass-through', 'Two runs, one aisle'];
+    const st = { size: 0, hgt: 1, cont: 0, lay: 0, bays: 1, closed: true, shelves: 0, dividers: false, dims: false, ...preset };
+    const autoShelves = (h, c) => (c === 'solander' ? Math.floor((h - 4.5) / 4.75) + 1 : c === 'bins' ? Math.floor((h - 4.5) / 9) + 1 : Math.floor((h - 4.5) / 12.5) + 1);
+    let unit, pullG = null;
+    const make = () => {
+      if (unit) root.remove(unit);
+      const [w, d] = SIZES[st.size], h = HEIGHTS[st.hgt], contents = CONTENTS[st.cont][0], bays = BAYS[st.bays], shelves = SHELVES[st.shelves] || Math.max(4, autoShelves(h, contents));
+      unit = group(root); unit.userData.dyn = true;
+      const opts = { bays, w, d, h, closed: st.closed, shelves, paint, postPaint: post, labels: true, contents, dividers: st.dividers, pass: st.lay === 1, pull: contents ? { b: Math.floor(bays / 2), si: Math.floor(shelves / 2) } : null };
+      const a = shelving(k, unit, opts);
+      if (st.lay === 2) { const b2 = shelving(k, unit, { ...opts, seed: 17, pull: null }); b2.rotation.y = Math.PI; b2.position.set(a.userData.W, 0, 2 * d + 36); }
+      if (st.dims) shelvingDims(k, a);
+      // one box you can slide out to see how it sits
+      pullG = null; const pb = a.userData.pull;
+      if (pb) { pullG = group(unit); pullG.userData.dyn = true; bx(pullG, pb.w, pb.h, pb.d, k.std(new THREE.Color(pb.color).getHex(), 0.8, 0), pb.x, pb.y, pb.z); pullG.userData.onClick = () => pull(); }
+      unit.traverse(o => { if (o.isMesh && !o.userData.noShadow) { o.castShadow = o.receiveShadow = true; } });
+      bake?.(unit); wake();
+    };
+    const pull = () => { if (!pullG) return; pullG.userData.out = !pullG.userData.out; tween(pullG.position, 'z', pullG.userData.out ? SIZES[st.size][1] * 0.75 : 0, 700, 'out'); };
+    const re = () => { make(); refit?.(); };
+    make();
+    return {
+      group: root, finishes: k.FIN.shelving, setFinish: k.finisher(paint, post),
+      actions: [
+        { label: 'Pull a box', when: () => !!pullG, run: () => { pull(); } },
+        { label: 'Holds', options: CONTENTS.map(c => c[1]), get: () => st.cont, set: n => { st.cont = n; st.shelves = 0; re(); } },
+        { label: 'Size', options: SIZES.map(z => z[2]), get: () => st.size, set: n => { st.size = n; re(); } },
+        { label: 'Height', options: HEIGHTS.map(v => v + '"'), get: () => st.hgt, set: n => { st.hgt = n; re(); } },
+        { label: 'Sections', options: BAYS.map(String), get: () => st.bays, set: n => { st.bays = n; re(); } },
+        { label: 'Layout', options: LAYOUTS, get: () => st.lay, set: n => { st.lay = n; re(); } },
+        { label: 'Shelves', options: ['Fit to contents', ...SHELVES.slice(1).map(String)], get: () => st.shelves, set: n => { st.shelves = n; re(); } },
+        { label: 'Style', options: ['Closed', 'Open'], get: () => (st.closed ? 0 : 1), set: n => { st.closed = n === 0; re(); } },
+        { label: 'Dividers', toggle: true, get: () => st.dividers, set: v => { st.dividers = v; re(); } },
+        { label: 'Dimensions', toggle: true, get: () => st.dims, set: v => { st.dims = v; re(); } },
+      ],
+    };
+  });
+}
+fourPost('four-post', '4-Post Steel Shelving', 'Standard sizes and heights; single run, pass-through or two runs; holds record boxes, solander boxes or bins', { bays: 1 });
+fourPost('four-post-solander', 'Solander Box Shelving', 'Museum 4-post shelving at close spacing, a shelf for every solander box', { size: 2, cont: 1, bays: 1 });
 
 /* ---------------- 2. bin shelving ---------------- */
 def('bin-shelving', 'Bin & Parts Shelving', 'Closed 36" W x 18" D x 84" H units with bins', ({ THREE }) => {
@@ -195,8 +236,8 @@ function wireModel(id, name, dims0, start, layouts) {
     const ORDER = layouts;
     const cols = ['#c49a64', '#ece8de', '#e9eef2', '#2f6fb3', '#b58a55', '#f3f1ea'];
     let layout = start, casters = false, dims = false, unit, movers = [], X1 = 0;
-    const SLOTS = 4, mw = 24, md = 48, mp = mw + 1, gaps = { f: 0 };
-    const wheelM = k.std(0x8f969a, 0.4, 0.3);
+    const SLOTS = 4, mw = 24, md = 48, mp = mw + 5.4, gaps = { f: 0 };
+    const wheelM = k.std(0x8f969a, 0.4, 0.3), bumpM = k.std(0x111213, 0.9, 0);
     const unitAt = (p, x, z, rot, wheels, seed, uw = w, ud = d, tall = 0) => {
       const g = group(p, x, 0, z); g.rotation.y = rot;
       const r = rng(seed), wires = [], items = [], lf = wheels ? lift : 1.2, ph = h + tall;
@@ -245,11 +286,12 @@ function wireModel(id, name, dims0, start, layouts) {
         // units turned short end out roll sideways under two track runs, one over their front ends and one over the back;
         // the tracks span between tall fixed end units
         const tall = 14, ty = lift + h + 3, trackM = k.std(0xc9ced2, 0.3, 0.8), runs = [0, md];
-        X1 = mw + 1; const X2 = X1 + SLOTS * mp;
-        for (const ex of [0, X2]) { const u = unitAt(unit, ex, 0, 0, false, seed++, mw, md, tall); first = first || u; }
+        X1 = mw + 5.4; const X2 = X1 + SLOTS * mp - 5.4 + 5.4;
+        for (const ex of [0, X2]) { const u = unitAt(unit, ex, 0, 0, false, seed++, mw, md, tall); first = first || u; for (const zz of [0, md]) for (const yy of [4, h - 1]) bx(u, 2.6, 1.3, 1.3, bumpM, ex ? -2.6 : mw, yy, zz - 0.65); }
         for (let q = 0; q < SLOTS; q++) {
           if (q === gaps.f) continue;
           const u = unitAt(unit, X1 + q * mp, 0, 0, true, seed++, mw, md); u.userData.slot = q; u.userData.row = 'f';
+          for (const zz of [0, md]) for (const yy of [lift + 3, lift + h - 3]) { bx(u, 2.6, 1.3, 1.3, bumpM, -2.6, yy, zz - 0.65); bx(u, 2.6, 1.3, 1.3, bumpM, mw, yy, zz - 0.65); }
           // a guide roller on top of every post, riding in the track above it
           for (const zz of runs) for (const xx of [0, mw]) { cyl(u, 0.5, ty - 0.8 - (lift + h), M.chrome, xx, (lift + h + ty - 0.8) / 2, zz, 10); cyl(u, 1.6, 1, navy, xx, ty - 0.5, zz, 20); }
           u.userData.onClick = () => slide(u);
@@ -408,7 +450,7 @@ function hdMobile(id, name, dims, start) {
     const up = k.std(0x1f4e8c, 0.45, 0.35), beam = k.std(0xe3671c, 0.45, 0.35);
     const oUp = k.std(0x2c3e3f, 0.5, 0.4), oUpP = k.postMat(oUp), oBeam = k.std(0xf2b705, 0.45, 0.3), deckM = k.std(0xa7adb1, 0.55, 0.4);
     const gWhite = k.std(0xf1f2f0, 0.4, 0.25), wire = k.meshMat(144, 26, 1.5, '#e9ecee', 0.6), trayM = k.std(0x1c1d1f, 0.7, 0.05), leaf = k.std(0xffffff, 0.7, 0), led = k.std(0xffffff, 0.3, 0, { emissive: 0xfff8e8, emissiveIntensity: 1.1 });
-    const tBlue = k.std(0x1f5fb0, 0.45, 0.35), tBlueP = k.postMat(tBlue);
+    const tBlue = k.std(0x1f5fb0, 0.45, 0.35), tBlueP = k.postMat(tBlue), bumperM = k.std(0x111213, 0.9, 0);
     const black = k.std(0x1c1e20, 0.45, 0.15), red = k.std(0xc4241c, 0.4, 0.1), go = k.std(0x39d353, 0.3, 0, { emissive: 0x1f8a33, emissiveIntensity: 0.9 }), stop = k.std(0xc92a2a, 0.35, 0.1, { emissive: 0x5a1414, emissiveIntensity: 0.5 });
     let kind = start, electric = false, open = 2, unit, ranges = [], C, artPanels = false;
     const lPost = k.postMat(paint), tFrame = k.std(0x3a3f44, 0.45, 0.35), tTube = k.std(0xf6f7f5, 0.35, 0.1), aWhite = k.std(0xf3f4f2, 0.45, 0.25), gilt = k.std(0xa6832f, 0.35, 0.7);
@@ -559,7 +601,7 @@ function hdMobile(id, name, dims, start) {
       if (C.electricOnly) electric = true;
       const { L, d, h, N, aisle, cH } = C, deck = 1.5, r = rng(9);
       const depths = [C.df || d + 1, ...Array(N).fill(C.dm || 2 * d + (kind === 'pallet' ? 3 : 1)), C.df || d + 1];
-      const base = []; let acc = 0; for (const dd of depths) { base.push(acc); acc += dd + 0.5; }
+      const base = []; let acc = 0; for (const dd of depths) { base.push(acc); acc += dd + 0.8; }
       const total = acc + aisle;
       bx(unit, L + 14, deck, total + 8, k.std(0x8f969a, 0.8, 0.1), -4, 0, -4);
       for (const rx of [8, L / 2 - 10, L / 2 + 10, L - 8]) bx(unit, 1.2, 0.35, total + 8, M.steel, rx - 0.6, deck, -4);
@@ -568,6 +610,8 @@ function hdMobile(id, name, dims, start) {
       ranges = depths.map((dd, j) => {
         const g = group(unit, 0, deck + 0.35, 0), fixed = j === 0 || j === depths.length - 1, last = j === depths.length - 1;
         bx(g, L, cH, dd, M.dark, 0, 0, 0);
+        // rubber bumpers on both faces so carriages close up without touching
+        for (const bxp of [6, L - 6]) for (const bz of [-0.4, dd]) cyl(g, 0.9, 0.4, bumperM, bxp, cH * 0.55, bz + 0.2, 12, 'z');
         const faces = fixed ? [[j === 0 ? 0.5 : 0.5, j === 0 ? 1 : -1]] : [[0.5, -1], [d + 1, 1]];
         if (kind === 'shelving') {
           if (!fixed || j === 0) shelving(k, g, { bays: 3, w: 36, d, h, closed: true, shelves: 7, paint, contents: 'boxes', seed: 3 + j, y: cH, z: fixed ? 0.5 : d + 1 });
@@ -1085,12 +1129,13 @@ def('vlm', 'Vertical Lift Module (VLM)', 'About 10 ft W x 9 ft D x 15 ft H, one 
   const k = kit(THREE), { M, bx, cyl, group, many } = k, root = new THREE.Group();
   const shell = k.std(0xf2f3f1, 0.4, 0.2), trim = k.std(0xd9dcda, 0.45, 0.3), itemMat = k.std(0xffffff, 0.45, 0.05);
   const lightM = k.std(0xfff6d5, 0.3, 0, { emissive: 0xfff2c4, emissiveIntensity: 0.9 });
+  const laserM = new THREE.MeshBasicMaterial({ color: 0xff2a2a, transparent: true, opacity: 0.85, toneMapped: false }), curtainBeam = new THREE.MeshBasicMaterial({ color: 0xff3b3b, transparent: true, opacity: 0.28, depthWrite: false, toneMapped: false });
   const curtainM = k.std(0xc92a2a, 0.3, 0, { emissive: 0xc92a2a, emissiveIntensity: 0.9 }), ledM = k.std(0x39d353, 0.3, 0, { emissive: 0x39d353, emissiveIntensity: 1.2 }), band = k.std(0x4a5055, 0.5, 0.3);
   const tabletM = k.std(0x2a6f97, 0.2, 0.1, { emissive: 0x1b4f70, emissiveIntensity: 0.8 });
   const W = 118, D = 108, H = 180, TW = W - 18, TD = 30, bayH = 22, trayX = 9, r = rng(8);
   const zRear = 4, zLift = zRear + TD + 4, zFront = zLift + TD + 4, zBay = D - TD - 1;
   const bins = ['#2f6fb3', '#c92a2a', '#e0a526', '#7a8288', '#2f9e44'];
-  const fill = (list, x0, y, z, span) => { let x = x0 + 2; while (x < x0 + span - 6) { const bw = 6 + Math.floor(r() * 3) * 4; if (r() > 0.25) list.push({ x, y, z: z + 2, w: bw - 0.5, h: 2 + r() * 3.5, d: TD - 4, color: bins[Math.floor(r() * 5)] }); x += bw; } };
+  const fill = (list, x0, y, z, span) => { let x = x0 + 2; for (;;) { const bw = 6 + Math.floor(r() * 3) * 4; if (x + bw > x0 + span - 2) break; if (r() > 0.25) list.push({ x, y, z: z + 2, w: bw - 0.5, h: 2 + r() * 3.5, d: TD - 4, color: bins[Math.floor(r() * 5)] }); x += bw; } };
   // the monitor over the bay shows what the machine is doing
   const cv = document.createElement('canvas'); cv.width = 512; cv.height = 256; const cx = cv.getContext('2d');
   const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8;
@@ -1117,12 +1162,18 @@ def('vlm', 'Vertical Lift Module (VLM)', 'About 10 ft W x 9 ft D x 15 ft H, one 
     await tween(t.position, 'z', zLift, 650);
     await carry(t, bay.y);
     await tween(t.position, 'z', zBay, 750, 'out');
-    bay.seg.position.x = 12 + Math.random() * (W - 32); bay.seg.visible = true; wake();
+    const items = t.userData.items || [], it = items[Math.floor(Math.random() * items.length)];
+    if (it) {
+      const px = it.x + it.w / 2, pz = zBay + it.z + it.d / 2, py = bay.y + it.y + it.h, lz = bay.laser;
+      lz.beam.scale.y = lz.top - py; lz.beam.position.set(px, (lz.top + py) / 2, pz); lz.dot.position.set(px, py + 0.03, pz); lz.g.visible = true;
+      bay.seg.position.x = px; bay.seg.visible = true;
+    }
+    wake();
     show(tag(t), `Ready at bay ${bays.indexOf(bay) + 1}: pick 3`);
   };
   const store = async (t) => {
     const bay = t.userData.at; if (!bay) return;
-    bay.seg.visible = false; show(tag(t), 'Returning to storage');
+    bay.seg.visible = false; bay.laser.g.visible = false; show(tag(t), 'Returning to storage');
     await liftTo(bay.y);
     await tween(t.position, 'z', zLift, 650);
     await carry(t, t.userData.home.y);
@@ -1160,9 +1211,22 @@ def('vlm', 'Vertical Lift Module (VLM)', 'About 10 ft W x 9 ft D x 15 ft H, one 
       bx(unit, W - 16, 1.4, 0.6, M.black, 8, y + bayH + 0.8, D);
       const seg = bx(unit, 9, 1, 0.3, ledM, 8, y + bayH + 1, D + 0.55); seg.visible = false; seg.userData.dyn = true;
       bays[bayYs.indexOf(y)].seg = seg;
+      // pick laser from the header down to the item, and the light curtain beams across the opening
+      const laser = group(unit); laser.userData.dyn = true; laser.visible = false;
+      const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 1, 8), laserM); laser.add(beam);
+      const dot = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.05, 20), laserM); laser.add(dot); beam.userData.dyn = dot.userData.dyn = true; beam.userData.noShadow = dot.userData.noShadow = true;
+      bays[bayYs.indexOf(y)].laser = { g: laser, beam, dot, top: y + bayH - 0.4 };
+      for (let q = 2; q < bayH; q += 3) bx(unit, W - 15.6, 0.12, 0.12, curtainBeam, 7.8, y + q + 0.14, D - 1.75);
       y0 = y + bayH + 3;
     }
     bx(unit, W, H - y0, 1, shell, 0, y0, D - 1);
+    // taped work zone on the floor in front of the machine
+    { const c = document.createElement('canvas'); c.width = 64; c.height = 16; const g2 = c.getContext('2d'); g2.fillStyle = '#f2c230'; g2.fillRect(0, 0, 64, 16); g2.fillStyle = '#1b1b1b'; for (let q = -16; q < 64; q += 16) { g2.beginPath(); g2.moveTo(q, 16); g2.lineTo(q + 8, 16); g2.lineTo(q + 16, 0); g2.lineTo(q + 8, 0); g2.closePath(); g2.fill(); }
+      const tx = (len) => { const t2 = new THREE.CanvasTexture(c); t2.colorSpace = THREE.SRGBColorSpace; t2.wrapS = THREE.RepeatWrapping; t2.repeat.set(len / 12, 1); return new THREE.MeshStandardMaterial({ map: t2, roughness: 0.6 }); };
+      const zx0 = -4, zx1 = W + 24, zz0 = D + 3, zz1 = D + 54, tw = 3;
+      const strip = (len, x, z, rot) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(len, tw), tx(len)); m.rotation.set(-Math.PI / 2, 0, rot); m.position.set(x, 0.03, z); m.userData.noShadow = true; unit.add(m); };
+      strip(zx1 - zx0, (zx0 + zx1) / 2, zz0 + tw / 2, 0); strip(zx1 - zx0, (zx0 + zx1) / 2, zz1 - tw / 2, 0);
+      strip(zz1 - zz0, zx0 + tw / 2, (zz0 + zz1) / 2, Math.PI / 2); strip(zz1 - zz0, zx1 - tw / 2, (zz0 + zz1) / 2, Math.PI / 2); }
     bx(unit, W, 12, 1.2, band, 0, H - 14, D - 0.6); bx(unit, W, 3, 1.2, band, 0, 3, D - 0.6);
     // monitor centered over the top bay
     bx(unit, 28, 15, 1.2, M.black, W / 2 - 14, topOpen + 8, D);
@@ -1177,7 +1241,7 @@ def('vlm', 'Vertical Lift Module (VLM)', 'About 10 ft W x 9 ft D x 15 ft H, one 
     const mk = (y, z) => {
       const t = group(unit, 0, y, z);
       bx(t, TW, 0.8, TD, M.steel, trayX, 0, 0); bx(t, TW, 2.4, 0.6, M.steel, trayX, 0, TD - 0.6); bx(t, TW, 2.4, 0.6, M.steel, trayX, 0, 0); bx(t, 0.6, 2.4, TD, M.steel, trayX, 0, 0); bx(t, 0.6, 2.4, TD, M.steel, trayX + TW - 0.6, 0, 0);
-      const it = []; fill(it, trayX, 0.8, 0, TW); many(t, it, itemMat);
+      const it = []; fill(it, trayX, 0.8, 0, TW); many(t, it, itemMat); t.userData.items = it;
       t.userData.home = { y, z }; t.userData.n = trays.length + 1; t.userData.at = null; t.userData.busy = false;
       t.userData.onClick = () => request(t);
       trays.push(t);
@@ -1750,7 +1814,7 @@ def('install', 'Mobile Storage Install, Step by Step', 'Rails in the floor or on
   const vctM = new THREE.MeshStandardMaterial({ map: tex(128, 128, g => { g.fillStyle = '#d9d4c7'; g.fillRect(0, 0, 128, 128); g.fillStyle = '#c9c2b2'; g.fillRect(0, 0, 64, 64); g.fillRect(64, 64, 64, 64); g.strokeStyle = '#b8b1a2'; g.lineWidth = 1; g.strokeRect(0, 0, 64, 64); g.strokeRect(64, 64, 64, 64); }, 1, 1), roughness: 0.55, metalness: 0 });
   const L = 108, d = 15, h = 84, N = 4, aisle = 36, cH = 5, TW = 8;
   const depths = [d + 1, ...Array(N).fill(2 * d + 1), d + 1];
-  const base = []; let acc = 0; for (const dd of depths) { base.push(acc); acc += dd + 0.5; }
+  const base = []; let acc = 0; for (const dd of depths) { base.push(acc); acc += dd + 0.8; }
   const total = acc + aisle, z0 = -6, z1 = total + 6, x0 = -8, x1 = L + 10;
   const rails = [8, L / 2 - 10, L / 2 + 10, L - 8];
   const METHODS = ['Raised subfloor', 'In-floor, new slab', 'In-floor, cut into slab'], FINISH = ['Exposed concrete', 'VCT tile'];
@@ -1804,6 +1868,7 @@ def('install', 'Mobile Storage Install, Step by Step', 'Rails in the floor or on
     g.userData.dyn = true; g.userData.z0 = base[j] + (last ? aisle : 0); g.userData.fixed = fixed; g.userData.base = base[j];
     const half = L / 2 - 1.5, c = group(g), c2 = group(g);
     bx(c, half, cH, dd, M.dark, 0, 0, 0); bx(c2, half, cH, dd, M.dark, L - half, 0, 0);
+    for (const bz of [-0.4, dd]) { cyl(c, 0.9, 0.4, black, 6, cH * 0.55, bz + 0.2, 12, 'z'); cyl(c2, 0.9, 0.4, black, L - 6, cH * 0.55, bz + 0.2, 12, 'z'); }
     for (const rx of rails) cyl(rx < L / 2 ? c : c2, 2, 1.4, black, rx, 1.6, dd / 2, 16, 'x');
     if (!fixed) { cyl(c, 0.9, L / 2 + 0.4, alu, (L / 2 - 0.9) / 2, 2.5, dd / 2, 14, 'x'); cyl(c2, 0.9, L / 2 + 1.3, alu, (L / 2 + 0.1 + L + 1.4) / 2, 2.5, dd / 2, 14, 'x'); }
     parts.carriage.push(c, c2);
@@ -1928,5 +1993,5 @@ def('install', 'Mobile Storage Install, Step by Step', 'Rails in the floor or on
   };
 });
 
-const SHORT = { 'four-post': '4-post', 'bin-shelving': 'Bin shelving', 'wire-shelving': 'Wire', library: 'Library', 'hd-mobile': 'Mobile', lockers: 'Lockers', 'evidence-lockers': 'Evidence', 'flat-files': 'Flat files', rotary: 'Rotary', 'museum-cabinet': 'Museum cabinet', 'art-screens': 'Art screens', 'pallet-rack': 'Pallet rack', mezzanine: 'Mezzanine', vlm: 'VLM', casework: 'Casework', 'wire-cage': 'Wire cage', athletic: 'Athletic', 'mail-sorter': 'Mail sorter', weapons: 'Weapons', 'tire-rack': 'Tire rack', 'wire-track': 'Wire on track', 'ss-table': 'Stainless tables', install: 'Install steps', 'hd-mobile-open': 'Mobile shelving', 'hd-mobile-tire': 'Mobile tires', 'hd-mobile-grow': 'Mobile grow racks', 'hd-mobile-flat': 'Mobile flat files', 'hd-mobile-museum': 'Mobile cabinets', 'hd-mobile-library': 'Mobile library', 'hd-mobile-textile': 'Mobile textiles', 'hd-mobile-art': 'Mobile art screens', workstation: 'Workstation', fireproof: 'Fireproof', 'wall-art': 'Wall art screens', 'textile-rack': 'Textile racks' };
+const SHORT = { 'four-post': '4-post', 'bin-shelving': 'Bin shelving', 'wire-shelving': 'Wire', library: 'Library', 'hd-mobile': 'Mobile', lockers: 'Lockers', 'evidence-lockers': 'Evidence', 'flat-files': 'Flat files', rotary: 'Rotary', 'museum-cabinet': 'Museum cabinet', 'art-screens': 'Art screens', 'pallet-rack': 'Pallet rack', mezzanine: 'Mezzanine', vlm: 'VLM', casework: 'Casework', 'wire-cage': 'Wire cage', athletic: 'Athletic', 'mail-sorter': 'Mail sorter', weapons: 'Weapons', 'tire-rack': 'Tire rack', 'wire-track': 'Wire on track', 'ss-table': 'Stainless tables', install: 'Install steps', 'hd-mobile-open': 'Mobile shelving', 'hd-mobile-tire': 'Mobile tires', 'hd-mobile-grow': 'Mobile grow racks', 'hd-mobile-flat': 'Mobile flat files', 'hd-mobile-museum': 'Mobile cabinets', 'hd-mobile-library': 'Mobile library', 'hd-mobile-textile': 'Mobile textiles', 'hd-mobile-art': 'Mobile art screens', 'four-post-solander': 'Solander boxes', workstation: 'Workstation', fireproof: 'Fireproof', 'wall-art': 'Wall art screens', 'textile-rack': 'Textile racks' };
 for (const [id, s] of Object.entries(SHORT)) if (MODELS[id]) MODELS[id].short = s;
