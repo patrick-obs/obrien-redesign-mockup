@@ -657,7 +657,7 @@ function hdMobile(id, name, dims, start, opts = {}) {
           for (let q = 0; q < 2; q++) {
             const px = x0 + 3 + q * 46, py = y0 + lv + (lv ? 4.5 : 0);
             loads.push({ x: px, y: py, z: z0 + 1, w: 40, h: 5, d: D - 2, color: '#b08658' });
-            const s = 1 + Math.floor(r() * 2);
+            const s = lv >= 100 ? 1 : 1 + Math.floor(r() * 2); // top level: one layer, clear of the cable arms
             for (let c = 0; c < s; c++) for (let m = 0; m < 2; m++) if (r() > 0.12) loads.push({ x: px + 1 + m * 19.5, y: py + 5 + c * 19.5, z: z0 + 2, w: 18.5, h: 19, d: D - 4, color: KRAFT[Math.floor(r() * 4)] });
           }
         }
