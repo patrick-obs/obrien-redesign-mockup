@@ -871,7 +871,7 @@ const HD_KINDS = {
   instruments: { label: 'Storage: musical instruments', L: 108, d: 22, h: 84, N: 3, aisle: 48, cH: 6, panels: true, gear: 2 },
   bins: { label: 'Storage: painting bins', L: 144, d: 44, h: 96, N: 3, aisle: 60, cH: 6, panels: true },
   wardrobe: { label: 'Storage: wardrobe cabinets', L: 108, d: 24, h: 78, N: 3, aisle: 60, cH: 6, panels: true },
-  museum: { label: 'Storage: museum cabinets', L: 147, d: 31, h: 76, N: 3, aisle: 60, cH: 6, panels: true },
+  museum: { label: 'Storage: museum cabinets', L: 147, d: 31, h: 84, N: 3, aisle: 60, cH: 6, panels: true },
   tire: { label: 'Storage: tire racks', L: 144, d: 28, h: 94, N: 3, aisle: 48, cH: 6 },
   grow: { label: 'Storage: grow racks', L: 144, d: 26, h: 96, N: 3, aisle: 48, cH: 6 },
   library: { label: 'Storage: library shelving', L: 108, d: 11.5, h: 84, N: 4, aisle: 48, cH: 5, panels: true },
@@ -1033,30 +1033,12 @@ function hdMobile(id, name, dims, start, opts = {}) {
       doors.forEach(d => { d.userData.onClick = () => (api.isOpen() ? shut() : openUp()); });
       return api;
     };
+    // museum faces: the same cabinet as the stand-alone model, three to a face, set straight on the carriage
     const museumFace = (p, y0, z0, dir) => {
-      const D = C.d, H = C.h, fz = dir > 0 ? z0 + D : z0 - 0.9, back = dir > 0 ? z0 : z0 + D - 1;
       for (let u = 0; u < 3; u++) {
-        const x = u * 49;
-        bx(p, 48, 1, D, mWhite, x, y0, z0); bx(p, 48, 1, D, mWhite, x, y0 + H - 1, z0); bx(p, 1, H, D, mWhite, x, y0, z0); bx(p, 1, H, D, mWhite, x + 47, y0, z0); bx(p, 48, H, 1, mWhite, x, y0, back);
-        const dz = dir > 0 ? z0 + D - 3 : z0 + 2.5, bank = group(p), pulled = {}; let dp = null;
-        const hw = (p2, yy) => { const fz = dir > 0 ? dz + 0.5 : dz - 0.15, pz = dir > 0 ? dz + 0.5 : dz - 0.6; bx(p2, 3.6, 2, 0.15, mPlate, x + 22.2, yy + 3, fz); bx(p2, 3, 1.4, 0.05, M.label, x + 22.5, yy + 3.3, dir > 0 ? fz + 0.15 : fz - 0.05); bx(p2, 8, 0.7, 0.6, mPlate, x + 20, yy + 1.1, pz); };
-        for (let i = 0; i < 5; i++) { bx(bank, 44, 5.4, 0.5, mWhite, x + 2, y0 + 2 + i * 6.2, dz); hw(bank, y0 + 2 + i * 6.2); }
-        bank.userData.onClick = (hit) => {
-          if (!hit || !dp || dp.busy) return; const q = bank.worldToLocal(hit.point.clone()), i = Math.max(0, Math.min(4, Math.floor((q.y - y0 - 2) / 6.2)));
-          // the glass doors come first: a click behind closed doors opens them
-          if (!dp.isOpen()) { dp.open(); return; }
-          if (pulled[i]) { pulled[i].userData.close(); return; }
-          const dr = group(p); dr.userData.dyn = true; const yy = y0 + 2 + i * 6.2;
-          bx(dr, 44, 5.4, 0.5, mWhite, x + 2, yy, dz); hw(dr, yy); k.tray(dr, 43, 3.6, D - 7, ffIn, x + 2.5, yy + 0.4, dir > 0 ? dz - (D - 7) : dz + 0.5, 0.15);
-          smallThings(THREE, dr, x + 3, yy + 0.55, dir > 0 ? dz - (D - 7) + 1 : dz + 1.5, 40, D - 9, rng(60 + i + u * 7), 3, true);
-          const gap = bx(bank, 43.6, 5, 0.05, ffGap, x + 2.2, yy + 0.2, dir > 0 ? dz + 0.52 : dz - 0.07);
-          pulled[i] = dr; dr.userData.onClick = () => dr.userData.close(); tween(dr.position, 'z', dir * 20, 700, 'out');
-          dr.userData.close = () => { if (pulled[i] !== dr) return; delete pulled[i]; openParts.delete(dr.userData.close); tween(dr.position, 'z', 0, 600, 'out').then(() => { bank.remove(gap); p.remove(dr); wake(); }); };
-          wake();
-        };
-        bx(p, 46, 0.8, D - 2, mWhite, x + 1, y0 + 33.2, z0 + 1); smallThings(THREE, p, x + 2, y0 + 34, z0 + 4, 44, D - 8, rng(70 + u), 7);
-        for (const sy of [44, 57]) { bx(p, 46, 0.6, D - 4, mWhite, x + 1, y0 + sy, z0 + 2); smallThings(THREE, p, x + 2, y0 + sy + 0.6, z0 + 4, 44, D - 8, rng(80 + u * 3 + sy), 11); }
-        dp = doorPair(p, x, 48, y0, H, fz, dir, true, mWhite, () => { const n = Object.keys(pulled).length; Object.values(pulled).forEach(d => d.userData.close()); return n; });
+        const g = group(p);
+        museumCabinet(THREE, k, g, { tween, wake, paint: mWhite, base: 0, seed: 20 + u * 3 + (dir > 0 ? 0 : 1), reg: openParts, lazy: true });
+        if (dir > 0) g.position.set(u * 49, y0, z0 + 0.5); else { g.rotation.y = Math.PI; g.position.set(u * 49 + 48, y0, z0 + C.d - 0.5); }
       }
     };
     // gear storage: open steel sections fitted with the accessories that hold each kind of equipment
@@ -1720,49 +1702,59 @@ def('rotary', 'Rotary File Cabinet', '46" W x 41" D x 84" H: the shelving unit t
 });
 
 /* ---------------- 9. museum cabinet ---------------- */
-def('museum-cabinet', 'Museum Storage Cabinet', '48" W x 30" D x 88" H, full-height glass doors, twist latches, shelves over drawers', ({ THREE, tween, wake }) => {
-  const k = kit(THREE), { M, bx, cyl, group } = k, root = new THREE.Group();
-  const paint = k.std(0xf1f2f0, 0.38, 0.2), tray = k.std(0xe6e8e6, 0.5, 0.2), plate = k.std(0xd7dbde, 0.25, 0.85), r = rng(12);
-  const W = 48, D = 30, H = 84, base = 4, t = 1;
-  const things = [0xb56f4a, 0x6b8f71, 0xc9a227, 0x3d5a7a, 0x8a5f3a].map(c => k.std(c, 0.6, 0.05)), boxMat = k.std(0xe8e2d2, 0.9, 0);
-  // recessed white plinth, then the case
-  bx(root, W - 3, base, D - 4, paint, 1.5, 0, 1.5);
+// one museum storage cabinet, the same on its own or on a mobile carriage: white case on a recessed plinth, gasket lines,
+// shelves of collection objects over a bank of drawers with a solid shelf on top, full-height glass (or solid) doors
+// with a latch plate, label card and twist handle. Drawers only open with the doors open; closing puts drawers back first.
+// Built facing +z with its min corner at the group origin. opts: { tween, wake, paint, base, seed, reg }
+function museumCabinet(THREE, k, parent, opts) {
+  const { M, bx, cyl, group } = k, { tween, wake = () => {}, reg = null } = opts;
+  const paint = opts.paint || k.std(0xf1f2f0, 0.38, 0.2), tray = k.std(0xe6e8e6, 0.5, 0.2), plate = k.std(0xd7dbde, 0.25, 0.85);
+  const W = 48, D = 30, H = 84, base = opts.base ?? 4, t = 1, r = rng(opts.seed || 12), root = group(parent);
+  if (base) bx(root, W - 3, base, D - 4, paint, 1.5, 0, 1.5);
   const y0 = base;
   bx(root, W, t, D, paint, 0, y0 + H - t, 0); bx(root, t, H, D, paint, 0, y0, 0); bx(root, t, H, D, paint, W - t, y0, 0); bx(root, W, H, t, paint, 0, y0, 0); bx(root, W, t, D, paint, 0, y0, 0);
   for (const y of [y0 + 0.4, y0 + H - 1.4]) bx(root, W - 2, 0.7, 0.7, M.rubber, 1, y, D - 1.6);
-  // upper shelves with objects, lower bank of drawers with label holders
-  smallThings(THREE, root, 2, y0 + 40.4, 4, W - 4, D - 8, r, 10);
-  for (const y of [y0 + 53, y0 + 67]) {
-    bx(root, W - 2, 0.6, D - 4, paint, 1, y, 1.5); bx(root, W - 2, 1.4, 0.4, paint, 1, y - 0.8, D - 2.9);
-    smallThings(THREE, root, 2, y + 0.6, 4, W - 4, D - 8, r, 10);
+  // a solid shelf right over the drawer bank, then two adjustable shelves, all carrying objects
+  bx(root, W - 2, 0.8, D - 3, paint, 1, y0 + 39.6, 1.5); bx(root, W - 2, 1.4, 0.4, paint, 1, y0 + 38.8, D - 2.9);
+  smallThings(THREE, root, 2, y0 + 40.43, 4, W - 4, D - 8, r, 10);
+  for (const y of [y0 + 53, y0 + 67]) { bx(root, W - 2, 0.6, D - 4, paint, 1, y, 1.5); bx(root, W - 2, 1.4, 0.4, paint, 1, y - 0.8, D - 2.9); smallThings(THREE, root, 2, y + 0.63, 4, W - 4, D - 8, r, 10); }
+  const api = { open: false, moving: false, drawers: [], glass: true };
+  const lazy = !!opts.lazy, out = {};
+  const drawerIsOut = () => (lazy ? Object.keys(out).length > 0 : api.drawers.some(d => d.userData.open));
+  const slide = (dr, o) => { dr.userData.open = o; return tween(dr.position, 'z', o ? 20 : 0, o ? 700 : 600, 'out'); };
+  const dy = i => y0 + 1.6 + i * 6.3;
+  const front = (g, y) => { bx(g, W - 4, 5.9, 0.6, paint, 2, y, D - 3.4); bx(g, 3.6, 2, 0.15, plate, W / 2 - 1.8, y + 3.2, D - 2.8); bx(g, 3, 1.4, 0.05, M.label, W / 2 - 1.5, y + 3.5, D - 2.62); bx(g, 8, 0.7, 0.6, plate, W / 2 - 4, y + 1.2, D - 2.8); };
+  // a whole drawer: box, front with label holder and pull, and specimen trays a hair above the floor so they never flicker
+  const drawer = (i) => { const y = dy(i), dr = group(root); k.tray(dr, W - 5, 3.6, D - 5, tray, 2.5, y + 0.3, 1.5, 0.2); front(dr, y); smallThings(THREE, dr, 3, y + 0.54, 3, W - 7, D - 9, rng((opts.seed || 12) * 10 + i), 3, true); return dr; };
+  if (!lazy) {
+    for (let i = 0; i < 6; i++) { const dr = drawer(i); dr.userData.onClick = () => { if (api.moving) return; if (!api.open) { api.toggle(); return; } slide(dr, !dr.userData.open); wake(); }; api.drawers.push(dr); }
+  } else {
+    // many cabinets on a carriage: the fronts are one piece, and a drawer is built only when it is pulled
+    const bank = group(root), gapM = k.std(0x2a2d30, 0.9, 0);
+    for (let i = 0; i < 6; i++) front(bank, dy(i));
+    const pull = (i) => {
+      if (out[i]) { const { dr, gap } = out[i]; delete out[i]; slide(dr, false).then(() => { root.remove(dr); bank.remove(gap); wake(); }); return; }
+      const dr = drawer(i); dr.userData.dyn = true; dr.userData.onClick = () => pull(i);
+      const gap = bx(bank, W - 4.2, 5.7, 0.05, gapM, 2.1, dy(i) + 0.1, D - 2.15); out[i] = { dr, gap }; slide(dr, true); wake();
+    };
+    bank.userData.onClick = (hit) => { if (api.moving || !hit?.point) return; if (!api.open) { api.toggle(); return; } const q = bank.worldToLocal(hit.point.clone()); pull(Math.max(0, Math.min(5, Math.floor((q.y - y0 - 1.6) / 6.3)))); };
+    api.drawers = [{ userData: { onClick: () => pull(2) } }];
+    api.pullBack = () => Object.keys(out).forEach(i => pull(+i));
   }
-  bx(root, W - 2, 0.8, D - 3, paint, 1, y0 + 39.6, 1.5);
-  const drawers = [];
-  for (let i = 0; i < 6; i++) {
-    const y = y0 + 1.6 + i * 6.3, dr = group(root);
-    k.tray(dr, W - 5, 3.6, D - 5, tray, 2.5, y + 0.3, 1.5, 0.2);
-    bx(dr, W - 4, 5.9, 0.6, paint, 2, y, D - 3.4);
-    bx(dr, 3.6, 2, 0.15, plate, W / 2 - 1.8, y + 3.2, D - 2.8); bx(dr, 3, 1.4, 0.05, M.label, W / 2 - 1.5, y + 3.5, D - 2.62);
-    bx(dr, 8, 0.7, 0.6, plate, W / 2 - 4, y + 1.2, D - 2.8);
-    // specimen trays: shells, minerals, coins, points, bone
-    smallThings(THREE, dr, 3, y + 0.5, 3, W - 7, D - 9, rng(40 + i), 3, true);
-    dr.userData.onClick = () => { dr.userData.open = !dr.userData.open; tween(dr.position, 'z', dr.userData.open ? 20 : 0, 700, 'out'); };
-    drawers.push(dr);
-  }
-  // full-height glass doors in wide white frames; a latch plate with a twist handle on each center stile
-  let glass = true, open = false, moving = false, doors = [], levers = [];
+  let doors = [], levers = [];
   const hinge = group(root); hinge.userData.dyn = true;
-  const toggle = async () => {
-    if (moving) return; moving = true; open = !open;
-    if (open) { await Promise.all(levers.map(l => tween(l.rotation, 'z', -Math.PI / 2, 320, 'out'))); await Promise.all(doors.map((d, n) => tween(d.rotation, 'y', n === 0 ? -1.95 : 1.95, 850))); }
-    else { await Promise.all(doors.map(d => tween(d.rotation, 'y', 0, 800))); await Promise.all(levers.map(l => tween(l.rotation, 'z', 0, 320, 'out'))); }
-    moving = false;
+  api.shut = () => { reg?.delete(api.shut); if (!api.open && !drawerIsOut()) return 0; const w = drawerIsOut() ? 650 : 0; if (api.open) api.toggle(); return w + 1250; };
+  api.toggle = async () => {
+    if (api.moving) return; api.moving = true; api.open = !api.open;
+    if (api.open) { reg?.add(api.shut); await Promise.all(levers.map(l => tween(l.rotation, 'z', -Math.PI / 2, 320, 'out'))); await Promise.all(doors.map((d, n) => tween(d.rotation, 'y', n === 0 ? -1.95 : 1.95, 850))); }
+    else { reg?.delete(api.shut); if (drawerIsOut()) { if (lazy) api.pullBack(); else api.drawers.forEach(d => { if (d.userData.open) slide(d, false); }); await new Promise(res => setTimeout(res, 650)); } await Promise.all(doors.map(d => tween(d.rotation, 'y', 0, 800))); await Promise.all(levers.map(l => tween(l.rotation, 'z', 0, 320, 'out'))); }
+    api.moving = false; wake();
   };
-  const makeDoors = () => {
+  api.makeDoors = () => {
     hinge.clear(); doors = []; levers = [];
     for (const side of [0, 1]) {
       const pv = group(hinge, side ? W - 0.4 : 0.4, y0 + 0.4, D), dw = W / 2 - 0.5, sx = side ? -dw : 0, dh = H - 0.8, st = 4.2;
-      if (glass) {
+      if (api.glass) {
         bx(pv, dw, st, 1.2, paint, sx, 0, -1.2); bx(pv, dw, st, 1.2, paint, sx, dh - st, -1.2);
         bx(pv, st, dh, 1.2, paint, sx, 0, -1.2); bx(pv, st, dh, 1.2, paint, sx + dw - st, 0, -1.2);
         bx(pv, dw - 2 * st, dh - 2 * st, 0.25, M.glass, sx + st, st, -0.7);
@@ -1774,21 +1766,28 @@ def('museum-cabinet', 'Museum Storage Cabinet', '48" W x 30" D x 88" H, full-hei
       cyl(pv, 1.25, 0.35, plate, px + 1.5, dh / 2 - 2.8, 0.3, 28, 'z');
       const lv = group(pv, px + 1.5, dh / 2 - 2.8, 0.55);
       cyl(lv, 1, 0.25, M.dark, 0, 0, 0, 24, 'z'); bx(lv, 0.55, 2.1, 0.5, M.chrome, -0.275, -1.05, 0);
-      lv.rotation.z = open ? -Math.PI / 2 : 0; lv.userData.dyn = true; levers.push(lv);
-      if (open) pv.rotation.y = side ? 1.95 : -1.95;
-      pv.userData.onClick = toggle;
+      lv.rotation.z = api.open ? -Math.PI / 2 : 0; if (!lazy) { lv.userData.dyn = true; levers.push(lv); }
+      if (api.open) pv.rotation.y = side ? 1.95 : -1.95;
+      pv.userData.onClick = () => api.toggle();
       doors.push(pv);
     }
     hinge.traverse(o => { if (o.isMesh) { o.castShadow = o.receiveShadow = true; } }); wake();
   };
-  makeDoors();
+  api.makeDoors();
+  api.group = root; api.paint = paint;
+  return api;
+}
+
+def('museum-cabinet', 'Museum Storage Cabinet', '48" W x 30" D x 88" H, full-height glass doors, twist latches, shelves over drawers', ({ THREE, tween, wake }) => {
+  const k = kit(THREE), root = new THREE.Group();
+  const cab = museumCabinet(THREE, k, root, { tween, wake, base: 4, seed: 12 });
   return {
-    group: root, view: [0.75, 0.42, 1.35],
-    finishes: [{ name: 'White', swatch: '#f1f2f0', color: 0xf1f2f0 }, { name: 'Light gray', swatch: '#d9dcd8', color: 0xd9dcd8 }, { name: 'Putty', swatch: '#d9cfbd', color: 0xd6ccb9 }], setFinish: k.finisher(paint),
+    group: root, view: [0.75, 0.42, 1.35], prompt: 'Tap the doors to open them, then tap a drawer',
+    finishes: [{ name: 'White', swatch: '#f1f2f0', color: 0xf1f2f0 }, { name: 'Light gray', swatch: '#d9dcd8', color: 0xd9dcd8 }, { name: 'Putty', swatch: '#d9cfbd', color: 0xd6ccb9 }], setFinish: k.finisher(cab.paint),
     actions: [
-      { label: 'Open doors', run: () => { toggle(); return open ? 'Close doors' : 'Open doors'; } },
-      { label: 'Pull a drawer', run: async () => { if (!open) await toggle(); drawers[2].userData.onClick(); } },
-      { label: 'Solid doors', run: () => { if (moving) return glass ? 'Solid doors' : 'Glass doors'; glass = !glass; makeDoors(); return glass ? 'Solid doors' : 'Glass doors'; } },
+      { label: 'Open doors', run: () => { cab.toggle(); return cab.open ? 'Close doors' : 'Open doors'; } },
+      { label: 'Pull a drawer', run: async () => { if (!cab.open) await cab.toggle(); cab.drawers[2].userData.onClick(); } },
+      { label: 'Solid doors', run: () => { if (cab.moving) return cab.glass ? 'Solid doors' : 'Glass doors'; cab.glass = !cab.glass; cab.makeDoors(); return cab.glass ? 'Solid doors' : 'Glass doors'; } },
     ],
   };
 });
