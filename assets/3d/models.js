@@ -71,7 +71,7 @@ function kit(THREE) {
     endPanels: [{ name: 'O\'Brien teal', swatch: '#0f7377', color: 0x0f7377 }, { name: 'Maple laminate', swatch: '#c79a66', color: 0xc79a66 }, { name: 'Light gray', swatch: '#c3c7ca', color: 0xbfc4c7 }, { name: 'Black', swatch: '#2c2f31', color: 0x2c2f31 }, { name: 'Navy', swatch: '#2a3d5c', color: 0x2a3d5c }],
     cabinets: [{ name: 'White', swatch: '#f1f2f0', color: 0xeeefed }, { name: 'Light gray', swatch: '#c3c7ca', color: 0xbfc4c7 }, { name: 'Putty', swatch: '#d9cfbd', color: 0xd6ccb9 }, { name: 'Black', swatch: '#2c2f31', color: 0x2c2f31 }],
   };
-  const finisher = (...mats) => (f) => { mats.forEach(mat => mat.color.setHex(f.color)); };
+  const finisher = (...mats) => (f) => { mats.forEach(mat => { mat.color.setHex(f.color); if (f.metal != null) mat.metalness = f.metal; if (f.rough != null) mat.roughness = f.rough; }); };
   // upright with a column of slots every 2", tinted by the shelf paint
   const postMat = (paint) => {
     const c = document.createElement('canvas'); c.width = 16; c.height = 64; const g = c.getContext('2d');
@@ -280,6 +280,7 @@ function wireModel(id, name, dims0, start, layouts) {
     make();
     return {
       group: root, view: layout === 'track' ? [0.45, 0.35, 1.3] : [0.9, 0.55, 1.25],
+      finishes: [{ name: 'Chrome', swatch: '#e3e7ea', color: 0xe3e7ea, metal: 1, rough: 0.16 }, { name: 'Black epoxy', swatch: '#2b2d2f', color: 0x2b2d2f, metal: 0.2, rough: 0.5 }, { name: 'Gray epoxy', swatch: '#9aa1a6', color: 0x9aa1a6, metal: 0.2, rough: 0.5 }, { name: 'Stainless', swatch: '#cfd4d8', color: 0xcfd4d8, metal: 0.9, rough: 0.3 }], setFinish: k.finisher(M.chrome),
       actions: [
         { label: LAYOUTS[start], when: () => ORDER.length > 1, run: () => { layout = ORDER[(ORDER.indexOf(layout) + 1) % ORDER.length]; make(); refit?.(); return LAYOUTS[layout]; } },
         { label: 'Slide the units', when: () => layout === 'track', run: () => { const u = movers.find(m => Math.abs(m.userData.slot - gaps.f) === 1); if (u) slide(u); } },
@@ -369,9 +370,12 @@ const HD_KINDS = {
   museum: { label: 'Storage: museum cabinets', L: 98, d: 31, h: 76, N: 3, aisle: 40, cH: 6, panels: true },
   tire: { label: 'Storage: tire racks', L: 144, d: 28, h: 94, N: 3, aisle: 40, cH: 6 },
   grow: { label: 'Storage: grow racks', L: 144, d: 26, h: 96, N: 3, aisle: 36, cH: 6 },
+  library: { label: 'Storage: library shelving', L: 108, d: 11.5, h: 84, N: 4, aisle: 36, cH: 5, panels: true },
+  textile: { label: 'Storage: rolled textiles', L: 144, d: 30, h: 96, N: 3, aisle: 40, cH: 6 },
+  art: { label: 'Storage: art screens', L: 120, d: 5, h: 96, N: 6, aisle: 40, cH: 4, dm: 12, df: 12 },
   pallet: { label: 'Storage: pallet rack', L: 198, d: 42, h: 144, N: 3, aisle: 120, cH: 8, electricOnly: true },
 };
-const HD_ORDER = ['shelving', 'open', 'flat', 'museum', 'tire', 'grow', 'pallet'];
+const HD_ORDER = ['shelving', 'open', 'library', 'flat', 'museum', 'textile', 'art', 'tire', 'grow', 'pallet'];
 // tires: a lathed cross-section (sidewalls, flat tread, bead) with a block tread texture; labels on the tread
 let TIRE = null;
 function tireParts(THREE) {
@@ -406,7 +410,67 @@ function hdMobile(id, name, dims, start) {
     const gWhite = k.std(0xf1f2f0, 0.4, 0.25), wire = k.meshMat(144, 26, 1.5, '#e9ecee', 0.6), trayM = k.std(0x1c1d1f, 0.7, 0.05), leaf = k.std(0xffffff, 0.7, 0), led = k.std(0xffffff, 0.3, 0, { emissive: 0xfff8e8, emissiveIntensity: 1.1 });
     const tBlue = k.std(0x1f5fb0, 0.45, 0.35), tBlueP = k.postMat(tBlue);
     const black = k.std(0x1c1e20, 0.45, 0.15), red = k.std(0xc4241c, 0.4, 0.1), go = k.std(0x39d353, 0.3, 0, { emissive: 0x1f8a33, emissiveIntensity: 0.9 }), stop = k.std(0xc92a2a, 0.35, 0.1, { emissive: 0x5a1414, emissiveIntensity: 0.5 });
-    let kind = start, electric = false, open = 2, unit, ranges = [], C;
+    let kind = start, electric = false, open = 2, unit, ranges = [], C, artPanels = false;
+    const lPost = k.postMat(paint), tFrame = k.std(0x3a3f44, 0.45, 0.35), tTube = k.std(0xf6f7f5, 0.35, 0.1), aWhite = k.std(0xf3f4f2, 0.45, 0.25), gilt = k.std(0xa6832f, 0.35, 0.7);
+    const tWraps = [k.std(0xe3e7ea, 0.3, 0.35), k.std(0xeceeee, 0.55, 0.1)], tBare = [k.std(0x9b2226, 0.85, 0), k.std(0x7a5230, 0.9, 0), k.std(0x3d5a7a, 0.85, 0), k.std(0x5e4a7a, 0.85, 0)];
+    const artM = ['#8c3b2f', '#2f4f6f', '#c9a227', '#3d6b4f', '#b56f4a', '#5e4a7a', '#244a5a'].map(c => k.std(c, 0.8, 0)), screenMesh = k.meshMat(120, 96, 2, '#fbfbf9', 0.2);
+    const gusGeo = (() => { const g = new THREE.Shape(); g.moveTo(0, 0); g.lineTo(5, 0); g.lineTo(0, 12); g.closePath(); return new THREE.ExtrudeGeometry(g, { depth: 0.4, bevelEnabled: false }); })();
+    // single-faced cantilever library shelving: back core, slotted columns, shelves with end brackets, books
+    const libFace = (p, y0, z0, dir, books, r) => {
+      const D = C.d, H = C.h, core = dir > 0 ? z0 : z0 + D - 1.5, sh0 = dir > 0 ? z0 + 1.5 : z0 + 0.2, shD = D - 1.7;
+      bx(p, C.L, H, 1.5, paint, 0, y0, core);
+      for (let i = 0; i <= 3; i++) bx(p, 2, H, 1.7, lPost, Math.max(0, Math.min(i * 36 - 1, C.L - 2)), y0, core - 0.1);
+      const ys = [3, 14.7, 26.3, 38, 49.7, 61.3, 73];
+      for (let b = 0; b < 3; b++) {
+        const x0 = b * 36 + 1.5, bw = 33;
+        bx(p, bw, 3, 0.4, paint, x0, y0, dir > 0 ? z0 + D - 0.4 : z0);
+        ys.forEach((y, q) => {
+          bx(p, bw, 0.9, shD, paint, x0, y0 + y, sh0); bx(p, bw, 1.6, 0.2, paint, x0, y0 + y - 0.7, dir > 0 ? z0 + D - 0.2 : z0);
+          if (q > 0) for (const bxx of [x0 + 0.1, x0 + bw - 0.35]) bx(p, 0.25, 6, shD - 1, paint, bxx, y0 + y + 0.9, sh0 + (dir > 0 ? 0 : 1));
+          let x = x0 + 0.6;
+          while (x < x0 + bw - 2.5) { const t = 0.8 + r() * 1.3; if (r() > 0.06) books.push({ x, y: y0 + y + 0.9, z: dir > 0 ? z0 + D - 8 : z0 + 1, w: t - 0.05, h: 7.5 + r() * 2.3, d: 7, color: BOOKS[Math.floor(r() * BOOKS.length)] }); x += t; }
+        });
+      }
+    };
+    // one side of a textile rack: columns on the spine, arms out, tubes in saddles, rolls of mixed lengths
+    const TSP = [[[0, 3]], [[0, 1], [1, 3]], [[0, 2], [2, 3]], [[0, 1], [1, 2], [2, 3]], [[1, 3]], [[0, 2]]];
+    const texFace = (p, y0, z0, dir, r) => {
+      const D = C.d, spine = dir > 0 ? z0 : z0 + D, cols = [0, 48, 96, 144], levels = [8, 25, 42, 59, 76];
+      for (const x of cols) {
+        const xx = Math.max(0, Math.min(x - 1.75, C.L - 3.5));
+        bx(p, 3.5, C.h, 2, tFrame, xx, y0, dir > 0 ? spine : spine - 2);
+        for (const y of levels) { bx(p, 2, 2.2, D - 3, tFrame, xx + 0.75, y0 + y, dir > 0 ? spine + 2 : spine - D + 1); bx(p, 2, 3.4, 1, tFrame, xx + 0.75, y0 + y, dir > 0 ? spine + D - 2 : spine - D + 1); }
+      }
+      for (const y of levels) for (const zc of [10, 21]) {
+        const z = spine + dir * zc;
+        for (const [a, b] of TSP[Math.floor(r() * TSP.length)]) {
+          const xa = cols[a], xb = cols[b];
+          for (const xs of [xa, xb]) bx(p, 2, 5.2, 3, tFrame, Math.max(0, Math.min(xs - 1, C.L - 2)), y0 + y + 2.2, z - 1.5);
+          cyl(p, 1.5, xb - xa + 4, tTube, (xa + xb) / 2, y0 + y + 7.8, z, 14, 'x');
+          if (r() > 0.15) { const room = xb - xa - 8, len = room * (0.55 + r() * 0.4), x0 = xa + 4 + r() * (room - len), rad = 2.6 + r() * 2.8, wrapped = r() > 0.4; cyl(p, rad, len, wrapped ? tWraps[Math.floor(r() * 2)] : tBare[Math.floor(r() * tBare.length)], x0 + len / 2, y0 + y + 7.8, z, 22, 'x'); }
+        }
+      }
+    };
+    // one art screen standing on a skinny carriage: posts with gussets, rails, mesh, art hung on both faces
+    const artFace = (p, y0, dd, r) => {
+      const H = C.h, Lx = C.L, zc = dd / 2;
+      for (const x of [0, Lx / 2 - 1, Lx - 2]) {
+        bx(p, 2, H, 2, aWhite, x, y0, zc - 1);
+        for (const sd of [1, -1]) { const gm = new THREE.Mesh(gusGeo, aWhite); gm.rotation.y = sd > 0 ? -Math.PI / 2 : Math.PI / 2; gm.position.set(x + (sd > 0 ? 1.2 : 0.8), y0, zc + sd); p.add(gm); }
+      }
+      bx(p, Lx, 2, 1.5, aWhite, 0, y0 + H - 2, zc - 0.75); bx(p, Lx, 2, 1.5, aWhite, 0, y0, zc - 0.75);
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(Lx - 4, H - 4), screenMesh); m.position.set(Lx / 2, y0 + H / 2, zc); p.add(m);
+      for (const sd of [1, -1]) {
+        let x = 4;
+        while (x < Lx - 14) {
+          const fw = Math.min(14 + r() * 22, Lx - 4 - x), fh = 16 + r() * 30, y = 12 + r() * (H - fh - 22);
+          if (fw < 10) break;
+          bx(p, fw, fh, 1.6, r() > 0.5 ? gilt : M.woodDark, x, y0 + y, sd > 0 ? zc + 1.1 : zc - 2.7);
+          bx(p, fw - 3, fh - 3, 0.2, artM[Math.floor(r() * artM.length)], x + 1.5, y0 + y + 1.5, sd > 0 ? zc + 2.7 : zc - 2.9);
+          x += fw + 3 + r() * 5;
+        }
+      }
+    };
 
     const flatFace = (p, y0, z0, dir) => {
       for (let u = 0; u < 2; u++) {
@@ -494,7 +558,7 @@ function hdMobile(id, name, dims, start) {
       C = HD_KINDS[kind]; unit = group(root); unit.userData.dyn = true;
       if (C.electricOnly) electric = true;
       const { L, d, h, N, aisle, cH } = C, deck = 1.5, r = rng(9);
-      const depths = [d + 1, ...Array(N).fill(2 * d + (kind === 'pallet' ? 3 : 1)), d + 1];
+      const depths = [C.df || d + 1, ...Array(N).fill(C.dm || 2 * d + (kind === 'pallet' ? 3 : 1)), C.df || d + 1];
       const base = []; let acc = 0; for (const dd of depths) { base.push(acc); acc += dd + 0.5; }
       const total = acc + aisle;
       bx(unit, L + 14, deck, total + 8, k.std(0x8f969a, 0.8, 0.1), -4, 0, -4);
@@ -512,6 +576,14 @@ function hdMobile(id, name, dims, start) {
           for (const [z, dir] of faces) flatFace(g, cH, z, dir);
         } else if (kind === 'museum') {
           for (const [z, dir] of faces) museumFace(g, cH, z, dir);
+        } else if (kind === 'library') {
+          const books = []; for (const [z, dir] of faces) libFace(g, cH, z, dir, books, r); many(g, books, k.std(0xffffff, 0.7, 0));
+        } else if (kind === 'textile') {
+          for (const [z, dir] of faces) texFace(g, cH, z, dir, r);
+        } else if (kind === 'art') {
+          artFace(g, cH, dd, r);
+          if (artPanels) { bx(g, 1.6, h + cH, dd - 0.3, panel, L + 1.3, 0, 0.15); bx(g, 1.6, h + cH, dd - 0.3, panel, -1.6, 0, 0.15); }
+          if (!fixed) bx(g, 1.2, 41, 4, black, L, 0.5, dd / 2 - 2);
         } else if (kind === 'pallet') {
           const loads = []; palletFace(g, cH, 0.5, loads, r); if (!fixed) palletFace(g, cH, d + 2.5, loads, r); many(g, loads, M.kraft);
         } else {
@@ -522,9 +594,9 @@ function hdMobile(id, name, dims, start) {
           bx(g, 1.6, h + cH + 1, dd - 0.3, panel, L, 0, 0.15); bx(g, 1.6, h + cH + 1, dd - 0.3, panel, -1.6, 0, 0.15);
           bx(g, 0.4, h - 10, 0.8, M.chrome, L + 1.6, 8, 0.4); bx(g, 0.4, h - 10, 0.8, M.chrome, L + 1.6, 8, dd - 1.2);
         } else if (kind === 'pallet') bx(g, 2, cH + 10, dd, panel, L + 2, 0, 0);
-        else bx(g, 1.6, 34, dd - 0.3, kind === 'grow' ? gWhite : panel, L, 0, 0.15);
+        else if (kind !== 'art') bx(g, 1.6, 34, dd - 0.3, kind === 'grow' ? gWhite : panel, L, 0, 0.15);
         if (!fixed) {
-          const hy = kind === 'shelving' ? 50 : kind === 'flat' ? 34 : 26, ex = kind === 'pallet' ? L + 4 : L + 1.6;
+          const hy = { shelving: 50, library: 50, flat: 34, museum: 34, art: 40, textile: 30 }[kind] || 26, ex = kind === 'pallet' ? L + 4 : kind === 'art' ? L + (artPanels ? 3 : 1.4) : L + 1.6;
           const hub = group(g, ex + 0.2, hy, dd / 2);
           cyl(hub, 2.6, 2, handleM, 1, 0, 0, 28, 'x'); cyl(hub, 1.6, 0.4, M.chrome, 2.1, 0, 0, 24, 'x');
           for (let s = 0; s < 3; s++) {
@@ -536,6 +608,8 @@ function hdMobile(id, name, dims, start) {
           bx(pad, 0.9, 16, 8, black, 0, 0, 0);
           cyl(pad, 1.2, 0.6, go, 1.1, 12, 2.2, 20, 'x'); cyl(pad, 1.2, 0.6, go, 1.1, 12, 5.8, 20, 'x');
           cyl(pad, 1.4, 0.8, stop, 1.2, 6.5, 4, 20, 'x'); bx(pad, 0.2, 0.8, 6, go, 0.9, 2, 1);
+          // skinny art carriages sit close together, so their handles are smaller
+          if (kind === 'art') { hub.scale.setScalar(0.55); pad.scale.setScalar(0.6); }
           hub.visible = !electric; pad.visible = electric;
           hub.userData.dyn = pad.userData.dyn = true;
           g.userData.onClick = () => { open = open === j - 1 ? j : j - 1; move(); };
@@ -566,6 +640,7 @@ function hdMobile(id, name, dims, start) {
         { label: 'Open next aisle', run: () => { open = (open + 1) % (C.N + 1); move(); } },
         { label: 'Close all aisles', run: () => { open = C.N; move(); } },
         { label: 'Electric drive', when: () => !C.electricOnly, run: () => { if (C.electricOnly) return 'Electric only'; electric = !electric; ranges.forEach(g => { if (g.userData.fixed) return; g.userData.wheel.visible = !electric; g.userData.pad.visible = electric; }); return electric ? 'Mechanical assist' : 'Electric drive'; } },
+        { label: 'End panels', toggle: true, when: () => kind === 'art', get: () => artPanels, set: v => { artPanels = v; make(); } },
         { label: HD_KINDS[start].label, run: () => { const was = HD_KINDS[kind].electricOnly; kind = HD_ORDER[(HD_ORDER.indexOf(kind) + 1) % HD_ORDER.length]; if (HD_KINDS[kind].electricOnly) electric = true; else if (was) electric = false; open = 1; make(); refit?.(); return HD_KINDS[kind].label; } },
       ],
     };
@@ -577,6 +652,9 @@ hdMobile('hd-mobile-tire', 'Mobile Tire Storage', 'Tire racks on mobile carriage
 hdMobile('hd-mobile-grow', 'Mobile Grow Racks', 'Lit grow racks on mobile carriages, one aisle for the whole room', 'grow');
 hdMobile('hd-mobile-flat', 'Mobile Flat File Storage', 'Flat file cabinets on mobile carriages', 'flat');
 hdMobile('hd-mobile-museum', 'Mobile Museum Cabinets', 'Museum storage cabinets on mobile carriages', 'museum');
+hdMobile('hd-mobile-library', 'Mobile Library Shelving', 'Double-faced cantilever library shelving on mobile carriages', 'library');
+hdMobile('hd-mobile-textile', 'Mobile Rolled Textile Storage', 'Double-sided textile racks on mobile carriages', 'textile');
+hdMobile('hd-mobile-art', 'Mobile Art Screens', 'Art screens on skinny mobile carriages: gussets at every upright, chain box and crank', 'art');
 
 /* ---------------- 6. lockers ---------------- */
 def('lockers', 'Steel Lockers', '72" H lockers: one to four tiers, single or double door, base or legs, locks, plates, interiors', ({ THREE, tween, wake, bake }) => {
@@ -938,7 +1016,7 @@ def('art-screens', 'Sliding Art Screens', 'Two facing banks of 8 ft x 8 ft mesh 
     s.userData.onClick = () => { s.userData.out = !s.userData.out; tween(s.position, 'z', home + (s.userData.out ? -bank * (A - 8) : 0), 1300); };
     screens.push(s);
   });
-  return { group: root, view: [1.25, 0.8, 0.75], actions: [{ label: 'Pull out a screen', run: () => { screens[2].userData.onClick(); return screens[2].userData.out ? 'Slide it back' : 'Pull out a screen'; } }] };
+  return { group: root, finishes: [{ name: 'White', swatch: '#f3f4f2', color: 0xf3f4f2 }, { name: 'Light gray', swatch: '#c3c7ca', color: 0xbfc4c7 }, { name: 'Black', swatch: '#2c2f31', color: 0x2c2f31 }], setFinish: k.finisher(white), view: [1.25, 0.8, 0.75], actions: [{ label: 'Pull out a screen', run: () => { screens[2].userData.onClick(); return screens[2].userData.out ? 'Slide it back' : 'Pull out a screen'; } }] };
 });
 
 /* ---------------- 11. pallet rack ---------------- */
@@ -973,7 +1051,7 @@ def('pallet-rack', 'Selective Pallet Rack', 'Two 96" bays, 42" deep frames, 16 f
   const yel = k.std(0xf2c230, 0.5, 0.2), blk = k.std(0x1a1a1a, 0.6, 0.1), endX = bays * (bw + 3) + 3;
   for (let i = 0; i <= bays; i++) { const x = i * (bw + 3); bx(guard, 5, 18, 4.6, yel, x - 1, 0, D - 3.6); for (const y of [4, 11]) bx(guard, 5.2, 2.4, 4.8, blk, x - 1.1, y, D - 3.7); }
   for (const x of [-9, endX + 5]) { for (const z of [-3, D - 1]) bx(guard, 4, 16, 4, yel, x, 0, z); bx(guard, 3, 6, D + 6, yel, x + 0.5, 8, -3); bx(guard, 3.1, 1.4, D + 6.1, blk, x + 0.45, 10, -3.05); }
-  return { group: root, actions: [{ label: 'Hide post protectors', run: () => { guard.visible = !guard.visible; wake(); return guard.visible ? 'Hide post protectors' : 'Show post protectors'; } }, { label: 'Hide loads', run: () => { lm.visible = !lm.visible; wake(); return lm.visible ? 'Hide loads' : 'Show loads'; } }] };
+  return { group: root, finishes: [{ name: 'Blue and orange', swatch: 'linear-gradient(90deg,#1f4e8c 50%,#e3671c 50%)', up: 0x1f4e8c, beam: 0xe3671c }, { name: 'Green and orange', swatch: 'linear-gradient(90deg,#2f6b4f 50%,#e3671c 50%)', up: 0x2f6b4f, beam: 0xe3671c }, { name: 'Gray and yellow', swatch: 'linear-gradient(90deg,#6b7378 50%,#f2b705 50%)', up: 0x6b7378, beam: 0xf2b705 }, { name: 'All black', swatch: '#26292b', up: 0x26292b, beam: 0x26292b }], setFinish: f => { up.color.setHex(f.up); beam.color.setHex(f.beam); }, actions: [{ label: 'Hide post protectors', run: () => { guard.visible = !guard.visible; wake(); return guard.visible ? 'Hide post protectors' : 'Show post protectors'; } }, { label: 'Hide loads', run: () => { lm.visible = !lm.visible; wake(); return lm.visible ? 'Hide loads' : 'Show loads'; } }] };
 });
 
 /* ---------------- 12. mezzanine ---------------- */
@@ -999,7 +1077,7 @@ def('mezzanine', 'Structural Steel Mezzanine', '20 ft x 16 ft platform, 9 ft cle
   const under = group(root, 20, 0, 20); under.userData.dyn = true;
   shelving(k, under, { bays: 4, closed: false, shelves: 5, h: 84, contents: 'boxes', seed: 21 });
   shelving(k, under, { bays: 4, closed: false, shelves: 5, h: 84, contents: 'boxes', seed: 22, z: 70 });
-  return { group: root, actions: [{ label: 'Hide shelving below', run: () => { under.visible = !under.visible; wake(); return under.visible ? 'Hide shelving below' : 'Show shelving below'; } }] };
+  return { group: root, finishes: [{ name: 'Gray, yellow rail', swatch: 'linear-gradient(90deg,#4b5a63 50%,#e0a526 50%)', steel: 0x4b5a63, rail: 0xe0a526 }, { name: 'Blue, yellow rail', swatch: 'linear-gradient(90deg,#2a4d7a 50%,#e0a526 50%)', steel: 0x2a4d7a, rail: 0xe0a526 }, { name: 'Black, yellow rail', swatch: 'linear-gradient(90deg,#26292b 50%,#f2c230 50%)', steel: 0x26292b, rail: 0xf2c230 }, { name: 'All gray', swatch: '#6b7378', steel: 0x6b7378, rail: 0x6b7378 }], setFinish: f => { steel.color.setHex(f.steel); rail.color.setHex(f.rail); }, actions: [{ label: 'Hide shelving below', run: () => { under.visible = !under.visible; wake(); return under.visible ? 'Hide shelving below' : 'Show shelving below'; } }] };
 });
 
 /* ---------------- 13. vertical lift module ---------------- */
@@ -1179,7 +1257,7 @@ def('vlm', 'Vertical Lift Module (VLM)', 'About 10 ft W x 9 ft D x 15 ft H, one 
   make();
   const idle = () => !trays.some(t => t.userData.busy);
   return {
-    group: root, view: [1.25, 0.5, 0.95],
+    group: root, finishes: [{ name: 'White', swatch: '#f2f3f1', color: 0xf2f3f1 }, { name: 'Light gray', swatch: '#c9cdcf', color: 0xc9cdcf }, { name: 'Dark gray', swatch: '#4a5055', color: 0x4a5055 }], setFinish: k.finisher(shell), view: [1.25, 0.5, 0.95],
     actions: [
       { label: 'Open the operator console', run: () => { openConsole(); } },
       { label: 'Call a tray', run: () => { const free = trays.filter(t => !t.userData.at && !t.userData.busy); if (free.length) request(free[Math.floor(Math.random() * free.length)]); } },
@@ -1512,7 +1590,7 @@ def('fireproof', 'Fireproof File Cabinets', 'A 4-drawer vertical (21" W x 31" D)
 });
 
 /* ---------------- 22. wall-mounted art screens ---------------- */
-def('wall-art', 'Wall-Mounted Art Screens', 'White mesh panels on the wall: fixed on standoffs, or hinged to swing out like pages', ({ THREE, tween, wake }) => {
+def('wall-art', 'Wall-Mounted Art Screens', 'White mesh panels fixed to the wall on standoffs', ({ THREE, tween, wake }) => {
   const k = kit(THREE), { M, bx, cyl, group } = k, root = new THREE.Group();
   const white = k.std(0xf3f4f2, 0.45, 0.25), wall = k.std(0xe9e6df, 0.9, 0), gilt = k.std(0xa6832f, 0.35, 0.7), mesh = k.meshMat(48, 96, 2, '#fbfbf9', 0.2);
   const art = ['#8c3b2f', '#2f4f6f', '#c9a227', '#3d6b4f', '#b56f4a', '#5e4a7a', '#244a5a'].map(c => k.std(c, 0.8, 0));
@@ -1541,25 +1619,10 @@ def('wall-art', 'Wall-Mounted Art Screens', 'White mesh panels on the wall: fixe
     const p = panel(fixed, false); p.position.set(4 + i * (PW + 6), 10, 4);
     for (const y of [4, PH - 8]) for (const x of [4, PW - 6]) { bx(p, 2, 2, 4, white, x, y, -4.2); }
   }
-  const hinged = group(root); hinged.userData.dyn = true; hinged.visible = false;
-  const post = 8, leaves = [];
-  bx(hinged, 3, PH + 8, 3, white, post - 1.5, 6, 1);
-  for (let i = 0; i < 5; i++) {
-    const pv = group(hinged, post, 10, 3.5 + (4 - i) * 3.4);
-    const p = panel(pv, true); p.position.x = 1.5;
-    cyl(pv, 1, 3, M.chrome, 0, 4, 0, 16); cyl(pv, 1, 3, M.chrome, 0, PH - 4, 0, 16);
-    pv.userData.onClick = () => openAt(i);
-    leaves.push(pv);
-  }
-  // opening one leaf swings the ones in front of it further out, like turning pages
-  let at = -1;
-  const openAt = (i) => { at = at === i ? -1 : i; leaves.forEach((pv, j) => tween(pv.rotation, 'y', at < 0 || j > at ? 0 : j === at ? -0.95 : -1.45 - (at - j) * 0.12, 900)); };
   return {
     group: root, view: [0.55, 0.35, 1.4],
-    actions: [
-      { label: 'Hinged style', run: () => { fixed.visible = !fixed.visible; hinged.visible = !fixed.visible; at = -1; leaves.forEach(pv => { pv.rotation.y = 0; }); wake(); return fixed.visible ? 'Hinged style' : 'Fixed style'; } },
-      { label: 'Swing out a panel', run: () => { if (fixed.visible) { fixed.visible = false; hinged.visible = true; } openAt(at >= 4 || at < 0 ? 1 : at + 1); } },
-    ],
+    finishes: [{ name: 'White', swatch: '#f3f4f2', color: 0xf3f4f2 }, { name: 'Light gray', swatch: '#c3c7ca', color: 0xbfc4c7 }, { name: 'Black', swatch: '#2c2f31', color: 0x2c2f31 }], setFinish: k.finisher(white),
+    actions: [],
   };
 });
 
@@ -1665,7 +1728,7 @@ def('ss-table', 'Stainless Steel Work Table', '60" W x 30" D x 34" H: stainless 
   };
   make();
   return {
-    group: root, view: [0.8, 0.55, 1.3],
+    group: root, finishes: [{ name: 'Stainless', swatch: '#dfe3e6', color: 0xdfe3e6, metal: 0.95, rough: 0.22 }, { name: 'Black epoxy', swatch: '#2a2c2e', color: 0x2a2c2e, metal: 0.2, rough: 0.5 }, { name: 'White powder coat', swatch: '#eef0ee', color: 0xeef0ee, metal: 0.1, rough: 0.45 }], setFinish: k.finisher(ss, ssD), view: [0.8, 0.55, 1.3],
     actions: [
       { label: 'Bullet feet', run: () => { wheels = !wheels; make(); return wheels ? 'Bullet feet' : 'Add casters'; } },
       { label: 'Add backsplash', run: () => { splash = !splash; make(); return splash ? 'Remove backsplash' : 'Add backsplash'; } },
@@ -1853,7 +1916,7 @@ def('install', 'Mobile Storage Install, Step by Step', 'Rails in the floor or on
   const next = async () => { if (busy || at >= STEPS.length) return; busy = true; const [a, b, fn] = STEPS[at]; at++; say('Step ' + at + ' of ' + STEPS.length + ' · ' + a, b); await fn(); busy = false; refresh?.(); };
   reset();
   return {
-    group: root, view: [1.45, 0.62, 0.62],
+    group: root, finishes: [{ name: 'Black', swatch: '#2c2f31', color: 0x2c2f31 }, { name: 'O\'Brien teal', swatch: '#0f7377', color: 0x0f7377 }, { name: 'Light gray', swatch: '#c3c7ca', color: 0xbfc4c7 }, { name: 'Navy', swatch: '#2a3d5c', color: 0x2a3d5c }], setFinish: k.finisher(panel), view: [1.45, 0.62, 0.62],
     actions: [
       { label: 'Floor', options: METHODS, get: () => method, set: n => { if (!busy) { method = n; reset(); } } },
       { label: 'Finish', options: FINISH, get: () => finish, set: n => { if (!busy) { finish = n; reset(); } } },
@@ -1865,5 +1928,5 @@ def('install', 'Mobile Storage Install, Step by Step', 'Rails in the floor or on
   };
 });
 
-const SHORT = { 'four-post': '4-post', 'bin-shelving': 'Bin shelving', 'wire-shelving': 'Wire', library: 'Library', 'hd-mobile': 'Mobile', lockers: 'Lockers', 'evidence-lockers': 'Evidence', 'flat-files': 'Flat files', rotary: 'Rotary', 'museum-cabinet': 'Museum cabinet', 'art-screens': 'Art screens', 'pallet-rack': 'Pallet rack', mezzanine: 'Mezzanine', vlm: 'VLM', casework: 'Casework', 'wire-cage': 'Wire cage', athletic: 'Athletic', 'mail-sorter': 'Mail sorter', weapons: 'Weapons', 'tire-rack': 'Tire rack', 'wire-track': 'Wire on track', 'ss-table': 'Stainless tables', install: 'Install steps', 'hd-mobile-open': 'Mobile shelving', 'hd-mobile-tire': 'Mobile tires', 'hd-mobile-grow': 'Mobile grow racks', 'hd-mobile-flat': 'Mobile flat files', 'hd-mobile-museum': 'Mobile cabinets', workstation: 'Workstation', fireproof: 'Fireproof', 'wall-art': 'Wall art screens', 'textile-rack': 'Textile racks' };
+const SHORT = { 'four-post': '4-post', 'bin-shelving': 'Bin shelving', 'wire-shelving': 'Wire', library: 'Library', 'hd-mobile': 'Mobile', lockers: 'Lockers', 'evidence-lockers': 'Evidence', 'flat-files': 'Flat files', rotary: 'Rotary', 'museum-cabinet': 'Museum cabinet', 'art-screens': 'Art screens', 'pallet-rack': 'Pallet rack', mezzanine: 'Mezzanine', vlm: 'VLM', casework: 'Casework', 'wire-cage': 'Wire cage', athletic: 'Athletic', 'mail-sorter': 'Mail sorter', weapons: 'Weapons', 'tire-rack': 'Tire rack', 'wire-track': 'Wire on track', 'ss-table': 'Stainless tables', install: 'Install steps', 'hd-mobile-open': 'Mobile shelving', 'hd-mobile-tire': 'Mobile tires', 'hd-mobile-grow': 'Mobile grow racks', 'hd-mobile-flat': 'Mobile flat files', 'hd-mobile-museum': 'Mobile cabinets', 'hd-mobile-library': 'Mobile library', 'hd-mobile-textile': 'Mobile textiles', 'hd-mobile-art': 'Mobile art screens', workstation: 'Workstation', fireproof: 'Fireproof', 'wall-art': 'Wall art screens', 'textile-rack': 'Textile racks' };
 for (const [id, s] of Object.entries(SHORT)) if (MODELS[id]) MODELS[id].short = s;
