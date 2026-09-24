@@ -46,6 +46,7 @@ const GROUPS = [
   { name: 'Cabinets', ids: ['flat-files', 'fireproof', 'museum-cabinet'] },
   { name: 'Museum & art', ids: ['art-screens', 'wall-art', 'textile-rack', 'painting-bins'] },
   { name: 'Workspace', ids: ['casework', 'workstation', 'ss-table', 'mail-sorter'] },
+  { name: 'Residential & campus', ids: ['bike-storage'] },
   { name: 'Industrial', ids: ['pallet-rack', 'mezzanine', 'wire-cage'] },
   { name: 'For architects & GCs', ids: ['install'] },
 ];
@@ -63,12 +64,12 @@ function viewer(el) {
   };
   el.innerHTML = `
   <div class="v3d-wrap${side ? ' has-side' : ''}">
-    ${side ? `<nav class="v3d-side" aria-label="Choose a product">${groups.map(g => `<div class="v3d-g"><span>${g.name}</span>${g.ids.map(id => `<button type="button" data-id="${id}">${MODELS[id].name}</button>`).join('')}</div>`).join('')}</nav>
+    ${side ? `<nav class="v3d-side" aria-label="Choose a product"><input class="v3d-find" type="search" placeholder="Find a system" aria-label="Find a system">${groups.map(g => `<details class="v3d-g"><summary>${g.name}<em>${g.ids.length}</em></summary>${g.ids.map(id => `<button type="button" data-id="${id}">${MODELS[id].name}</button>`).join('')}</details>`).join('')}</nav>
       <label class="v3d-pick"><span>Product</span><select>${groups.map(g => `<optgroup label="${g.name}">${g.ids.map(id => `<option value="${id}">${MODELS[id].name}</option>`).join('')}</optgroup>`).join('')}</select></label>`
       : ids.length > 1 ? `<div class="v3d-seg" role="tablist">${ids.map(id => `<button type="button" role="tab" data-id="${id}">${MODELS[id].short || MODELS[id].name}</button>`).join('')}</div>` : ''}
     <div class="v3d-main">
       <div class="v3d-top">
-        <div class="v3d-title"><b></b><span></span></div>
+        ${ids.length > 1 ? '<button type="button" class="v3d-step" data-step="-1" aria-label="Previous system">&lsaquo;</button>' : ''}<div class="v3d-title"><b></b><span></span></div>${ids.length > 1 ? '<button type="button" class="v3d-step" data-step="1" aria-label="Next system">&rsaquo;</button>' : ''}
         <div class="v3d-icons">
           <button type="button" data-v="spin" aria-pressed="false" title="Auto-rotate" aria-label="Auto-rotate">${ICON.spin}</button>
           <button type="button" data-v="reset" title="Reset view" aria-label="Reset view">${ICON.reset}</button>
@@ -78,7 +79,8 @@ function viewer(el) {
       <div class="v3d-stage">
         <canvas aria-label="Interactive 3D model. Drag to rotate, scroll or pinch to zoom."></canvas>
         <div class="v3d-load">Loading 3D model...</div>
-        <div class="v3d-hint">Drag to turn &middot; Pinch or scroll to zoom &middot; Tap parts to move them</div>
+        <div class="v3d-hint">Drag to turn &middot; Click, then scroll to zoom &middot; Tap parts to move them</div>
+        <div class="v3d-wheel" hidden>Click the model first to zoom with the scroll wheel</div>
       </div>
       <div class="v3d-bar">
         <div class="v3d-acts"></div>
@@ -110,6 +112,7 @@ function viewer(el) {
 
   const camera = new THREE.PerspectiveCamera(32, 1, 1, 20000);
   const controls = new OrbitControls(camera, canvas);
+  controls.enableZoom = false;
   controls.enableDamping = true; controls.dampingFactor = 0.08; controls.maxPolarAngle = Math.PI * 0.495; controls.enablePan = false;
   controls.autoRotateSpeed = 1.2;
 
@@ -142,7 +145,13 @@ function viewer(el) {
     stage.appendChild(ov); ov.querySelector('.v3d-ov-x').addEventListener('click', closePanel);
     ovClean = build(ov.querySelector('.v3d-ov-b'), closePanel) || null;
   };
-  const showActs = () => el.querySelectorAll('.v3d-acts > *').forEach(b => { b.hidden = !!(b._act?.when && !b._act.when()); });
+  let moreOpen = false;
+  const showActs = () => {
+    const nodes = [...el.querySelectorAll('.v3d-acts > :not(.v3d-more)')], applies = nodes.filter(b => !(b._act?.when && !b._act.when()));
+    const choices = applies.filter(b => b._act && (b._act.options || b._act.toggle)), extra = choices.slice(2);
+    nodes.forEach(b => { b.hidden = !applies.includes(b) || (extra.includes(b) && !moreOpen); });
+    const mb = el.querySelector('.v3d-more'); if (mb) { mb.hidden = !extra.length; mb.textContent = moreOpen ? 'Fewer options' : 'More options (' + extra.length + ')'; }
+  };
   const syncActs = () => el.querySelectorAll('.v3d-acts > *').forEach(b => b._sync?.());
   const scan = () => { clickables = []; current?.group.traverse(o => { if (o.userData.onClick) clickables.push(o); }); };
   function fit(group, view) {
@@ -170,6 +179,8 @@ function viewer(el) {
     bake(THREE, current.group);
     scene.add(current.group);
     fit(current.group, current.view);
+    curId = id; el.querySelectorAll('.v3d-side details').forEach(d => { if (d.querySelector('[data-id="' + id + '"]')) d.open = true; });
+    { const nb = el.querySelector('.v3d-side [data-id="' + id + '"]'), nav = nb?.closest('.v3d-side'); if (nb && nav && nb.offsetTop - nav.scrollTop > nav.clientHeight - 40) nav.scrollTop = nb.offsetTop - nav.clientHeight / 2; }
     el.querySelector('.v3d-title b').textContent = def.name;
     el.querySelector('.v3d-title span').textContent = def.dims || '';
     el.querySelectorAll('[data-id]').forEach(x => x.setAttribute('aria-selected', String(x.dataset.id === id)));
@@ -198,6 +209,7 @@ function viewer(el) {
       node._act = a;
       return node;
     }));
+    const mb = document.createElement('button'); mb.type = 'button'; mb.className = 'v3d-more'; mb.addEventListener('click', () => { moreOpen = !moreOpen; showActs(); }); acts.appendChild(mb);
     syncActs();
     showActs();
     const fin = el.querySelector('.v3d-fin');
@@ -277,6 +289,13 @@ function viewer(el) {
   });
   canvas.addEventListener('pointerdown', () => el.querySelector('.v3d-hint')?.classList.add('gone'), { once: true });
   el.querySelectorAll('[data-id]').forEach(b => b.addEventListener('click', () => load(b.dataset.id)));
+  let curId = null, wheelTip = 0;
+  canvas.addEventListener('pointerdown', () => { controls.enableZoom = true; el.querySelector('.v3d-wheel').hidden = true; });
+  el.querySelector('.v3d-main').addEventListener('pointerleave', () => { controls.enableZoom = false; });
+  canvas.addEventListener('wheel', () => { if (controls.enableZoom) return; const w = el.querySelector('.v3d-wheel'); w.hidden = false; clearTimeout(wheelTip); wheelTip = setTimeout(() => { w.hidden = true; }, 1600); }, { passive: true });
+  el.querySelectorAll('.v3d-step').forEach(b => b.addEventListener('click', () => { const i = ids.indexOf(curId); load(ids[(i + +b.dataset.step + ids.length) % ids.length]); }));
+  const find = el.querySelector('.v3d-find');
+  find?.addEventListener('input', () => { const q = find.value.trim().toLowerCase(); el.querySelectorAll('.v3d-side details').forEach(d => { let n = 0; d.querySelectorAll('button').forEach(b => { const hit = !q || b.textContent.toLowerCase().includes(q); b.hidden = !hit; n += hit; }); d.hidden = !n; if (q && n) d.open = true; }); });
   el.querySelector('.v3d-pick select')?.addEventListener('change', e => load(e.target.value));
   const want = new URLSearchParams(location.search).get('model');
   const first = want && ids.includes(want) ? want : ids[0];

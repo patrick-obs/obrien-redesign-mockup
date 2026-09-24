@@ -1352,7 +1352,7 @@ def('vlm', 'Vertical Lift Module (VLM)', 'About 10 ft W x 9 ft D, 15 ft H with o
     cx.fillStyle = '#9fd3d5'; cx.font = '28px system-ui, sans-serif'; cx.fillText(line, 22, 222);
     tex.needsUpdate = true; wake(); ui?.();
   };
-  let H = 180, FY = 0, nBays = 1, unit, lift, trays = [], bays = [], pulleys = [], chain = Promise.resolve(), ui = null;
+  let H = 180, FY = 0, upper = 0, nBays = 1, unit, lift, trays = [], bays = [], pulleys = [], chain = Promise.resolve(), ui = null;
   const spin = (dy, ms) => pulleys.forEach(p => tween(p.rotation, 'x', p.rotation.x - dy / 3.2, ms));
   const liftTo = (y) => { const dy = y - 2 - lift.position.y, ms = 450 + Math.abs(dy) * 9; spin(dy, ms); return tween(lift.position, 'y', y - 2, ms); };
   const carry = (t, y) => { const ms = 450 + Math.abs(t.position.y - y) * 9; spin(y - 2 - lift.position.y, ms); return Promise.all([tween(lift.position, 'y', y - 2, ms), tween(t.position, 'y', y, ms)]); };
@@ -1438,8 +1438,18 @@ def('vlm', 'Vertical Lift Module (VLM)', 'About 10 ft W x 9 ft D, 15 ft H with o
       }
       if (nBays === 2) {
         // upper floor slab with an opening the machine passes through, and a guard rail at the slab edge
-        const slab = k.std(0xb9bcbc, 0.9, 0), rail = k.std(0xe0a526, 0.45, 0.35), ex = 40, fz = 76;
-        bx(unit, W + 2 * ex, 6, fz, slab, -ex, FY - 6, D); bx(unit, ex, 6, D + 20, slab, -ex, FY - 6, -20); bx(unit, ex, 6, D + 20, slab, W, FY - 6, -20); bx(unit, W, 6, 20, slab, 0, FY - 6, -20);
+        const slab = upper ? k.std(0x5d6468, 0.75, 0.4) : k.std(0xb9bcbc, 0.9, 0), rail = k.std(0xe0a526, 0.45, 0.35), ex = 40, fz = 76, th = upper ? 2 : 6;
+        bx(unit, W + 2 * ex, th, fz, slab, -ex, FY - th, D); bx(unit, ex, th, D + 20, slab, -ex, FY - th, -20); bx(unit, ex, th, D + 20, slab, W, FY - th, -20); bx(unit, W, th, 20, slab, 0, FY - th, -20);
+        if (upper) {
+          // steel mezzanine: columns, a beam under every deck edge, a stair down on the left
+          const steel = k.std(0x4b5a63, 0.5, 0.5);
+          for (const cx of [-ex, -2, W - 3, W + ex - 5]) for (const cz of [-20, D + fz - 5]) { bx(unit, 5, FY - th, 5, steel, cx, 0, cz); bx(unit, 11, 0.6, 11, M.steel, cx - 3, 0, cz - 3); }
+          for (const cz of [-20, D + fz - 5]) bx(unit, W + 2 * ex, 8, 5, steel, -ex, FY - th - 8, cz);
+          for (const cx of [-ex, W + ex - 5]) bx(unit, 5, 8, D + fz + 20, steel, cx, FY - th - 8, -20);
+          const steps = Math.ceil(FY / 7.5), rise = FY / steps, run = 11, sz = D + 20;
+          for (let q = 0; q < steps; q++) bx(unit, run + 1, 1.2, 36, slab, -ex - (q + 1) * run, FY - (q + 1) * rise, sz);
+          for (const zz of [sz - 0.8, sz + 36.8]) { k.bar(unit, -ex, FY - 4, -ex - steps * run, -4, zz, 9, steel, 1.5); k.bar(unit, -ex, FY + 36, -ex - steps * run, 36, zz, 1.6, rail, 1.6); }
+        }
         for (let x = -ex + 1; x <= W + ex - 1; x += 32) bx(unit, 1.6, 42, 1.6, rail, x - 0.8, FY, D + fz - 1.6);
         bx(unit, W + 2 * ex, 1.6, 1.6, rail, -ex, FY + 40.4, D + fz - 1.6); bx(unit, W + 2 * ex, 1.2, 1.2, rail, -ex, FY + 21, D + fz - 1.4);
       } }
@@ -1488,108 +1498,48 @@ def('vlm', 'Vertical Lift Module (VLM)', 'About 10 ft W x 9 ft D, 15 ft H with o
     bake?.(unit);
     show('READY', 'Tap any tray to call it');
   };
-  // operator console, laid out like a VLM operator touchscreen: blue header, data fields, the tray drawn as a
-  // compartment map with the target lit, OK/Empty, and a status footer. It docks beside the machine and drives it.
+  // operator console: a small docked panel with three screens (home, picking, trays), big buttons, plain words
   const PARTS = [
-    ['BRG-6204', 'BALL BEARING, 20 MM BORE'], ['FLT-1180', 'HYDRAULIC RETURN FILTER'], ['ORG-0212', 'O-RING KIT, NITRILE'], ['FUS-30A', 'CARTRIDGE FUSE, 30 A'],
-    ['BLT-A42', 'V-BELT, A42'], ['SNS-PX12', 'PROXIMITY SENSOR, 12 MM'], ['GSK-DN50', 'FLANGE GASKET, DN50'], ['SCR-M6-20', 'CAP SCREW M6 X 20, BOX/100'],
-    ['CLP-9150', 'CLIP A, BUMPER'], ['VLV-0340', 'BALL VALVE, 3/4 IN'], ['RLY-24V', 'RELAY, 24 VDC'], ['FIT-1212', 'PUSH FITTING, 12 MM'],
+    ['BRG-6204', 'Ball bearing, 20 mm bore'], ['FLT-1180', 'Hydraulic return filter'], ['ORG-0212', 'O-ring kit, nitrile'], ['FUS-30A', 'Cartridge fuse, 30 A'],
+    ['BLT-A42', 'V-belt, A42'], ['SNS-PX12', 'Proximity sensor, 12 mm'], ['GSK-DN50', 'Flange gasket, DN50'], ['SCR-M6-20', 'Cap screws M6 x 20, box of 100'],
+    ['CLP-9150', 'Bumper clip'], ['VLV-0340', 'Ball valve, 3/4 in'], ['RLY-24V', 'Relay, 24 VDC'], ['FIT-1212', 'Push fitting, 12 mm'],
   ];
   const MAPC = { '#2f6fb3': '#c9d23a', '#c92a2a': '#e0262b', '#e0a526': '#f2e529', '#7a8288': '#8e8e8e', '#2f9e44': '#9ccc3c' };
   const cr = rng(77);
-  const mkLines = (n, mode) => {
-    const pick = [...trays].sort(() => cr() - 0.5).slice(0, n).sort((a, b) => a.userData.n - b.userData.n);
-    return pick.map((t, i) => { const items = t.userData.items || [], k = Math.floor(cr() * items.length), p = PARTS[(t.userData.n + i) % PARTS.length], stock = 8 + Math.floor(cr() * 60); return { tray: t.userData.n, k, pn: p[0], d: p[1], qty: mode === 'refill' ? 10 + Math.floor(cr() * 20) : 1 + Math.floor(cr() * 6), stock, done: false }; });
-  };
-  let lists = null, cur = null, line = 0, view = 'menu', entry = '', exe = null, msg = '';
+  let view = 'home', list = null, line = 0;
   const pad = n => String(n).padStart(2, '0'), trayN = n => trays.find(t => t.userData.n === n);
+  const newList = () => { const pick = [...trays].sort(() => cr() - 0.5).slice(0, 3).sort((a, b) => a.userData.n - b.userData.n); return pick.map((t, i) => { const items = t.userData.items || [], p = PARTS[(t.userData.n + i) % PARTS.length]; return { tray: t.userData.n, k: Math.floor(cr() * items.length), pn: p[0], d: p[1], qty: 1 + Math.floor(cr() * 6), done: false }; }); };
   const aim = (t, k) => { const bay = t.userData.at, it = (t.userData.items || [])[k]; if (!bay || !it || t.userData.busy) return; const px = it.x + it.w / 2, pz = zBay + it.z + it.d / 2, py = bay.y + it.y + it.h, lz = bay.laser; lz.beam.scale.y = lz.top - py; lz.beam.position.set(px, (lz.top + py) / 2, pz); lz.dot.position.set(px, py + 0.03, pz); lz.g.visible = true; bay.seg.position.x = px; bay.seg.visible = true; wake(); };
-  const cell = (it, tx) => { const col = String.fromCharCode(65 + Math.min(25, Math.floor(((it.x - trayX) / TW) * 26))), row = Math.min(9, Math.floor(((it.z + it.d / 2) / TD) * 10)); return col + row; };
-  const trayMap = (t, k) => {
-    const items = t ? t.userData.items || [] : [];
-    const cells = items.map((it, i) => '<i style="left:' + (((it.x - trayX) / TW) * 100).toFixed(2) + '%;top:' + ((1 - (it.z + it.d) / TD) * 100).toFixed(2) + '%;width:' + ((it.w / TW) * 100).toFixed(2) + '%;height:' + ((it.d / TD) * 100).toFixed(2) + '%;background:' + (i === k ? '#1f3fb0' : MAPC[it.color] || '#d9d9d9') + (i === k ? ';outline:2px solid #fff' : '') + '"></i>').join('');
-    return '<div class="cp-map"><div class="cp-tray">' + cells + '</div><span class="cp-ax a">A</span><span class="cp-ax z">Z</span><span class="cp-ax r0">0</span><span class="cp-ax r9">9</span></div>';
-  };
-  const ICON = {
-    run: '<svg viewBox="0 0 24 24"><path d="M5 4l14 8-14 8z"/></svg>', auto: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M5 19l3-3M16 8l3-3"/></svg>',
-    menu: '<svg viewBox="0 0 24 24"><path d="M4 5h16v4H4zM4 11h16v4H4zM4 17h16v3H4z"/></svg>', adv: '<svg viewBox="0 0 24 24"><path d="M7 3h10v18H7zM10 7h4M10 11h4"/></svg>', home: '<svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v10h-6v-6H9v6H3z"/></svg>',
-  };
-  const header = (code, title) => '<div class="cp-hd"><button data-act="menu">' + ICON.run + '<small>Run</small></button><button data-act="menu">' + ICON.auto + '<small>Automatic</small></button><button data-act="menu">' + ICON.menu + '<small>Menu</small></button><div class="cp-title"><span>' + code + '</span>' + title + '</div><button data-act="status">' + ICON.adv + '<small>Advanced</small></button></div>';
-  const footer = () => {
-    const t = bays.find(b => b.tray)?.tray, w = t ? (t.userData.items || []).length * 11 + 40 : 0;
-    return '<div class="cp-ft"><span class="cp-stop"></span><div class="cp-st">Tray = ' + (t ? t.userData.n : '-') + '<br>Height = ' + (t ? Math.round(t.userData.home.y / 8.5) : '-') + '<br>Weight = ' + (t ? w : '-') + '</div><button class="cp-warn" data-act="msg">!</button><em>' + (msg || (trays.some(q => q.userData.busy) ? 'Machine moving' : 'Ready')) + '</em><button class="cp-cmd" data-act="menu">OPERATOR<br>COMMANDS</button><button class="cp-round" data-act="menu">' + ICON.home + '</button></div>';
-  };
-  const keypad = (target) => '<div class="cp-kp">' + ['7', '8', '9', '4', '5', '6', '1', '2', '3', 'C', '0', 'OK'].map(k => '<button data-act="key" data-v="' + k + '" data-t="' + target + '"' + (k === 'OK' ? ' class="or"' : '') + '>' + k + '</button>').join('') + '</div>';
+  const trayMap = (t, k) => '<div class="cp-map">' + (t.userData.items || []).map((it, i) => '<i style="left:' + (((it.x - trayX) / TW) * 100).toFixed(1) + '%;top:' + ((1 - (it.z + it.d) / TD) * 100).toFixed(1) + '%;width:' + ((it.w / TW) * 100).toFixed(1) + '%;height:' + ((it.d / TD) * 100).toFixed(1) + '%;background:' + (i === k ? '#1f3fb0' : MAPC[it.color] || '#d9d9d9') + '"' + (i === k ? ' class="on"' : '') + '></i>').join('') + '</div>';
+  const status = () => { const at = bays.map((b, i) => (bays.length > 1 ? 'Bay ' + (i + 1) + ': ' : 'Bay: ') + (b.tray ? 'tray ' + pad(b.tray.userData.n) : 'empty')).join(' &middot; '); return (trays.some(t => t.userData.busy) ? '<b class="mv">Moving</b> ' : '<b>Ready</b> ') + at; };
   const screen = () => {
-    if (view === 'menu') {
-      const tiles = [['pick', 'Picking', 'Pick-up lists'], ['refill', 'Refilling', 'Deposit lists'], ['call', 'Tray call', 'Call by number'], ['search', 'Search item', 'Find a part'], ['status', 'Machine status', 'Trays and bays']];
-      return header('1.0.0', 'MAIN MENU') + '<div class="cp-tiles">' + tiles.map(([v, a, b]) => '<button data-act="go" data-v="' + v + '"><b>' + a + '</b><small>' + b + '</small></button>').join('') + '</div>' + footer();
-    }
-    if (view === 'lists') {
-      return header('1.3.0', (cur === 'refill' ? 'REFILLING' : 'PICKING') + ' - LISTS') + '<div class="cp-list">' + lists[cur].map((L, i) => '<button data-act="start" data-v="' + i + '"><b>' + L.id + '</b><span>' + L.lines.length + ' lines</span><span>' + (L.lines.every(q => q.done) ? 'Complete' : L.lines.some(q => q.done) ? 'In progress' : 'Waiting') + '</span></button>').join('') + '</div>' + footer();
-    }
-    if (view === 'pick') {
-      const L = lists[cur][lists.sel], ln = L.lines[line], t = trayN(ln.tray), here = t && t.userData.at && !t.userData.busy;
-      if (here) aim(t, ln.k);
-      const done = L.lines.every(q => q.done), refill = cur === 'refill';
-      if (done) return header('1.3.0', (refill ? 'REFILLING' : 'PICKING') + ' (' + L.id + ')') + '<div class="cp-done"><b>List ' + L.id + ' complete</b><button class="or" data-act="retall">Return trays</button><button data-act="go" data-v="' + cur + '">Next list</button></div>' + footer();
-      const q = exe ?? ln.qty;
-      return header('1.3.0', (refill ? 'REFILLING (Deposit)' : 'PICKING (Pick-up)') + ' (' + L.id + ')')
-        + '<div class="cp-row"><label>' + (refill ? 'Deposit' : 'Pick-up') + '</label><div class="cp-f big">' + ln.pn + ' (' + ln.d + ')</div></div>'
-        + '<div class="cp-row"><label>Requested Qty</label><div class="cp-f">' + ln.qty + '.000 Pieces</div><label>Tray</label><div class="cp-f s">' + pad(ln.tray) + '</div><label>Pos.</label><div class="cp-f s">' + (here ? cell(t.userData.items[ln.k]) : '--') + '</div></div>'
-        + (here ? trayMap(t, ln.k) : '<div class="cp-wait">' + (t && t.userData.busy ? 'Tray ' + pad(ln.tray) + ' on its way to the bay...' : 'Waiting for tray ' + pad(ln.tray)) + '</div>')
-        + '<div class="cp-row"><label>Executed Qty</label><div class="cp-f q">' + q + '</div></div>'
-        + '<div class="cp-btns"><button class="or" data-act="ok"' + (here ? '' : ' disabled') + '>OK</button><button class="or" data-act="empty"' + (here ? '' : ' disabled') + '>Empty</button><button data-act="modify"' + (here ? '' : ' disabled') + '>Modify</button><button data-act="skip">Skip</button><button data-act="label">Label</button></div>'
-        + '<table class="cp-tb"><tr><th>Resulting Qty</th><td>' + (refill ? ln.stock + q : Math.max(0, ln.stock - q)) + '.000</td></tr><tr><th>Description</th><td>' + ln.d + '</td></tr><tr><th>Remaining Operations</th><td>' + L.lines.filter(x => !x.done).length + '</td></tr></table>'
-        + (view === 'pick' && exe === -1 ? '' : '') + footer();
-    }
-    if (view === 'modify') return header('1.3.1', 'MODIFY EXECUTED QTY') + '<div class="cp-row"><label>Executed Qty</label><div class="cp-f q">' + (entry || '0') + '</div></div>' + keypad('qty') + footer();
-    if (view === 'call') {
-      const at = bays.map((b, i) => 'Bay ' + (i + 1) + ': ' + (b.tray ? 'tray ' + pad(b.tray.userData.n) : 'empty')).join(' &nbsp; ');
-      return header('2.1.0', 'TRAY CALL') + '<div class="cp-row"><label>Tray number</label><div class="cp-f q">' + (entry || '') + '</div><label>1 - ' + trays.length + '</label></div><div class="cp-note">' + at + '</div>' + keypad('tray') + '<div class="cp-btns"><button data-act="retall">Return trays</button></div>' + footer();
-    }
-    if (view === 'search') {
-      const rows = trays.slice(0, 40).map(t => { const p = PARTS[t.userData.n % PARTS.length]; return '<tr><td>' + p[0] + '</td><td>' + p[1] + '</td><td>Tray ' + pad(t.userData.n) + '</td><td><button data-act="callt" data-v="' + t.userData.n + '">' + (t.userData.at ? 'Return' : 'Call') + '</button></td></tr>'; }).join('');
-      return header('3.2.0', 'SEARCH ITEM') + '<div class="cp-scroll"><table class="cp-tb list"><tr><th>Item</th><th>Description</th><th>Location</th><th></th></tr>' + rows + '</table></div>' + footer();
-    }
-    const busy = trays.filter(t => t.userData.busy).length;
-    return header('4.0.0', 'MACHINE STATUS') + '<table class="cp-tb"><tr><th>Trays</th><td>' + trays.length + '</td></tr><tr><th>Bays</th><td>' + bays.map((b, i) => (i + 1) + ': ' + (b.tray ? 'tray ' + pad(b.tray.userData.n) : 'empty')).join(', ') + '</td></tr><tr><th>Lift</th><td>' + (busy ? 'Moving' : 'Idle') + ', height ' + Math.round(lift.position.y) + ' in</td></tr><tr><th>Light curtain</th><td>Clear</td></tr><tr><th>Mode</th><td>Automatic</td></tr></table>' + footer();
+    const top = '<div class="cp-hd"><span>' + (view === 'pick' ? 'Picking' : view === 'trays' ? 'Call a tray' : 'Operator console') + '</span>' + (view !== 'home' ? '<button data-act="home">Back</button>' : '') + '</div><div class="cp-st">' + status() + '</div>';
+    if (view === 'home') return top + '<div class="cp-body"><button class="cp-big or" data-act="start">Start a pick list</button><button class="cp-big" data-act="trays">Call a tray</button><button class="cp-link" data-act="retall">Return all trays</button></div>';
+    if (view === 'trays') return top + '<div class="cp-body"><div class="cp-grid">' + trays.map(t => '<button data-act="callt" data-v="' + t.userData.n + '" class="' + (t.userData.busy ? 'mv' : t.userData.at ? 'at' : '') + '">' + pad(t.userData.n) + '</button>').join('') + '</div><p class="cp-tip">Tap a tray to bring it to the bay. Tap a green one to send it back.</p></div>';
+    const ln = list[line], t = trayN(ln.tray), here = t && t.userData.at && !t.userData.busy, left = list.filter(x => !x.done).length;
+    if (!left) return top + '<div class="cp-body"><p class="cp-done">List complete</p><button class="cp-big or" data-act="finish">Return trays and finish</button></div>';
+    if (here) aim(t, ln.k);
+    return top + '<div class="cp-body"><div class="cp-line">Line ' + (list.indexOf(ln) + 1) + ' of ' + list.length + ' &middot; tray ' + pad(ln.tray) + '</div>'
+      + '<div class="cp-item"><b>' + ln.pn + '</b><span>' + ln.d + '</span></div>'
+      + '<div class="cp-qty">Pick <b>' + ln.qty + '</b></div>'
+      + (here ? trayMap(t, ln.k) + '<p class="cp-tip">Follow the laser to the lit compartment.</p><button class="cp-big or" data-act="ok">Confirm pick</button>' : '<div class="cp-wait">Tray ' + pad(ln.tray) + ' is on its way to the bay...</div>')
+      + '<button class="cp-link" data-act="skip">Skip this line</button></div>';
   };
+  const next = () => { const L = list, cur = L[line]; cur.done = true; const nx = L.findIndex(x => !x.done); if (nx < 0) return; const t0 = trayN(cur.tray), t1 = trayN(L[nx].tray); line = nx; if (t1 !== t0 && t0?.userData.at) request(t0); if (t1 && !t1.userData.at) request(t1); };
   const openConsole = () => panel?.((el) => {
-    if (!lists) lists = { pick: ['PL-1006', 'PL-1007', 'PL-1011'].map(id => ({ id, lines: mkLines(3, 'pick') })), refill: ['RF-2203', 'RF-2204'].map(id => ({ id, lines: mkLines(2, 'refill') })) };
     el.classList.add('cp');
     const draw = () => { el.innerHTML = screen(); };
     ui = draw; draw();
-    const nextLine = () => {
-      const L = lists[cur][lists.sel], ln = L.lines[line]; ln.done = true; exe = null;
-      const nx = L.lines.findIndex(x => !x.done);
-      if (nx < 0) return;
-      const t0 = trayN(ln.tray), t1 = trayN(L.lines[nx].tray); line = nx;
-      if (t1 !== t0 && t0?.userData.at) request(t0);
-      if (t1 && !t1.userData.at) request(t1);
-    };
     el.addEventListener('click', e => {
-      const b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
-      const a = b.dataset.act, v = b.dataset.v;
-      if (a === 'menu') view = 'menu';
-      else if (a === 'status') view = 'status';
-      else if (a === 'msg') msg = msg ? '' : 'No alarms';
-      else if (a === 'go') { if (v === 'pick' || v === 'refill') { cur = v; view = 'lists'; } else { view = v; entry = ''; } }
-      else if (a === 'start') { lists.sel = +v; const L = lists[cur][lists.sel]; line = Math.max(0, L.lines.findIndex(x => !x.done)); exe = null; view = 'pick'; const t = trayN(L.lines[line].tray); if (t && !t.userData.at) request(t); }
-      else if (a === 'ok') nextLine();
-      else if (a === 'empty') { exe = 0; nextLine(); }
-      else if (a === 'skip') { const L = lists[cur][lists.sel]; const nx = L.lines.findIndex((x, i) => !x.done && i > line); if (nx >= 0) { const t0 = trayN(L.lines[line].tray), t1 = trayN(L.lines[nx].tray); line = nx; if (t1 !== t0 && t0?.userData.at) request(t0); if (t1 && !t1.userData.at) request(t1); } }
-      else if (a === 'modify') { entry = ''; view = 'modify'; }
-      else if (a === 'label') msg = 'Label sent to printer';
-      else if (a === 'retall') bays.forEach(bb => bb.tray && request(bb.tray));
-      else if (a === 'callt') { const t = trayN(+v); if (t) request(t); }
-      else if (a === 'key') {
-        const kk = v, tgt = b.dataset.t;
-        if (kk === 'C') entry = '';
-        else if (kk !== 'OK') entry = (entry + kk).slice(0, 3);
-        else if (tgt === 'qty') { exe = +entry || 0; view = 'pick'; }
-        else { const t = trayN(+entry); msg = t ? (t.userData.at ? 'Tray ' + pad(+entry) + ' returning' : 'Calling tray ' + pad(+entry)) : 'No tray ' + entry; if (t) request(t); entry = ''; }
-      }
+      const b = e.target.closest('[data-act]'); if (!b) return;
+      const a = b.dataset.act;
+      if (a === 'home') view = 'home';
+      else if (a === 'trays') view = 'trays';
+      else if (a === 'start') { list = newList(); line = 0; view = 'pick'; const t = trayN(list[0].tray); if (t && !t.userData.at) request(t); }
+      else if (a === 'ok') next();
+      else if (a === 'skip') { const nx = list.findIndex((x, i) => !x.done && i > line); if (nx >= 0) { const t0 = trayN(list[line].tray), t1 = trayN(list[nx].tray); line = nx; if (t1 !== t0 && t0?.userData.at) request(t0); if (t1 && !t1.userData.at) request(t1); } }
+      else if (a === 'finish' || a === 'retall') { bays.forEach(bb => bb.tray && request(bb.tray)); if (a === 'finish') view = 'home'; }
+      else if (a === 'callt') { const t = trayN(+b.dataset.v); if (t) request(t); }
       draw();
     });
     return () => { ui = null; };
@@ -1603,6 +1553,7 @@ def('vlm', 'Vertical Lift Module (VLM)', 'About 10 ft W x 9 ft D, 15 ft H with o
       { label: 'Call a tray', run: () => { const free = trays.filter(t => !t.userData.at && !t.userData.busy); if (free.length) request(free[Math.floor(Math.random() * free.length)]); } },
       { label: 'Return all trays', run: () => { bays.forEach(b => b.tray && request(b.tray)); } },
       { label: 'Second bay on the floor above', toggle: true, get: () => nBays === 2, set: v => { if (idle()) { nBays = v ? 2 : 1; make(); refit?.(); } } },
+      { label: 'Upper level', when: () => nBays === 2, options: ['Floor slab', 'Steel mezzanine'], get: () => upper, set: n => { if (idle()) { upper = n; make(); refit?.(); } } },
     ],
   };
 });
@@ -2093,7 +2044,7 @@ def('install', 'Mobile Storage Install, Step by Step', 'Rails in the floor or on
   const base = []; let acc = 0; for (const dd of depths) { base.push(acc); acc += dd + 0.8; }
   const total = acc + aisle, z0 = -6, z1 = total + 6, x0 = -8, x1 = L + 10;
   const rails = [8, L / 2 - 10, L / 2 + 10, L - 8];
-  const METHODS = ['Raised subfloor', 'In-floor, new slab', 'In-floor, cut into slab'], FINISH = ['Exposed concrete', 'VCT tile'];
+  const METHODS = ['Raised subfloor', 'In-floor, new slab', 'In-floor, cut into slab'], FIN_R = ['Exposed plywood', 'Painted plywood', 'VCT tile'], FIN_F = ['Exposed concrete', 'VCT tile'];
   let method = 0, finish = 0;
   // slab: lower 2" is solid; the top 2" has a trough at every rail, filled with a plug unless the trough is formed or cut
   bx(root, L + 60, 2, total + 60, concrete, -30, -4, -30);
@@ -2121,6 +2072,7 @@ def('install', 'Mobile Storage Install, Step by Step', 'Rails in the floor or on
   const groutR = stage(); for (const rx of rails) for (const sx of [-1.6, 1]) bx(groutR, 0.6, 0.35, z1 - z0 - 4, grout, rx + sx, 0, z0 + 2);
   const bays = []; { let a = x0; for (const rx of rails) { bays.push([a, rx - 1.6]); a = rx + 1.6; } bays.push([a, x1]); }
   // one mesh per layer per bay keeps draw calls down
+  const plyPaint = k.std(0x5f6a70, 0.7, 0.05);
   const layer = (m, t, y) => bays.map(([a, b]) => { const g = stage(); for (let z = z0; z < z1; z += 48) bx(g, b - a, t, Math.min(48, z1 - z) - 0.1, m, a, y, z); return g; });
   const mason = layer(masonite, 0.25, 0), plyG = layer(ply, 1, 0.25), vctR = layer(vctM, 0.125, 1.25);
   vctR.forEach(g => g.children.forEach(t => { t.material = vctM.clone(); t.material.map = vctM.map.clone(); t.material.map.repeat.set(t.scale.x / 24, t.scale.z / 24); t.material.map.needsUpdate = true; }));
@@ -2222,6 +2174,7 @@ def('install', 'Mobile Storage Install, Step by Step', 'Rails in the floor or on
     ...INFLOOR,
   ];
   const TILE_R = ['Floor finish', 'VCT tile over the deck', async () => { await drop(vctR, 3, 450, 80); }];
+  const PAINT_R = ['Floor finish', 'Paint the plywood deck', async () => { for (const g of plyG) { g.children.forEach(t => { t.material = plyPaint; }); wake(); await wait(140); } }];
   const TILE_F = ['Floor finish', 'VCT tile up to the rails', async () => { await drop(vctF, 3, 450, 100); }];
   const COMMON = [
     ['Carriages', 'Set the carriages, drive shafts already in', async () => { await drop(parts.carriage, 30, 800, 110); }],
@@ -2251,7 +2204,9 @@ def('install', 'Mobile Storage Install, Step by Step', 'Rails in the floor or on
     plugs.forEach(g => { g.visible = method !== 1; });
     ranges.forEach(g => { g.position.set(0, top, g.userData.z0); });
     holes.count = 0; screws.count = 0; parts.chain.forEach(cb => chainAt(cb, TAKE0, 0.9));
-    STEPS = [...(method === 0 ? RAISED : method === 1 ? FORMED : CUT), ...(finish ? [method === 0 ? TILE_R : TILE_F] : []), ...COMMON];
+    plyG.forEach(g => g.children.forEach(t => { t.material = ply; }));
+    const fin = method === 0 ? [[], [PAINT_R], [TILE_R]][finish] || [] : finish ? [TILE_F] : [];
+    STEPS = [...(method === 0 ? RAISED : method === 1 ? FORMED : CUT), ...fin, ...COMMON];
     say('Install sequence: ' + METHODS[method].toLowerCase(), 'Press Next step or Play the whole install'); refresh?.();
   };
   const next = async () => { if (busy || at >= STEPS.length) return; busy = true; const [a, b, fn] = STEPS[at]; at++; say('Step ' + at + ' of ' + STEPS.length + ' · ' + a, b); await fn(); busy = false; refresh?.(); };
@@ -2259,8 +2214,9 @@ def('install', 'Mobile Storage Install, Step by Step', 'Rails in the floor or on
   return {
     group: root, finishes: [{ name: 'Black', swatch: '#2c2f31', color: 0x2c2f31 }, { name: 'O\'Brien teal', swatch: '#0f7377', color: 0x0f7377 }, { name: 'Light gray', swatch: '#c3c7ca', color: 0xbfc4c7 }, { name: 'Navy', swatch: '#2a3d5c', color: 0x2a3d5c }], setFinish: k.finisher(panel), view: [1.45, 0.62, 0.62],
     actions: [
-      { label: 'Floor', options: METHODS, get: () => method, set: n => { if (!busy) { method = n; reset(); } } },
-      { label: 'Finish', options: FINISH, get: () => finish, set: n => { if (!busy) { finish = n; reset(); } } },
+      { label: 'Floor', options: METHODS, get: () => method, set: n => { if (!busy) { method = n; finish = 0; reset(); } } },
+      { label: 'Deck finish', when: () => method === 0, options: FIN_R, get: () => finish, set: n => { if (!busy) { finish = n; reset(); } } },
+      { label: 'Floor finish', when: () => method > 0, options: FIN_F, get: () => Math.min(finish, 1), set: n => { if (!busy) { finish = n; reset(); } } },
       { label: 'Next step', when: () => at < STEPS.length, run: () => { next(); } },
       { label: 'Play the whole install', when: () => at < STEPS.length, run: async () => { if (busy) return; while (at < STEPS.length) { await next(); await wait(400); } } },
       { label: 'Open next aisle', when: () => done, run: () => { open = (open + 1) % (N + 1); move(); } },
@@ -2329,5 +2285,84 @@ def('painting-bins', 'Painting Storage Bins', 'Steel shelving with dividers on 1
   };
 });
 
-const SHORT = { 'four-post': '4-post', 'bin-shelving': 'Bin shelving', 'wire-shelving': 'Wire', library: 'Library', 'hd-mobile': 'Mobile', lockers: 'Lockers', 'evidence-lockers': 'Evidence', 'flat-files': 'Flat files', rotary: 'Rotary', 'museum-cabinet': 'Museum cabinet', 'art-screens': 'Art screens', 'pallet-rack': 'Pallet rack', mezzanine: 'Mezzanine', vlm: 'VLM', casework: 'Casework', 'wire-cage': 'Wire cage', athletic: 'Athletic', 'mail-sorter': 'Mail sorter', weapons: 'Weapons', 'tire-rack': 'Tire rack', 'wire-track': 'Wire on track', 'ss-table': 'Stainless tables', install: 'Install steps', 'hd-mobile-open': 'Mobile shelving', 'hd-mobile-tire': 'Mobile tires', 'hd-mobile-grow': 'Mobile grow racks', 'hd-mobile-flat': 'Mobile flat files', 'hd-mobile-museum': 'Mobile cabinets', 'hd-mobile-library': 'Mobile library', 'hd-mobile-textile': 'Mobile textiles', 'hd-mobile-art': 'Mobile art screens', 'hd-mobile-mezz': 'Two-level mobile', 'hd-mobile-wardrobe': 'Mobile wardrobes', 'hd-mobile-gear': 'Mobile gear', 'painting-bins': 'Painting bins', 'four-post-solander': 'Solander boxes', workstation: 'Workstation', fireproof: 'Fireproof', 'wall-art': 'Wall art screens', 'textile-rack': 'Textile racks' };
+/* ---------------- 29. bike storage ---------------- */
+// a simple bike: wheels, frame tubes, bars and seat
+function bikeMesh(THREE, k, color) {
+  const { M, cyl, group } = k, g = group(null), tire = k.std(0x1b1c1e, 0.85, 0), frame = k.std(color, 0.4, 0.4), R = 13.5;
+  for (const x of [-20, 20]) { const t = new THREE.Mesh(new THREE.TorusGeometry(R, 1.1, 8, 28), tire); t.position.set(x, R + 1, 0); g.add(t); cyl(g, 0.6, 3, M.chrome, x, R + 1, 0, 8, 'z'); }
+  const tube = (x1, y1, x2, y2, r = 0.7) => { const len = Math.hypot(x2 - x1, y2 - y1), m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, len, 8), frame); m.position.set((x1 + x2) / 2, (y1 + y2) / 2, 0); m.rotation.z = Math.atan2(y2 - y1, x2 - x1) - Math.PI / 2; g.add(m); };
+  const hb = [-2, R + 1], sp = [-6, R + 17], hd = [14, R + 16];
+  tube(-20, R + 1, hb[0], hb[1]); tube(-20, R + 1, sp[0], sp[1]); tube(hb[0], hb[1], sp[0], sp[1]); tube(sp[0], sp[1], hd[0], hd[1]); tube(hb[0], hb[1], hd[0], hd[1] - 2); tube(hd[0], hd[1], 20, R + 1);
+  tube(hd[0], hd[1], hd[0] + 1, hd[1] + 5, 0.6); cyl(g, 0.6, 18, M.dark, hd[0] + 1, hd[1] + 5.5, 0, 8, 'z');
+  tube(sp[0], sp[1], sp[0] - 1, sp[1] + 4, 0.5); const seat = new THREE.Mesh(new THREE.BoxGeometry(9, 1.5, 4), M.dark); seat.position.set(sp[0] - 1.5, sp[1] + 5, 0); g.add(seat);
+  return g;
+}
+def('bike-storage', 'Bike Room Storage', 'Apartment and campus bike rooms: two-tier racks with lift-assist trays, vertical wall hooks, or floor racks, in a wire partition room', ({ THREE, tween, wake, bake, refit }) => {
+  const k = kit(THREE), { M, bx, cyl, group } = k, root = new THREE.Group();
+  const steel = k.std(0x3a3f44, 0.45, 0.45), cage = k.std(0x6b7378, 0.45, 0.6), r = rng(19);
+  const colors = [0x2a4d7a, 0x8c1d2c, 0x2f5a3e, 0x1c1d1f, 0xd1621f, 0xc9ced2, 0x5e4a7a];
+  let style = 0, walls = true, unit, trays = [];
+  const make = () => {
+    if (unit) root.remove(unit);
+    unit = group(root); unit.userData.dyn = true; trays = [];
+    const n = 6, pitch = 16, L = n * pitch + 10, D = 76, H = 96;
+    if (style === 0) {
+      // two-tier rack: lower bikes in floor channels, upper bikes on trays that pull out and tilt down
+      for (const x of [0, L - 3]) { bx(unit, 3, 84, 3, steel, x, 0, 8); bx(unit, 3, 84, 3, steel, x, 0, 58); bx(unit, 3, 3, 56, steel, x, 81, 8); k.bar(unit, x + 1.5, 0, x + 1.5, 80, 34, 2.5, steel, 2.5); }
+      bx(unit, L, 3, 3, steel, 0, 81, 8); bx(unit, L, 3, 3, steel, 0, 81, 58);
+      for (let i = 0; i < n; i++) {
+        const x = 6 + i * pitch;
+        if (i % 2 === 0) { bx(unit, 4, 1.2, 68, M.steel, x - 2, 0, 4); const b = bikeMesh(THREE, k, colors[Math.floor(r() * colors.length)]); b.rotation.y = Math.PI / 2; b.position.set(x, 1.2, 38); unit.add(b); }
+        else {
+          // upper tray: pull it forward and it lowers to the floor for loading
+          const t = group(unit, x, 72, 10); t.userData.dyn = true;
+          bx(t, 4, 1.2, 64, M.steel, -2, 0, 0); bx(t, 5, 3, 1.2, M.steel, -2.5, 0, 62);
+          const b = bikeMesh(THREE, k, colors[Math.floor(r() * colors.length)]); b.rotation.y = Math.PI / 2; b.position.set(0, 1.2, 32); t.add(b);
+          t.userData.onClick = () => { t.userData.down = !t.userData.down; const d = t.userData.down; tween(t.position, 'z', d ? 44 : 10, 900); tween(t.rotation, 'x', d ? 0.95 : 0, 900); tween(t.position, 'y', d ? 44 : 72, 900); };
+          trays.push(t);
+        }
+      }
+    } else if (style === 1) {
+      // vertical wall hooks, staggered up and down so handlebars clear
+      bx(unit, L, 90, 1, k.std(0xe7e4dc, 0.9, 0), 0, 0, 0);
+      bx(unit, L, 4, 2, steel, 0, 70, 1); bx(unit, L, 4, 2, steel, 0, 12, 1);
+      for (let i = 0; i < n; i++) {
+        const x = 8 + i * pitch, up = i % 2 ? 8 : 0;
+        bx(unit, 1.2, 1.2, 7, M.chrome, x - 0.6, 78 + up, 1); bx(unit, 5, 1.2, 1, M.black, x - 2.5, 18 + up, 2.5);
+        const b = bikeMesh(THREE, k, colors[Math.floor(r() * colors.length)]); b.rotation.set(0, Math.PI / 2, Math.PI / 2); b.position.set(x, 64 + up, 18); unit.add(b);
+      }
+    } else {
+      // floor racks: wheel slots at alternating heights
+      for (let i = 0; i < n; i++) {
+        const x = 6 + i * pitch, hi = i % 2;
+        bx(unit, 4, hi ? 14 : 8, 10, steel, x - 2, 0, hi ? 50 : 6); bx(unit, 1, 1, 60, steel, x - 0.5, 0.5, 6);
+        const b = bikeMesh(THREE, k, colors[Math.floor(r() * colors.length)]); b.rotation.y = Math.PI / 2; b.position.set(x, 0, hi ? 42 : 34); unit.add(b);
+      }
+    }
+    if (walls) {
+      // wire partition bike room around the racks, with a door
+      const X0 = -18, X1 = L + 18, Z1 = 118, WH = 96;
+      const pnl = (w, x, z, rot) => { const g = group(unit, x, 0, z); g.rotation.y = rot; bx(g, w, 1.2, 1.2, cage, 0, 0, -0.6); bx(g, w, 1.2, 1.2, cage, 0, WH - 1.2, -0.6); const m = new THREE.Mesh(new THREE.PlaneGeometry(w - 1, WH - 2.4), k.meshMat(w, WH, 2)); m.position.set(w / 2, WH / 2, 0); g.add(m); };
+      for (const [x, z] of [[X0, -4], [X1, -4], [X0, Z1], [X1, Z1]]) bx(unit, 2, WH, 2, cage, x - 1, 0, z - 1);
+      pnl(X1 - X0, X0, -4, 0); pnl(Z1 + 4, X0, -4, -Math.PI / 2); pnl(Z1 + 4, X1, -4, -Math.PI / 2); pnl(X1 - X0 - 44, X0, Z1, 0);
+      const door = group(unit, X1 - 42, 0, Z1);
+      const dm = group(door); bx(dm, 40, 1.2, 1.2, cage, 0, 0, -0.6); bx(dm, 40, 1.2, 1.2, cage, 0, WH - 1.2, -0.6); bx(dm, 1.2, WH, 1.2, cage, 38.8, 0, -0.6); const m = new THREE.Mesh(new THREE.PlaneGeometry(38, WH - 2.4), k.meshMat(40, WH, 2)); m.position.set(20, WH / 2, 0); dm.add(m); bx(dm, 3, 5, 1.8, M.chrome, 35, 42, 0);
+      door.userData.onClick = () => { door.userData.open = !door.userData.open; tween(door.rotation, 'y', door.userData.open ? 1.6 : 0, 700, 'out'); };
+    }
+    unit.traverse(o => { if (o.isMesh) { o.castShadow = o.receiveShadow = true; } });
+    bake?.(unit); wake();
+  };
+  make();
+  return {
+    group: root, view: [0.7, 0.55, 1.3],
+    finishes: [{ name: 'Dark gray', swatch: '#3a3f44', color: 0x3a3f44 }, { name: 'Black', swatch: '#1c1d1f', color: 0x1c1d1f }, { name: 'Silver', swatch: '#c3c7ca', color: 0xbfc4c7 }, { name: 'Blue', swatch: '#2a4d7a', color: 0x2a4d7a }], setFinish: k.finisher(steel),
+    actions: [
+      { label: 'Lower an upper tray', when: () => style === 0, run: () => { const t = trays[1] || trays[0]; t?.userData.onClick(); return t?.userData.down ? 'Raise the tray' : 'Lower an upper tray'; } },
+      { label: 'Rack', options: ['Two-tier racks', 'Vertical wall hooks', 'Floor racks'], get: () => style, set: n => { style = n; make(); refit?.(); } },
+      { label: 'Wire partition room', toggle: true, get: () => walls, set: v => { walls = v; make(); refit?.(); } },
+    ],
+  };
+});
+
+const SHORT = { 'four-post': '4-post', 'bin-shelving': 'Bin shelving', 'wire-shelving': 'Wire', library: 'Library', 'hd-mobile': 'Mobile', lockers: 'Lockers', 'evidence-lockers': 'Evidence', 'flat-files': 'Flat files', rotary: 'Rotary', 'museum-cabinet': 'Museum cabinet', 'art-screens': 'Art screens', 'pallet-rack': 'Pallet rack', mezzanine: 'Mezzanine', vlm: 'VLM', casework: 'Casework', 'wire-cage': 'Wire cage', athletic: 'Athletic', 'mail-sorter': 'Mail sorter', weapons: 'Weapons', 'tire-rack': 'Tire rack', 'wire-track': 'Wire on track', 'ss-table': 'Stainless tables', install: 'Install steps', 'hd-mobile-open': 'Mobile shelving', 'hd-mobile-tire': 'Mobile tires', 'hd-mobile-grow': 'Mobile grow racks', 'hd-mobile-flat': 'Mobile flat files', 'hd-mobile-museum': 'Mobile cabinets', 'hd-mobile-library': 'Mobile library', 'hd-mobile-textile': 'Mobile textiles', 'hd-mobile-art': 'Mobile art screens', 'hd-mobile-mezz': 'Two-level mobile', 'hd-mobile-wardrobe': 'Mobile wardrobes', 'hd-mobile-gear': 'Mobile gear', 'bike-storage': 'Bike rooms', 'painting-bins': 'Painting bins', 'four-post-solander': 'Solander boxes', workstation: 'Workstation', fireproof: 'Fireproof', 'wall-art': 'Wall art screens', 'textile-rack': 'Textile racks' };
 for (const [id, s] of Object.entries(SHORT)) if (MODELS[id]) MODELS[id].short = s;

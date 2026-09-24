@@ -362,17 +362,17 @@ function photos(file, html) {
 /* ---------------- 3D product viewer ---------------- */
 // which interactive models appear on which page (ids live in assets/3d/models.js)
 const VIEW3D = {
-  'four-post-shelving': 'four-post', 'bin-storage': 'bin-shelving', 'wire-shelving': 'wire-shelving,wire-track', 'cantilever-shelving': 'library,hd-mobile-library',
+  'four-post-shelving': 'four-post', 'bin-storage': 'bin-shelving', 'wire-shelving': 'wire-shelving,wire-track,bike-storage', 'cantilever-shelving': 'library,hd-mobile-library',
   'static-shelving': 'four-post,bin-shelving,wire-shelving,library,tire-rack', 'high-density-mobile-storage': 'hd-mobile,hd-mobile-mezz,wire-track', 'lockers': 'lockers,athletic,evidence-lockers,weapons', 'evidence-lockers': 'evidence-lockers',
   'cabinets': 'flat-files,fireproof,rotary,museum-cabinet', 'rotary-cabinets': 'rotary', 'museum-cabinets': 'museum-cabinet,hd-mobile-museum,four-post-solander,textile-rack,hd-mobile-textile', 'art-screens': 'art-screens,hd-mobile-art,painting-bins,wall-art',
-  'pallet-rack': 'pallet-rack', 'mezzanines': 'mezzanine,hd-mobile-mezz', 'lifts-carousels': 'vlm', 'modular-casework': 'casework,ss-table', 'wire-partitions': 'wire-cage',
+  'pallet-rack': 'pallet-rack', 'mezzanines': 'mezzanine,hd-mobile-mezz', 'lifts-carousels': 'vlm', 'modular-casework': 'casework,ss-table', 'wire-partitions': 'wire-cage,bike-storage',
   'weapons-storage': 'weapons,hd-mobile', 'athletic-storage': 'athletic,hd-mobile-gear,lockers', 'athletics': 'athletic,hd-mobile-gear,lockers', 'mail-sorters': 'mail-sorter', 'fireproof-cabinets': 'fireproof', 'wardrobe-cabinets': 'hd-mobile-wardrobe',
   'military': 'weapons,hd-mobile,pallet-rack', 'museums': 'four-post-solander,painting-bins,art-screens,hd-mobile-art,museum-cabinet,hd-mobile-museum,textile-rack,hd-mobile-textile', 'libraries': 'library,hd-mobile-library', 'material-handling-warehouse': 'hd-mobile-open,hd-mobile-mezz,pallet-rack,mezzanine,vlm,workstation,wire-cage',
-  'vertical-farming': 'hd-mobile-grow,ss-table,wire-track', 'pharmaceutical-healthcare': 'casework,ss-table,wire-track,hd-mobile', 'education': 'lockers,athletic,hd-mobile-gear,library,hd-mobile,mail-sorter', 'government-public-safety': 'evidence-lockers,weapons,hd-mobile,wire-cage',
+  'vertical-farming': 'hd-mobile-grow,ss-table,wire-track', 'pharmaceutical-healthcare': 'casework,ss-table,wire-track,hd-mobile', 'education': 'lockers,bike-storage,athletic,hd-mobile-gear,library,hd-mobile,mail-sorter', 'government-public-safety': 'evidence-lockers,weapons,hd-mobile,wire-cage',
   'corporate-legal': 'hd-mobile,rotary,fireproof,hd-mobile-flat,mail-sorter', 'automotive': 'tire-rack,hd-mobile-tire,bin-shelving,workstation,pallet-rack,vlm', 'retail': 'hd-mobile,four-post,bin-shelving,wire-track',
   'general-contractors': 'install,hd-mobile,mezzanine', 'design-specify': 'install,hd-mobile',
 };
-const ALL3D = 'hd-mobile,wire-track,vlm,rotary,four-post,bin-shelving,wire-shelving,library,tire-rack,lockers,athletic,evidence-lockers,weapons,flat-files,fireproof,museum-cabinet,art-screens,wall-art,textile-rack,painting-bins,casework,workstation,ss-table,mail-sorter,pallet-rack,mezzanine,wire-cage,install';
+const ALL3D = 'hd-mobile,wire-track,vlm,rotary,four-post,bin-shelving,wire-shelving,library,tire-rack,lockers,athletic,evidence-lockers,weapons,flat-files,fireproof,museum-cabinet,art-screens,wall-art,textile-rack,painting-bins,casework,workstation,ss-table,mail-sorter,pallet-rack,mezzanine,wire-cage,install,bike-storage';
 const viewer3d = (slug, name) => VIEW3D[slug] ? `
 <section class="v3d-sec">
   <div class="wrap">
@@ -383,7 +383,7 @@ const viewer3d = (slug, name) => VIEW3D[slug] ? `
 const home3d = () => `
 <section class="v3d-sec v3d-home">
   <div class="wrap">
-    <div class="v3d-head"><div><span class="eyebrow">3D showroom</span><h2>Spin it, open it, see how it works</h2><p>Drag to look at every side. Tap a carriage to open an aisle, pull a drawer, swing a door.</p></div><a class="v3d-all" href="showroom.html">All 28 models &rarr;</a></div>
+    <div class="v3d-head"><div><span class="eyebrow">3D showroom</span><h2>Spin it, open it, see how it works</h2><p>Drag to look at every side. Tap a carriage to open an aisle, pull a drawer, swing a door.</p></div><a class="v3d-all" href="showroom.html">All 29 models &rarr;</a></div>
     <div class="v3d" data-models="hd-mobile,four-post,lockers,flat-files,vlm"></div>
   </div>
 </section>`;
@@ -394,7 +394,7 @@ function showroomPage(shell, heroImg) {
   <div class="wrap">
     <span class="eyebrow">3D showroom</span>
     <h1>Walk around the products</h1>
-    <p>Twenty-eight of the systems we plan and install, as interactive models. Drag to see every side, zoom in on the details, and try how they move.</p>
+    <p>Twenty-nine of the systems we plan and install, as interactive models. Drag to see every side, zoom in on the details, and try how they move.</p>
   </div>
 </div>
 <section class="v3d-sec v3d-room"><div class="wrap">
@@ -404,37 +404,22 @@ function showroomPage(shell, heroImg) {
 }
 // load the viewer only on pages that have one
 const with3d = (html, ver) => html.includes('class="v3d') ? html.replace('</body>', `<script type="module" src="assets/3d/viewer.js?v=${ver}"></script>\n</body>`) : html;
-const CSS3D = `.v3d-ov{position:absolute;right:12px;bottom:12px;z-index:6;width:min(560px,calc(100% - 24px));aspect-ratio:4/3;max-height:calc(100% - 24px);background:#16181b;border-radius:18px;padding:14px 14px 22px;box-shadow:0 18px 40px rgba(0,0,0,.35);cursor:auto;touch-action:auto}
-.v3d-ov::after{content:'';position:absolute;right:16px;bottom:8px;width:7px;height:7px;border-radius:50%;background:#39d353;box-shadow:0 0 6px #39d353}
-.v3d-ov-x{position:absolute;top:-10px;right:-10px;width:28px;height:28px;border-radius:50%;border:0;background:#fff;color:#16181b;font-size:18px;line-height:1;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.3)}
-.v3d-ov-b{width:100%;height:100%;background:#000;color:#fff;overflow:hidden;container-type:inline-size;font:1.9cqw/1.25 Tahoma,Verdana,Segoe UI,sans-serif;display:flex;flex-direction:column;gap:1.2cqw;padding:0 0 .8cqw}
-.cp button{font:inherit;cursor:pointer}.cp button[disabled]{opacity:.45;cursor:default}
-.cp-hd{display:flex;align-items:center;gap:1cqw;padding:.8cqw 1.2cqw;background:linear-gradient(#2d7fe0,#0d4fae 55%,#0a3f8f)}
-.cp-hd button{background:none;border:0;color:#fff;display:flex;flex-direction:column;align-items:center;gap:.2cqw;padding:0 .6cqw}.cp-hd svg{width:4.2cqw;height:4.2cqw;fill:#fff;stroke:#ffd23a;stroke-width:1.5}.cp-hd small{font-size:1.4cqw}
-.cp-title{flex:1;background:#000;border-radius:.6cqw;padding:1cqw 1.6cqw;font-weight:700;letter-spacing:.03em;text-transform:uppercase;display:flex;gap:4cqw}.cp-title span{color:#cfd8e6}
-.cp-row{display:flex;align-items:center;gap:1.2cqw;padding:0 1.6cqw}.cp-row label{color:#c9c9c9;white-space:nowrap}
-.cp-f{background:linear-gradient(#e6f0fb,#bcd4ee);color:#0b1b33;font-weight:700;border-radius:.5cqw;padding:.8cqw 1.4cqw;flex:1;min-height:1.25em}.cp-f.big{font-size:2.6cqw}.cp-f.s{flex:0 0 9cqw;text-align:center}.cp-f.q{flex:0 0 22cqw;text-align:center;font-size:3cqw}
-.cp-map{position:relative;margin:0 1.6cqw;background:#86c46a;border-radius:.4cqw;padding:1.4cqw 2.4cqw 2.4cqw;flex:1;min-height:0}
-.cp-tray{position:relative;width:100%;height:100%;background:#9fd07f}.cp-tray i{position:absolute;box-shadow:inset 0 0 0 1px rgba(0,0,0,.35)}
-.cp-ax{position:absolute;font-size:1.4cqw;color:#1d3b12}.cp-ax.a{left:2.4cqw;bottom:.4cqw}.cp-ax.z{right:2.4cqw;bottom:.4cqw}.cp-ax.r0{left:.6cqw;bottom:2.4cqw}.cp-ax.r9{left:.6cqw;top:1.2cqw}
-.cp-wait{margin:0 1.6cqw;flex:1;display:grid;place-items:center;background:#0b0f16;border:1px solid #1d3b6e;border-radius:.6cqw;color:#9fc1ef}
-.cp-btns{display:flex;gap:1cqw;padding:0 1.6cqw}.cp-btns button,.cp-done button,.cp-kp button{flex:1;border:0;border-radius:.8cqw;padding:1.6cqw 0;color:#fff;background:linear-gradient(#3a8df0,#0d56b8);box-shadow:inset 0 1px 0 rgba(255,255,255,.35)}
-.cp .or{background:linear-gradient(#ffb24a,#e0700f)!important}
-.cp-tb{margin:0 1.6cqw;border-collapse:collapse;font-size:1.6cqw;width:calc(100% - 3.2cqw)}.cp-tb th{background:linear-gradient(#2d7fe0,#0d4fae);text-align:left;padding:.4cqw 1cqw;font-weight:400;width:32%}.cp-tb td{background:#fff;color:#111;padding:.4cqw 1cqw;border-bottom:1px solid #d8d8d8}
-.cp-tb.list{width:100%;margin:0}.cp-tb.list th{width:auto}.cp-tb.list button{border:0;border-radius:.5cqw;background:linear-gradient(#ffb24a,#e0700f);color:#fff;padding:.3cqw 1.2cqw}
-.cp-scroll{flex:1;overflow:auto;margin:0 1.6cqw}
-.cp-ft{margin-top:auto;display:flex;align-items:center;gap:1.2cqw;padding:.8cqw 1.2cqw;background:linear-gradient(#0d4fae,#082f6b)}.cp-ft em{flex:1;font-style:normal;color:#cfe0f7;font-size:1.5cqw}
-.cp-stop{width:4.6cqw;height:4.6cqw;border-radius:.6cqw;background:radial-gradient(circle,#ff5a4a 35%,#b3130c 36%,#e0261c 60%)}
-.cp-st{background:#000;border-radius:.5cqw;padding:.4cqw 1cqw;font-size:1.3cqw;line-height:1.2}
-.cp-warn{width:4.6cqw;height:4.6cqw;border:0;border-radius:.6cqw;background:linear-gradient(#ffb24a,#e0700f);color:#fff;font-weight:700;font-size:3cqw}
-.cp-cmd{border:0;border-radius:.8cqw;background:linear-gradient(#3a8df0,#0d56b8);color:#fff;font-weight:700;padding:.6cqw 2cqw;font-size:1.5cqw;line-height:1.15}
-.cp-round{width:5cqw;height:5cqw;border-radius:50%;border:0;background:linear-gradient(#3a8df0,#0d56b8)}.cp-round svg{width:3cqw;height:3cqw;fill:#fff}
-.cp-tiles{flex:1;display:grid;grid-template-columns:repeat(3,1fr);gap:1.4cqw;padding:0 1.6cqw}.cp-tiles button{border:0;border-radius:1cqw;color:#fff;background:linear-gradient(#3a8df0,#0d56b8);display:flex;flex-direction:column;justify-content:center;gap:.6cqw;box-shadow:inset 0 1px 0 rgba(255,255,255,.35)}.cp-tiles b{font-size:2.6cqw}.cp-tiles small{color:#cfe0f7}
-.cp-tiles button:first-child{background:linear-gradient(#ffb24a,#e0700f)}
-.cp-list{flex:1;display:flex;flex-direction:column;gap:1cqw;padding:0 1.6cqw}.cp-list button{display:flex;justify-content:space-between;border:0;border-radius:.8cqw;padding:1.4cqw 2cqw;background:linear-gradient(#e6f0fb,#bcd4ee);color:#0b1b33}
-.cp-done{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2cqw;padding:0 12cqw}.cp-done b{font-size:3cqw}.cp-done button{width:100%}
-.cp-kp{display:grid;grid-template-columns:repeat(3,1fr);gap:1cqw;padding:0 14cqw;flex:1}.cp-note{padding:0 1.6cqw;color:#9fc1ef}
-.v3d-ov{position:absolute;inset:4% 5%;z-index:6;background:#0c1a22;color:#dfeef0;border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,.35);overflow:auto;font:14px/1.45 system-ui,sans-serif;padding:14px 16px;cursor:auto;touch-action:auto}
+const CSS3D = `.v3d-ov{position:absolute;right:12px;top:12px;z-index:6;width:min(300px,calc(100% - 24px));max-height:calc(100% - 24px);overflow:auto;background:#fff;border-radius:14px;box-shadow:0 12px 32px rgba(0,0,0,.22);cursor:auto;touch-action:auto;font:14px/1.4 system-ui,Segoe UI,sans-serif;color:#111}
+.v3d-ov-x{position:absolute;top:8px;right:8px;width:26px;height:26px;border-radius:50%;border:0;background:rgba(255,255,255,.18);color:#fff;font-size:17px;line-height:1;cursor:pointer;z-index:1}
+.cp button{font:inherit;cursor:pointer}
+.cp-hd{display:flex;align-items:center;gap:8px;padding:11px 44px 11px 14px;background:linear-gradient(#2d7fe0,#0d4fae);color:#fff;font-weight:700;border-radius:14px 14px 0 0}.cp-hd span{flex:1}
+.cp-hd button{border:0;background:rgba(255,255,255,.18);color:#fff;border-radius:8px;padding:3px 10px;font-size:13px}
+.cp-st{padding:7px 14px;background:#eef3fa;font-size:12.5px;color:#34465e}.cp-st b{color:#1b7a3a}.cp-st b.mv{color:#c46a00}
+.cp-body{padding:12px 14px 14px;display:flex;flex-direction:column;gap:10px}
+.cp-big{border:0;border-radius:10px;padding:13px;color:#fff;font-weight:700;font-size:15px;background:linear-gradient(#3a8df0,#0d56b8)}.cp .or{background:linear-gradient(#ffa63a,#e0700f)}
+.cp-link{border:0;background:none;color:#0d4fae;font-size:13px;padding:2px;text-decoration:underline}
+.cp-line{font-size:12.5px;color:#5b6b7f}.cp-item b{display:block;font-size:17px}.cp-item span{color:#34465e}
+.cp-qty{font-size:15px}.cp-qty b{font-size:26px;color:#0d4fae;margin-left:4px}
+.cp-map{position:relative;height:74px;background:#9fd07f;border:4px solid #86c46a;border-radius:6px}.cp-map i{position:absolute;box-shadow:inset 0 0 0 1px rgba(0,0,0,.3)}.cp-map i.on{outline:3px solid #fff;animation:cpPulse 1s ease-in-out infinite alternate}
+@keyframes cpPulse{to{outline-color:#1f3fb0}}
+.cp-wait{padding:18px 10px;text-align:center;background:#f4f7fb;border-radius:10px;color:#5b6b7f}
+.cp-tip{margin:0;font-size:12.5px;color:#5b6b7f}.cp-done{margin:6px 0;font-weight:700;font-size:17px;text-align:center}
+.cp-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;max-height:190px;overflow:auto}.cp-grid button{border:0;border-radius:7px;padding:8px 0;background:#e6edf6;color:#0b1b33;font-weight:600;font-size:13px}.cp-grid .at{background:#2f9e44;color:#fff}.cp-grid .mv{background:#f0a13a;color:#111}
 
 /* 3D viewer */
 .v3d-sec{padding:60px 0;background:#f6f8f8}
@@ -449,8 +434,13 @@ const CSS3D = `.v3d-ov{position:absolute;right:12px;bottom:12px;z-index:6;width:
 .v3d-wrap{display:flex;flex-direction:column}
 .v3d-wrap.has-side{display:grid;grid-template-columns:250px minmax(0,1fr)}
 .v3d-side{border-right:1px solid var(--line);padding:16px 10px;background:#fbfcfc;overflow-y:auto;scrollbar-width:thin;contain:size}
-.v3d-g{margin-bottom:10px}
-.v3d-g>span{display:block;font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:0 10px 6px}
+.v3d-side{position:relative}
+.v3d-find{width:100%;box-sizing:border-box;margin:0 0 12px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;font:inherit;font-size:.9rem;background:#fff}
+.v3d-g{margin-bottom:6px}
+.v3d-g>summary{list-style:none;display:flex;justify-content:space-between;align-items:center;cursor:pointer;font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:6px 10px;border-radius:8px}
+.v3d-g>summary::-webkit-details-marker{display:none}.v3d-g>summary:hover{background:#eef4f4}
+.v3d-g>summary em{font-style:normal;font-weight:600;letter-spacing:0;color:#9aa6a6}
+.v3d-g[open]>summary{color:var(--teal-dark)}
 .v3d-g button{display:block;width:100%;text-align:left;border:0;background:none;padding:6px 10px;border-radius:9px;font:inherit;font-size:.9rem;line-height:1.3;color:var(--ink);cursor:pointer;transition:background .15s,color .15s}
 .v3d-g button:hover{background:#eef4f4}
 .v3d-g button[aria-selected=true]{background:var(--teal);color:#fff;font-weight:600}
@@ -479,7 +469,10 @@ const CSS3D = `.v3d-ov{position:absolute;right:12px;bottom:12px;z-index:6;width:
 .v3d-hint{position:absolute;left:14px;bottom:12px;background:rgba(255,255,255,.9);color:var(--teal-ink);font-size:.78rem;padding:6px 12px;border-radius:999px;pointer-events:none;box-shadow:0 2px 10px rgba(0,0,0,.06);transition:opacity .5s}
 .v3d-hint.gone{opacity:0}
 .v3d-bar{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;justify-content:space-between;padding:14px 18px 6px}
-.v3d-acts{display:flex;flex-wrap:wrap;gap:8px}
+.v3d-acts{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.v3d-acts .v3d-more{background:none!important;color:var(--teal-dark)!important;border:1px dashed #b9cccc!important;box-shadow:none!important}
+.v3d-step{flex:0 0 auto;width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:#fff;font-size:1.3rem;line-height:1;color:var(--teal-dark);cursor:pointer}.v3d-step:hover{background:#eef4f4}
+.v3d-wheel{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:rgba(2,60,63,.85);color:#fff;padding:10px 16px;border-radius:10px;font-size:.9rem;pointer-events:none}
 .v3d-acts button{border:0;background:var(--teal);color:#fff;border-radius:999px;padding:9px 16px;font:inherit;font-size:.88rem;font-weight:700;cursor:pointer;transition:transform .15s,box-shadow .15s,background .15s}
 .v3d-acts button[hidden],.v3d-acts label[hidden]{display:none}
 .v3d-opt,.v3d-chk{display:inline-flex;align-items:center;gap:6px;background:#eef4f4;border:1px solid #dbe6e6;border-radius:999px;padding:3px 4px 3px 12px;font-size:.84rem;font-weight:600;color:var(--ink);cursor:pointer}
