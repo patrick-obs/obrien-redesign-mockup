@@ -1655,7 +1655,8 @@ def('install', 'Mobile Storage Install, Step by Step', 'From bare slab to workin
   const say = (a, b) => {
     cx.fillStyle = '#023c3f'; cx.fillRect(0, 0, 1024, 256); cx.fillStyle = '#e8a33d'; cx.fillRect(0, 0, 14, 256);
     cx.fillStyle = '#9fd3d5'; cx.font = 'bold 42px system-ui, sans-serif'; cx.fillText(a, 48, 90);
-    cx.fillStyle = '#ffffff'; cx.font = 'bold ' + (b.length > 30 ? 50 : 60) + 'px system-ui, sans-serif'; cx.fillText(b, 48, 184);
+    let fz = 60; do { cx.font = 'bold ' + fz + 'px system-ui, sans-serif'; fz -= 2; } while (cx.measureText(b).width > 940 && fz > 28);
+    cx.fillStyle = '#ffffff'; cx.fillText(b, 48, 184);
     tex.needsUpdate = true; wake();
   };
   const stage = () => { const g = group(root); g.userData.dyn = true; g.visible = false; return g; };
@@ -1679,11 +1680,21 @@ def('install', 'Mobile Storage Install, Step by Step', 'From bare slab to workin
   // 10 aluminum ramp edges on the open sides
   const ramps = stage(); { const s = new THREE.Shape(); s.moveTo(0, 0); s.lineTo(5, 0); s.lineTo(0, RH); s.closePath(); for (const [xx, rot] of [[x1, 0], [x0, Math.PI]]) { const m = new THREE.Mesh(new THREE.ExtrudeGeometry(s, { depth: z1 - z0, bevelEnabled: false }), alu); m.rotation.y = rot; m.position.set(xx, 0, rot ? z1 : z0); ramps.add(m); } }
   // 11 to 14: carriages, shelving, end panels, load, first aisle
-  const parts = { carriage: [], frame: [], panels: [], loaded: [], shafts: [], chain: [], handles: [] };
+  const parts = { carriage: [], splice: [], frame: [], panels: [], loaded: [], chain: [], covers: [], keys: [], handles: [] };
+  const chainM = k.std(0x55595d, 0.5, 0.8), keyM = k.std(0xc9a227, 0.35, 0.7), TAKE0 = 48.6, TAKE1 = 50;
   const ranges = depths.map((dd, j) => {
     const g = group(root, 0, RH, base[j]), fixed = j === 0 || j === depths.length - 1, last = j === depths.length - 1;
     g.userData.dyn = true; g.userData.z0 = base[j] + (last ? aisle : 0);
-    const c = group(g); bx(c, L, cH, dd, M.dark, 0, 0, 0); for (const rx of rails) cyl(c, 2, 1.4, black, rx, 1.6, dd / 2, 16, 'x'); parts.carriage.push(c);
+    // long carriages ship in two sections, drive shaft already in each; they splice together on the rails
+    const half = L / 2 - 1.5, c = group(g), c2 = group(g);
+    bx(c, half, cH, dd, M.dark, 0, 0, 0); bx(c2, half, cH, dd, M.dark, L - half, 0, 0);
+    for (const rx of rails) cyl(rx < L / 2 ? c : c2, 2, 1.4, black, rx, 1.6, dd / 2, 16, 'x');
+    if (!fixed) { cyl(c, 0.9, L / 2 + 0.4, alu, (L / 2 - 0.9) / 2, 2.5, dd / 2, 14, 'x'); cyl(c2, 0.9, L / 2 + 1.3, alu, (L / 2 + 0.1 + L + 1.4) / 2, 2.5, dd / 2, 14, 'x'); }
+    parts.carriage.push(c, c2);
+    const sp = group(g);
+    for (const zz of [-0.4, dd]) { bx(sp, 8, cH - 1, 0.4, alu, L / 2 - 4, 0.5, zz); for (const xx of [L / 2 - 2.6, L / 2 + 2.6]) for (const yy of [1.6, cH - 1.6]) cyl(sp, 0.45, 0.4, M.chrome, xx, yy, zz < 0 ? -0.6 : dd + 0.6, 8, 'z'); }
+    if (!fixed) cyl(sp, 1.5, 3.4, keyM, L / 2, 2.5, dd / 2, 16, 'x');
+    parts.splice.push(sp);
     const shelves = (contents) => {
       const s = group(g, 0, cH, 0);
       if (!fixed || j === 0) shelving(k, s, { bays: 3, w: 36, d, h, closed: true, shelves: 7, paint, contents, seed: 3 + j, z: fixed ? 0.5 : d + 1 });
@@ -1692,20 +1703,30 @@ def('install', 'Mobile Storage Install, Step by Step', 'From bare slab to workin
     };
     parts.frame.push(shelves(null)); parts.loaded.push(shelves('boxes'));
     const p = group(g);
-    bx(p, 1.6, h + cH + 1, dd - 0.3, panel, L + 1.3, 0, 0.15); bx(p, 1.6, h + cH + 1, dd - 0.3, panel, -1.6, 0, 0.15);
+    bx(p, 1.6, h + cH + 1, dd - 0.3, panel, L + 1.6, 0, 0.15); bx(p, 1.6, h + cH + 1, dd - 0.3, panel, -1.6, 0, 0.15);
     parts.panels.push(p);
     if (!fixed) {
-      // drive shaft through the carriage wheels, chain box up to the handle shaft, then the handle
-      const sh = group(g); cyl(sh, 0.9, L + 4, alu, L / 2 + 1, 2.5, dd / 2, 14, 'x'); parts.shafts.push(sh);
-      const cb = group(g); bx(cb, 1.2, 50, 4.5, black, L, 0.5, dd / 2 - 2.25); cyl(cb, 2.2, 1.3, alu, L + 0.6, 2.5, dd / 2, 20, 'x'); cyl(cb, 2.2, 1.3, alu, L + 0.6, 50, dd / 2, 20, 'x'); cyl(cb, 0.7, 4.6, alu, L + 2.3, 50, dd / 2, 12, 'x'); parts.chain.push(cb);
-      const hub = group(g, L + 3.1, 50, dd / 2); cyl(hub, 2.6, 2, black, 1, 0, 0, 28, 'x'); cyl(hub, 1.6, 0.4, alu, 2.1, 0, 0, 24, 'x');
+      // chain box: drive sprocket on the shaft, take-up sprocket with the handle shaft, chain between; it starts slack
+      const cb = group(g);
+      bx(cb, 0.3, 52, 5.8, black, L, 0.2, dd / 2 - 2.9);
+      cyl(cb, 2.2, 0.9, alu, L + 0.75, 2.5, dd / 2, 20, 'x');
+      const take = group(cb, 0, TAKE0, 0); take.userData.dyn = true;
+      cyl(take, 2.2, 0.9, alu, L + 0.75, 0, dd / 2, 20, 'x'); cyl(take, 0.7, 5, alu, L + 2.5, 0, dd / 2, 12, 'x');
+      for (const dz of [-2.8, 2.5]) bx(take, 1, 3, 0.3, M.steel, L + 0.3, -1.5, dd / 2 + dz);
+      const strands = [-2.2, 2.2].map(dz => { const st = bx(cb, 0.5, 1, 0.35, chainM, L + 0.5, 0, dd / 2 + dz - 0.175); st.userData.dyn = true; st.userData.z = st.position.z; return st; });
+      cb.userData.take = take; cb.userData.strands = strands; parts.chain.push(cb);
+      const cov = group(g); bx(cov, 0.3, 52, 5.8, black, L + 1.25, 0.2, dd / 2 - 2.9); for (const zz of [dd / 2 - 2.9, dd / 2 + 2.6]) bx(cov, 1.25, 52, 0.3, black, L, 0.2, zz); parts.covers.push(cov);
+      const key = group(g); bx(key, 1.4, 0.35, 0.35, keyM, L + 3.4, TAKE1 + 0.62, dd / 2 - 0.175); parts.keys.push(key);
+      const hub = group(g, L + 3.4, TAKE1, dd / 2); cyl(hub, 2.6, 2, black, 1, 0, 0, 28, 'x'); cyl(hub, 1.6, 0.4, alu, 2.1, 0, 0, 24, 'x');
       for (let q = 0; q < 3; q++) { const arm = new THREE.Group(); arm.rotation.x = (q * Math.PI * 2) / 3; hub.add(arm); const a = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 1.1, 8.4, 16), black); a.position.set(1.2, 4.6, 0); arm.add(a); const ball = new THREE.Mesh(new THREE.SphereGeometry(1.4, 20, 14), black); ball.position.set(1.2, 9.4, 0); arm.add(ball); }
       parts.handles.push(hub);
     }
-    for (const o of [c, p, ...g.children]) o.userData.dyn = true;
+    for (const o of g.children) o.userData.dyn = true;
     return g;
   });
-  const staged = [lines, ...railG, shims, groutG, ...mason, ...plyG, saw, stack, drill, ramps, ...parts.carriage, ...parts.shafts, ...parts.frame, ...parts.loaded, ...parts.chain, ...parts.panels, ...parts.handles];
+  const staged = [lines, ...railG, shims, groutG, ...mason, ...plyG, saw, stack, drill, ramps, ...parts.carriage, ...parts.splice, ...parts.frame, ...parts.loaded, ...parts.chain, ...parts.covers, ...parts.panels, ...parts.keys, ...parts.handles];
+  // chain state: slack (take-up low, return strand sagging in) or tight
+  const chainAt = (cb, top, sag) => { cb.userData.take.position.y = top; cb.userData.strands.forEach((st, i) => { st.scale.y = top - 2.5; st.position.y = (top + 2.5) / 2; st.position.z = st.userData.z + (i ? -sag : 0); }); };
   staged.forEach(o => { o.userData.home = o.position.clone(); });
   const drop = async (list, from, ms, gap) => { for (const o of list) { o.visible = true; o.position.y = o.userData.home.y + from; tween(o.position, 'y', o.userData.home.y, ms, 'out'); await wait(gap); } await wait(ms); };
   const STEPS = [
@@ -1720,15 +1741,20 @@ def('install', 'Mobile Storage Install, Step by Step', 'From bare slab to workin
     ['Fasten', 'Drive Tapcon screws into the concrete', async () => { for (let n = 0; n <= pts.length; n += 6) { screws.count = Math.min(n, pts.length); wake(); await wait(40); } screws.count = pts.length; wake(); }],
     ['Edges', 'Aluminum ramp edges on the open sides', async () => { ramps.visible = true; ramps.position.y = 6; await tween(ramps.position, 'y', 0, 700, 'out'); }],
     ['Carriages', 'Set the carriages on the rails', async () => { await drop(parts.carriage, 30, 800, 140); }],
-    ['Drive', 'Slide the drive shafts through the carriages', async () => { for (const sh of parts.shafts) { sh.visible = true; sh.position.x = -L - 24; tween(sh.position, 'x', 0, 900, 'out'); await wait(160); } await wait(900); }],
+    ['Splice', 'Bolt the carriage sections and couple the drive shafts', async () => { await drop(parts.splice, 10, 500, 120); }],
     ['Shelving', 'Build the shelving on the carriages', async () => { for (const s of parts.frame) { s.visible = true; s.scale.y = 0.01; tween(s.scale, 'y', 1, 900, 'out'); await wait(150); } await wait(800); }],
     ['Chain drive', 'Mount the chain boxes at the aisle end', async () => { await drop(parts.chain, 24, 650, 150); }],
+    ['Tension', 'Tension each chain, then close the chain box', async () => {
+      for (const cb of parts.chain) { const [a, b] = cb.userData.strands, ms = 800; tween(cb.userData.take.position, 'y', TAKE1, ms, 'out'); for (const st of [a, b]) { tween(st.scale, 'y', TAKE1 - 2.5, ms, 'out'); tween(st.position, 'y', (TAKE1 + 2.5) / 2, ms, 'out'); } tween(b.position, 'z', b.userData.z, ms, 'out'); await wait(160); }
+      await wait(800); await drop(parts.covers, 0.01, 1, 60);
+    }],
     ['End panels', 'Hang the end panels', async () => { for (const p of parts.panels) { p.visible = true; p.position.x = 30; tween(p.position, 'x', 0, 700, 'out'); await wait(120); } await wait(600); }],
+    ['Keyways', 'Set the keys in the handle shafts', async () => { for (const kk of parts.keys) { kk.visible = true; kk.position.x = kk.userData.home.x + 8; tween(kk.position, 'x', kk.userData.home.x, 450, 'out'); await wait(120); } await wait(450); }],
     ['Handles', 'Fit the three-arm handles', async () => { for (const hb of parts.handles) { hb.visible = true; hb.position.x = hb.userData.home.x + 14; hb.rotation.x = -2.2; tween(hb.position, 'x', hb.userData.home.x, 650, 'out'); tween(hb.rotation, 'x', 0, 650, 'out'); await wait(150); } await wait(650); }],
     ['Turnover', 'Loaded, tested, first aisle opened', async () => { parts.loaded.forEach((s, i) => { s.visible = true; parts.frame[i].visible = false; }); wake(); await wait(400); for (let j = 2; j < depths.length - 1; j++) tween(ranges[j].position, 'z', base[j] + aisle, 1500); await wait(1500); }],
   ];
   let at = 0, busy = false;
-  const reset = () => { at = 0; staged.forEach(o => { o.visible = false; o.position.copy(o.userData.home); o.scale.set(1, 1, 1); o.rotation.x = 0; }); ranges.forEach(g => { g.position.z = g.userData.z0; }); holes.count = 0; screws.count = 0; say('Install sequence', 'Press Next step to start'); };
+  const reset = () => { at = 0; staged.forEach(o => { o.visible = false; o.position.copy(o.userData.home); o.scale.set(1, 1, 1); o.rotation.x = 0; }); ranges.forEach(g => { g.position.z = g.userData.z0; }); holes.count = 0; screws.count = 0; parts.chain.forEach(cb => chainAt(cb, TAKE0, 0.9)); say('Install sequence', 'Press Next step to start'); };
   const next = async () => { if (busy || at >= STEPS.length) return; busy = true; const [a, b, fn] = STEPS[at]; at++; say('Step ' + at + ' of ' + STEPS.length + ' · ' + a, b); await fn(); busy = false; };
   reset();
   return {
