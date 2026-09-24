@@ -100,7 +100,9 @@ function kit(THREE) {
     const sp = tag(text, s); sp.position.copy(mid).add(new THREE.Vector3(...off)); g.add(sp);
     return g;
   };
-  return { M, bx, cyl, bar, group, grid, meshMat, many, FIN, finisher, std, postMat, tray, dim, inch };
+  // slot strip on one face of an upright, facing into the bay (+1 = toward +x, -1 = toward -x)
+  const slots = (parent, m, x, y, z, depth, h, facing) => { const p = new THREE.Mesh(new THREE.PlaneGeometry(depth, h), m); p.rotation.y = facing > 0 ? Math.PI / 2 : -Math.PI / 2; p.position.set(x + facing * 0.01, y + h / 2, z + depth / 2); parent?.add(p); return p; };
+  return { M, bx, cyl, bar, group, grid, meshMat, many, FIN, finisher, std, postMat, tray, dim, inch, slots };
 }
 
 const KRAFT = ['#b58a55', '#c49a64', '#a97d49', '#d1ab77', '#e4e1d6', '#ffffff'];
@@ -117,7 +119,9 @@ function shelving(k, parent, o) {
     const x = i * w, inner = i > 0 && i < bays;
     for (const zf of [0, d - 0.12]) {
       bx(g, inner ? 2.5 : 1.25, h, 0.12, paint, i === 0 ? 0 : i === bays ? W - 1.25 : x - 1.25, 0, zf);
-      bx(g, 0.12, h, 1.25, post, i === bays ? W - 0.12 : x, 0, zf === 0 ? 0 : d - 1.25);
+      const sx = i === bays ? W - 0.12 : x, sz = zf === 0 ? 0 : d - 1.25;
+      bx(g, 0.12, h, 1.25, paint, sx, 0, sz);
+      if (post !== paint) { if (i < bays) k.slots(g, post, sx + 0.12, 0, sz, 1.25, h, 1); if (i > 0) k.slots(g, post, sx, 0, sz, 1.25, h, -1); }
     }
     if (closed) bx(g, 0.05, h, d, paint, i === bays ? W - 0.05 : x, 0, 0);
   }
@@ -1315,10 +1319,10 @@ def('vlm', 'Vertical Lift Module (VLM)', 'About 10 ft W x 9 ft D, 15 ft H with o
       bay.seg.position.x = px; bay.seg.visible = true;
     }
     wake();
-    show(tag(t), `Ready at bay ${bays.indexOf(bay) + 1}: pick 3`);
+    show(tag(t), `Ready at bay ${bays.indexOf(bay) + 1}`); ui?.();
   };
   const store = async (t) => {
-    const bay = t.userData.at; if (!bay) return;
+    const bay = t.userData.at; if (!bay) return; ui?.();
     bay.seg.visible = false; bay.laser.g.visible = false; show(tag(t), 'Returning to storage');
     await liftTo(bay.y);
     await tween(t.position, 'z', zLift, 650);
@@ -1429,51 +1433,110 @@ def('vlm', 'Vertical Lift Module (VLM)', 'About 10 ft W x 9 ft D, 15 ft H with o
     bake?.(unit);
     show('READY', 'Tap any tray to call it');
   };
-  // operator console: a generic picking screen that drives the model
-  const ITEMS = [
-    { pn: 'BRG-6204', d: 'Ball bearing, 20 mm bore', tray: 3, loc: 'A2', qty: 4, oh: 38 },
-    { pn: 'FLT-1180', d: 'Hydraulic return filter', tray: 7, loc: 'C1', qty: 1, oh: 6 },
-    { pn: 'ORG-0212', d: 'O-ring kit, nitrile', tray: 12, loc: 'B4', qty: 2, oh: 15 },
-    { pn: 'FUS-30A', d: 'Cartridge fuse, 30 A', tray: 5, loc: 'D3', qty: 6, oh: 120 },
-    { pn: 'BLT-A42', d: 'V-belt, A42', tray: 18, loc: 'A1', qty: 1, oh: 9 },
-    { pn: 'SNS-PX12', d: 'Proximity sensor, 12 mm', tray: 9, loc: 'B2', qty: 2, oh: 11 },
-    { pn: 'GSK-DN50', d: 'Flange gasket, DN50', tray: 21, loc: 'C3', qty: 3, oh: 44 },
-    { pn: 'SCR-M6-20', d: 'Cap screws, M6 x 20, box of 100', tray: 14, loc: 'A4', qty: 1, oh: 7 },
+  // operator console, laid out like a VLM operator touchscreen: blue header, data fields, the tray drawn as a
+  // compartment map with the target lit, OK/Empty, and a status footer. It docks beside the machine and drives it.
+  const PARTS = [
+    ['BRG-6204', 'BALL BEARING, 20 MM BORE'], ['FLT-1180', 'HYDRAULIC RETURN FILTER'], ['ORG-0212', 'O-RING KIT, NITRILE'], ['FUS-30A', 'CARTRIDGE FUSE, 30 A'],
+    ['BLT-A42', 'V-BELT, A42'], ['SNS-PX12', 'PROXIMITY SENSOR, 12 MM'], ['GSK-DN50', 'FLANGE GASKET, DN50'], ['SCR-M6-20', 'CAP SCREW M6 X 20, BOX/100'],
+    ['CLP-9150', 'CLIP A, BUMPER'], ['VLV-0340', 'BALL VALVE, 3/4 IN'], ['RLY-24V', 'RELAY, 24 VDC'], ['FIT-1212', 'PUSH FITTING, 12 MM'],
   ];
-  const order = [0, 2, 4].map(i => ({ ...ITEMS[i], done: false }));
-  let view = 'pick', line = 0, q = '';
-  const pad = n => String(n).padStart(2, '0'), esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const trayN = n => trays.find(t => t.userData.n === n);
-  const state = t => (t.userData.busy ? 'moving' : t.userData.at ? 'bay' : 'stored');
-  const html = () => {
-    const nav = [['pick', 'Picking'], ['inv', 'Inventory'], ['trays', 'Trays']].map(([v, l]) => '<button type="button" data-act="tab" data-v="' + v + '" class="' + (view === v ? 'on' : '') + '">' + l + '</button>').join('');
-    const top = '<div class="c-top"><b>Operator console</b><span>' + bays.map((b, i) => 'Bay ' + (i + 1) + ': ' + (b.tray ? 'tray ' + pad(b.tray.userData.n) : 'empty')).join(' &middot; ') + '</span></div><div class="c-nav">' + nav + '</div>';
-    if (view === 'inv') {
-      const rows = ITEMS.filter(it => !q || (it.pn + ' ' + it.d).toLowerCase().includes(q.toLowerCase())).map(it => '<tr><td><b>' + it.pn + '</b><br>' + it.d + '</td><td>Tray ' + pad(it.tray) + '<br>' + it.loc + '</td><td>' + it.oh + ' on hand</td><td><button type="button" data-act="call" data-v="' + it.tray + '">Call</button></td></tr>').join('');
-      return top + '<input name="q" autocomplete="off" placeholder="Search part number or description" value="' + esc(q) + '"><table>' + (rows || '<tr><td>No matches</td></tr>') + '</table>';
+  const MAPC = { '#2f6fb3': '#c9d23a', '#c92a2a': '#e0262b', '#e0a526': '#f2e529', '#7a8288': '#8e8e8e', '#2f9e44': '#9ccc3c' };
+  const cr = rng(77);
+  const mkLines = (n, mode) => {
+    const pick = [...trays].sort(() => cr() - 0.5).slice(0, n).sort((a, b) => a.userData.n - b.userData.n);
+    return pick.map((t, i) => { const items = t.userData.items || [], k = Math.floor(cr() * items.length), p = PARTS[(t.userData.n + i) % PARTS.length], stock = 8 + Math.floor(cr() * 60); return { tray: t.userData.n, k, pn: p[0], d: p[1], qty: mode === 'refill' ? 10 + Math.floor(cr() * 20) : 1 + Math.floor(cr() * 6), stock, done: false }; });
+  };
+  let lists = null, cur = null, line = 0, view = 'menu', entry = '', exe = null, msg = '';
+  const pad = n => String(n).padStart(2, '0'), trayN = n => trays.find(t => t.userData.n === n);
+  const aim = (t, k) => { const bay = t.userData.at, it = (t.userData.items || [])[k]; if (!bay || !it || t.userData.busy) return; const px = it.x + it.w / 2, pz = zBay + it.z + it.d / 2, py = bay.y + it.y + it.h, lz = bay.laser; lz.beam.scale.y = lz.top - py; lz.beam.position.set(px, (lz.top + py) / 2, pz); lz.dot.position.set(px, py + 0.03, pz); lz.g.visible = true; bay.seg.position.x = px; bay.seg.visible = true; wake(); };
+  const cell = (it, tx) => { const col = String.fromCharCode(65 + Math.min(25, Math.floor(((it.x - trayX) / TW) * 26))), row = Math.min(9, Math.floor(((it.z + it.d / 2) / TD) * 10)); return col + row; };
+  const trayMap = (t, k) => {
+    const items = t ? t.userData.items || [] : [];
+    const cells = items.map((it, i) => '<i style="left:' + (((it.x - trayX) / TW) * 100).toFixed(2) + '%;top:' + ((1 - (it.z + it.d) / TD) * 100).toFixed(2) + '%;width:' + ((it.w / TW) * 100).toFixed(2) + '%;height:' + ((it.d / TD) * 100).toFixed(2) + '%;background:' + (i === k ? '#1f3fb0' : MAPC[it.color] || '#d9d9d9') + (i === k ? ';outline:2px solid #fff' : '') + '"></i>').join('');
+    return '<div class="cp-map"><div class="cp-tray">' + cells + '</div><span class="cp-ax a">A</span><span class="cp-ax z">Z</span><span class="cp-ax r0">0</span><span class="cp-ax r9">9</span></div>';
+  };
+  const ICON = {
+    run: '<svg viewBox="0 0 24 24"><path d="M5 4l14 8-14 8z"/></svg>', auto: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M5 19l3-3M16 8l3-3"/></svg>',
+    menu: '<svg viewBox="0 0 24 24"><path d="M4 5h16v4H4zM4 11h16v4H4zM4 17h16v3H4z"/></svg>', adv: '<svg viewBox="0 0 24 24"><path d="M7 3h10v18H7zM10 7h4M10 11h4"/></svg>', home: '<svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v10h-6v-6H9v6H3z"/></svg>',
+  };
+  const header = (code, title) => '<div class="cp-hd"><button data-act="menu">' + ICON.run + '<small>Run</small></button><button data-act="menu">' + ICON.auto + '<small>Automatic</small></button><button data-act="menu">' + ICON.menu + '<small>Menu</small></button><div class="cp-title"><span>' + code + '</span>' + title + '</div><button data-act="status">' + ICON.adv + '<small>Advanced</small></button></div>';
+  const footer = () => {
+    const t = bays.find(b => b.tray)?.tray, w = t ? (t.userData.items || []).length * 11 + 40 : 0;
+    return '<div class="cp-ft"><span class="cp-stop"></span><div class="cp-st">Tray = ' + (t ? t.userData.n : '-') + '<br>Height = ' + (t ? Math.round(t.userData.home.y / 8.5) : '-') + '<br>Weight = ' + (t ? w : '-') + '</div><button class="cp-warn" data-act="msg">!</button><em>' + (msg || (trays.some(q => q.userData.busy) ? 'Machine moving' : 'Ready')) + '</em><button class="cp-cmd" data-act="menu">OPERATOR<br>COMMANDS</button><button class="cp-round" data-act="menu">' + ICON.home + '</button></div>';
+  };
+  const keypad = (target) => '<div class="cp-kp">' + ['7', '8', '9', '4', '5', '6', '1', '2', '3', 'C', '0', 'OK'].map(k => '<button data-act="key" data-v="' + k + '" data-t="' + target + '"' + (k === 'OK' ? ' class="or"' : '') + '>' + k + '</button>').join('') + '</div>';
+  const screen = () => {
+    if (view === 'menu') {
+      const tiles = [['pick', 'Picking', 'Pick-up lists'], ['refill', 'Refilling', 'Deposit lists'], ['call', 'Tray call', 'Call by number'], ['search', 'Search item', 'Find a part'], ['status', 'Machine status', 'Trays and bays']];
+      return header('1.0.0', 'MAIN MENU') + '<div class="cp-tiles">' + tiles.map(([v, a, b]) => '<button data-act="go" data-v="' + v + '"><b>' + a + '</b><small>' + b + '</small></button>').join('') + '</div>' + footer();
     }
-    if (view === 'trays') return top + '<div class="c-grid">' + trays.map(t => '<button type="button" data-act="' + (t.userData.at ? 'ret' : 'call') + '" data-v="' + t.userData.n + '" class="c-t c-' + state(t) + '">' + pad(t.userData.n) + '</button>').join('') + '</div><p class="c-note">Tap a stored tray to call it. Tap a tray at the bay to send it back.</p>';
-    const done = order.every(o => o.done), cur = order[line], at = trayN(cur.tray)?.userData.at;
-    const card = done
-      ? '<div class="c-big">Order complete</div><div class="c-row"><button type="button" data-act="retall">Return trays</button><button type="button" data-act="reset" class="ghost">Run the order again</button></div>'
-      : '<div class="c-big">' + cur.pn + '</div><div>' + cur.d + '</div><div class="c-loc">Tray ' + pad(cur.tray) + ' &middot; compartment ' + cur.loc + '</div><div class="c-qty">Pick <b>' + cur.qty + '</b></div><div class="c-row"><button type="button" data-act="call" data-v="' + cur.tray + '"' + (at ? ' disabled' : '') + '>' + (at ? 'Tray ' + pad(cur.tray) + ' is at the bay' : 'Call tray ' + pad(cur.tray)) + '</button><button type="button" data-act="pick"' + (at ? '' : ' disabled') + '>Confirm pick</button></div>';
-    return top + '<div class="c-card"><div class="c-sub">Order 24-1187 &middot; line ' + (done ? order.length : line + 1) + ' of ' + order.length + '</div>' + card + '</div><ol class="c-lines">' + order.map((o, i) => '<li class="' + (o.done ? 'done' : !done && i === line ? 'cur' : '') + '">' + o.pn + ' &middot; tray ' + pad(o.tray) + ' &middot; qty ' + o.qty + '</li>').join('') + '</ol>';
+    if (view === 'lists') {
+      return header('1.3.0', (cur === 'refill' ? 'REFILLING' : 'PICKING') + ' - LISTS') + '<div class="cp-list">' + lists[cur].map((L, i) => '<button data-act="start" data-v="' + i + '"><b>' + L.id + '</b><span>' + L.lines.length + ' lines</span><span>' + (L.lines.every(q => q.done) ? 'Complete' : L.lines.some(q => q.done) ? 'In progress' : 'Waiting') + '</span></button>').join('') + '</div>' + footer();
+    }
+    if (view === 'pick') {
+      const L = lists[cur][lists.sel], ln = L.lines[line], t = trayN(ln.tray), here = t && t.userData.at && !t.userData.busy;
+      if (here) aim(t, ln.k);
+      const done = L.lines.every(q => q.done), refill = cur === 'refill';
+      if (done) return header('1.3.0', (refill ? 'REFILLING' : 'PICKING') + ' (' + L.id + ')') + '<div class="cp-done"><b>List ' + L.id + ' complete</b><button class="or" data-act="retall">Return trays</button><button data-act="go" data-v="' + cur + '">Next list</button></div>' + footer();
+      const q = exe ?? ln.qty;
+      return header('1.3.0', (refill ? 'REFILLING (Deposit)' : 'PICKING (Pick-up)') + ' (' + L.id + ')')
+        + '<div class="cp-row"><label>' + (refill ? 'Deposit' : 'Pick-up') + '</label><div class="cp-f big">' + ln.pn + ' (' + ln.d + ')</div></div>'
+        + '<div class="cp-row"><label>Requested Qty</label><div class="cp-f">' + ln.qty + '.000 Pieces</div><label>Tray</label><div class="cp-f s">' + pad(ln.tray) + '</div><label>Pos.</label><div class="cp-f s">' + (here ? cell(t.userData.items[ln.k]) : '--') + '</div></div>'
+        + (here ? trayMap(t, ln.k) : '<div class="cp-wait">' + (t && t.userData.busy ? 'Tray ' + pad(ln.tray) + ' on its way to the bay...' : 'Waiting for tray ' + pad(ln.tray)) + '</div>')
+        + '<div class="cp-row"><label>Executed Qty</label><div class="cp-f q">' + q + '</div></div>'
+        + '<div class="cp-btns"><button class="or" data-act="ok"' + (here ? '' : ' disabled') + '>OK</button><button class="or" data-act="empty"' + (here ? '' : ' disabled') + '>Empty</button><button data-act="modify"' + (here ? '' : ' disabled') + '>Modify</button><button data-act="skip">Skip</button><button data-act="label">Label</button></div>'
+        + '<table class="cp-tb"><tr><th>Resulting Qty</th><td>' + (refill ? ln.stock + q : Math.max(0, ln.stock - q)) + '.000</td></tr><tr><th>Description</th><td>' + ln.d + '</td></tr><tr><th>Remaining Operations</th><td>' + L.lines.filter(x => !x.done).length + '</td></tr></table>'
+        + (view === 'pick' && exe === -1 ? '' : '') + footer();
+    }
+    if (view === 'modify') return header('1.3.1', 'MODIFY EXECUTED QTY') + '<div class="cp-row"><label>Executed Qty</label><div class="cp-f q">' + (entry || '0') + '</div></div>' + keypad('qty') + footer();
+    if (view === 'call') {
+      const at = bays.map((b, i) => 'Bay ' + (i + 1) + ': ' + (b.tray ? 'tray ' + pad(b.tray.userData.n) : 'empty')).join(' &nbsp; ');
+      return header('2.1.0', 'TRAY CALL') + '<div class="cp-row"><label>Tray number</label><div class="cp-f q">' + (entry || '') + '</div><label>1 - ' + trays.length + '</label></div><div class="cp-note">' + at + '</div>' + keypad('tray') + '<div class="cp-btns"><button data-act="retall">Return trays</button></div>' + footer();
+    }
+    if (view === 'search') {
+      const rows = trays.slice(0, 40).map(t => { const p = PARTS[t.userData.n % PARTS.length]; return '<tr><td>' + p[0] + '</td><td>' + p[1] + '</td><td>Tray ' + pad(t.userData.n) + '</td><td><button data-act="callt" data-v="' + t.userData.n + '">' + (t.userData.at ? 'Return' : 'Call') + '</button></td></tr>'; }).join('');
+      return header('3.2.0', 'SEARCH ITEM') + '<div class="cp-scroll"><table class="cp-tb list"><tr><th>Item</th><th>Description</th><th>Location</th><th></th></tr>' + rows + '</table></div>' + footer();
+    }
+    const busy = trays.filter(t => t.userData.busy).length;
+    return header('4.0.0', 'MACHINE STATUS') + '<table class="cp-tb"><tr><th>Trays</th><td>' + trays.length + '</td></tr><tr><th>Bays</th><td>' + bays.map((b, i) => (i + 1) + ': ' + (b.tray ? 'tray ' + pad(b.tray.userData.n) : 'empty')).join(', ') + '</td></tr><tr><th>Lift</th><td>' + (busy ? 'Moving' : 'Idle') + ', height ' + Math.round(lift.position.y) + ' in</td></tr><tr><th>Light curtain</th><td>Clear</td></tr><tr><th>Mode</th><td>Automatic</td></tr></table>' + footer();
   };
   const openConsole = () => panel?.((el) => {
-    const draw = () => { el.innerHTML = html(); };
+    if (!lists) lists = { pick: ['PL-1006', 'PL-1007', 'PL-1011'].map(id => ({ id, lines: mkLines(3, 'pick') })), refill: ['RF-2203', 'RF-2204'].map(id => ({ id, lines: mkLines(2, 'refill') })) };
+    el.classList.add('cp');
+    const draw = () => { el.innerHTML = screen(); };
     ui = draw; draw();
+    const nextLine = () => {
+      const L = lists[cur][lists.sel], ln = L.lines[line]; ln.done = true; exe = null;
+      const nx = L.lines.findIndex(x => !x.done);
+      if (nx < 0) return;
+      const t0 = trayN(ln.tray), t1 = trayN(L.lines[nx].tray); line = nx;
+      if (t1 !== t0 && t0?.userData.at) request(t0);
+      if (t1 && !t1.userData.at) request(t1);
+    };
     el.addEventListener('click', e => {
       const b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
-      const a = b.dataset.act, v = +b.dataset.v, t = trayN(v);
-      if (a === 'tab') view = b.dataset.v;
-      if (a === 'call' && t && !t.userData.at) request(t);
-      if (a === 'ret' && t && t.userData.at) request(t);
-      if (a === 'pick') { order[line].done = true; if (line < order.length - 1) line++; }
-      if (a === 'retall') bays.forEach(bb => bb.tray && request(bb.tray));
-      if (a === 'reset') { order.forEach(o => { o.done = false; }); line = 0; }
+      const a = b.dataset.act, v = b.dataset.v;
+      if (a === 'menu') view = 'menu';
+      else if (a === 'status') view = 'status';
+      else if (a === 'msg') msg = msg ? '' : 'No alarms';
+      else if (a === 'go') { if (v === 'pick' || v === 'refill') { cur = v; view = 'lists'; } else { view = v; entry = ''; } }
+      else if (a === 'start') { lists.sel = +v; const L = lists[cur][lists.sel]; line = Math.max(0, L.lines.findIndex(x => !x.done)); exe = null; view = 'pick'; const t = trayN(L.lines[line].tray); if (t && !t.userData.at) request(t); }
+      else if (a === 'ok') nextLine();
+      else if (a === 'empty') { exe = 0; nextLine(); }
+      else if (a === 'skip') { const L = lists[cur][lists.sel]; const nx = L.lines.findIndex((x, i) => !x.done && i > line); if (nx >= 0) { const t0 = trayN(L.lines[line].tray), t1 = trayN(L.lines[nx].tray); line = nx; if (t1 !== t0 && t0?.userData.at) request(t0); if (t1 && !t1.userData.at) request(t1); } }
+      else if (a === 'modify') { entry = ''; view = 'modify'; }
+      else if (a === 'label') msg = 'Label sent to printer';
+      else if (a === 'retall') bays.forEach(bb => bb.tray && request(bb.tray));
+      else if (a === 'callt') { const t = trayN(+v); if (t) request(t); }
+      else if (a === 'key') {
+        const kk = v, tgt = b.dataset.t;
+        if (kk === 'C') entry = '';
+        else if (kk !== 'OK') entry = (entry + kk).slice(0, 3);
+        else if (tgt === 'qty') { exe = +entry || 0; view = 'pick'; }
+        else { const t = trayN(+entry); msg = t ? (t.userData.at ? 'Tray ' + pad(+entry) + ' returning' : 'Calling tray ' + pad(+entry)) : 'No tray ' + entry; if (t) request(t); entry = ''; }
+      }
       draw();
     });
-    el.addEventListener('input', e => { if (e.target.name !== 'q') return; q = e.target.value; const pos = e.target.selectionStart; draw(); const i = el.querySelector('input[name=q]'); i.focus(); i.setSelectionRange(pos, pos); });
     return () => { ui = null; };
   });
   make();
@@ -2164,7 +2227,7 @@ def('painting-bins', 'Painting Storage Bins', 'Steel shelving with dividers on 1
     const frames = [];
     for (let s = 0; s < sections; s++) {
       const x0 = s * (W + 1);
-      for (const xx of [x0, x0 + W - 1.25]) for (const zz of [0, D - 1.25]) bx(unit, 1.25, H, 1.25, post, xx, 0, zz);
+      for (const xx of [x0, x0 + W - 1.25]) for (const zz of [0, D - 1.25]) { bx(unit, 1.25, H, 1.25, paint, xx, 0, zz); k.slots(unit, post, xx === x0 ? xx + 1.25 : xx, 0, zz, 1.25, H, xx === x0 ? 1 : -1); }
       for (const y of split ? [2, H / 2, H - 0.6] : [2, H - 0.6]) { bx(unit, W, 0.6, D, paint, x0, y, 0); bx(unit, W, 1.4, 0.1, paint, x0, y - 0.8, D - 0.1); }
       bx(unit, W, H, 0.1, paint, x0, 0, 0); if (s === 0) bx(unit, 0.1, H, D, paint, x0, 0, 0); bx(unit, 0.1, H, D, paint, x0 + W - 0.1, 0, 0);
       const comps = split ? [[2.6, H / 2], [H / 2 + 0.6, H - 0.6]] : [[2.6, H - 0.6]];
