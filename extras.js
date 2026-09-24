@@ -450,6 +450,10 @@ const CSS3D = `.v3d-ov{position:absolute;right:12px;top:12px;z-index:6;width:min
 .v3d-optbtn{display:none;position:absolute;left:12px;top:12px;z-index:6;border:0;border-radius:999px;padding:8px 14px;background:rgba(255,255,255,.92);color:#0b1b1c;font-weight:700;font-size:.85rem;box-shadow:0 6px 18px rgba(0,0,0,.16);cursor:pointer}
 .v3d-main:fullscreen:not(.v3d-walk) .v3d-optbtn{display:block}
 .v3d-main:fullscreen.v3d-opts:not(.v3d-walk) .v3d-bar{display:block;position:absolute;left:12px;right:12px;bottom:12px;max-height:46vh;overflow:auto;background:#fff;border-radius:14px;padding:12px 14px;box-shadow:0 14px 40px rgba(0,0,0,.25);z-index:7}
+.v3d-walkbar span{flex:1;transition:opacity .6s}.v3d-walkbar.quiet{background:rgba(2,30,32,.45)}.v3d-walkbar.quiet span{opacity:0}
+.v3d-walkbar .v3d-wfs{background:rgba(255,255,255,.16);color:#fff}.v3d-main:fullscreen .v3d-wfs{background:rgba(255,255,255,.28)}
+.v3d-optbtn{align-items:center;gap:6px}.v3d-optbtn svg{width:16px;height:16px;fill:#fff;stroke:#0b1b1c;stroke-width:2;stroke-linecap:round}
+.v3d-main:fullscreen:not(.v3d-walk) .v3d-optbtn{display:flex}
 .v3d-toast{position:absolute;left:50%;top:56px;transform:translateX(-50%);max-width:calc(100% - 24px);padding:9px 14px;border-radius:10px;background:#1b1c1e;color:#fff;font-size:.85rem;z-index:5;text-align:center}
 @keyframes v3dPing{0%{box-shadow:0 0 0 0 rgba(255,255,255,.8)}100%{box-shadow:0 0 0 10px rgba(255,255,255,0)}}
 .v3d-bar .v3d-fin{order:1}

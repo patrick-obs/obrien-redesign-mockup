@@ -86,10 +86,9 @@ function viewer(el) {
         <div class="v3d-wheel" hidden>Click the model first to zoom with the scroll wheel</div>
         <div class="v3d-prompt" hidden></div>
         <button type="button" class="v3d-peg" hidden title="Step inside" aria-label="Step inside at eye level"><svg viewBox="0 0 24 24"><circle cx="12" cy="4.5" r="2.6"/><path d="M8.5 22l1.2-8.2-2.2 1.2V10.5c0-1.4 1.1-2.5 2.5-2.5h4c1.4 0 2.5 1.1 2.5 2.5V15l-2.2-1.2L15.5 22"/></svg><span>Step inside</span></button>
-        <div class="v3d-fsask" hidden><b>Walk it full screen?</b><span>It feels more like being there.</span><div><button type="button" data-fs="1">Go full screen</button><button type="button" data-fs="0">Stay here</button></div></div>
-        <div class="v3d-walkbar" hidden><span>Arrow keys or WASD to walk, drag to look, tap a circle to move</span><button type="button" class="v3d-exit">Exit <kbd>Esc</kbd></button></div>
+        <div class="v3d-walkbar" hidden><span>Drag to look &middot; WASD or arrows to walk &middot; tap a circle to go there</span><button type="button" class="v3d-wfs" aria-label="Full screen">Full screen</button><button type="button" class="v3d-exit">Step out <kbd>Esc</kbd></button></div>
         <div class="v3d-toast" hidden></div>
-        <button type="button" class="v3d-optbtn" aria-expanded="false">Options</button>
+        <button type="button" class="v3d-optbtn" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg><span>Options</span></button>
       </div>
       <div class="v3d-presets" hidden></div>
       <div class="v3d-bar">
@@ -168,20 +167,24 @@ function viewer(el) {
   const keys = new Set(), peg = el.querySelector('.v3d-peg'), walkbar = el.querySelector('.v3d-walkbar'), toastEl = el.querySelector('.v3d-toast');
   let toastT = 0;
   const toast = (msg) => { toastEl.textContent = msg; toastEl.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { toastEl.hidden = true; }, 3200); };
-  // glide the camera to a point and look at another; eye level views look around from where you stand
-  const fly = (pos, target, ms = 1300) => {
-    walking = true; controls.minDistance = 0.5; controls.autoRotate = false; tween(camera, 'fov', 96, ms);
-    // keep the look point close only once the glide is over, or the orbit limit snaps the camera mid-flight
-    setTimeout(() => { if (walking) controls.maxDistance = 10; }, ms + 50);
-    // pivot a few inches in front of the eye, so dragging looks around instead of orbiting
-    target = pos.clone().add(target.clone().sub(pos).normalize().multiplyScalar(8));
-    ['x', 'y', 'z'].forEach(a => { tween(camera.position, a, pos[a], ms); tween(controls.target, a, target[a], ms); });
+  // eye-level look: yaw and pitch you steer by dragging (or arrow keys); the orbit controls rest while you walk
+  let yaw = 0, pitch = 0, flying = false;
+  const lookDir = () => new THREE.Vector3(-Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch));
+  const applyLook = () => { const t = camera.position.clone().add(lookDir().multiplyScalar(8)); controls.target.copy(t); camera.lookAt(t); };
+  // glide the camera to a point and look at another
+  const fly = (pos, target, ms = 800) => {
+    walking = true; flying = true; controls.enabled = false; controls.autoRotate = false; tween(camera, 'fov', 96, ms);
+    const d = target.clone().sub(pos).normalize(); yaw = Math.atan2(-d.x, -d.z); pitch = Math.asin(Math.max(-1, Math.min(1, d.y)));
+    const t8 = pos.clone().add(d.multiplyScalar(8));
+    ['x', 'y', 'z'].forEach(a => { tween(camera.position, a, pos[a], ms, 'out'); tween(controls.target, a, t8[a], ms, 'out'); });
+    setTimeout(() => { flying = false; }, ms + 30);
     el.querySelector('.v3d-main').classList.add('v3d-walk');
   };
-  const overview = (ms = 1100) => {
-    if (!home) return; walking = false; walkB = null; keys.clear(); if (rings) { scene.remove(rings); rings = null; } if (walkFloor) { scene.remove(walkFloor); walkFloor = null; } controls.minDistance = home.r * 0.6; controls.maxDistance = home.r * 4; tween(camera, 'fov', 32, ms);
-    walkbar.hidden = true; peg.hidden = !current; el.querySelector('.v3d-fsask').hidden = true;
-    ['x', 'y', 'z'].forEach(a => { tween(camera.position, a, home.pos[a], ms); tween(controls.target, a, home.target[a], ms); });
+  const overview = (ms = 700) => {
+    if (!home) return; walking = false; flying = false; walkB = null; keys.clear(); if (rings) { scene.remove(rings); rings = null; } if (walkFloor) { scene.remove(walkFloor); walkFloor = null; }
+    controls.enabled = true; controls.minDistance = home.r * 0.6; controls.maxDistance = home.r * 4; tween(camera, 'fov', 32, ms);
+    walkbar.hidden = true; peg.hidden = !current;
+    ['x', 'y', 'z'].forEach(a => { tween(camera.position, a, home.pos[a], ms, 'out'); tween(controls.target, a, home.target[a], ms, 'out'); });
     el.querySelector('.v3d-main').classList.remove('v3d-walk');
   };
   // step inside: stand at eye level anywhere around the model and walk it like a sim. The model can say where to start
@@ -222,7 +225,8 @@ function viewer(el) {
     const fl = new THREE.Mesh(new THREE.PlaneGeometry(fw, fd), new THREE.MeshLambertMaterial({ color: 0xd3d7d6 })); fl.rotation.x = -Math.PI / 2;
     const grid = new THREE.GridHelper(Math.max(fw, fd), Math.round(Math.max(fw, fd) / 24), 0xbfc5c4, 0xc7cccb); grid.position.y = 0.02;
     walkFloor = new THREE.Group(); walkFloor.add(fl, grid); walkFloor.position.set((walkB.x[0] + walkB.x[1]) / 2, floor - 0.08, (walkB.z[0] + walkB.z[1]) / 2); scene.add(walkFloor);
-    peg.hidden = true; walkbar.hidden = false; el.querySelector('.v3d-prompt')?.classList.add('gone'); fsAsk.hidden = !!document.fullscreenElement || !(el.querySelector('.v3d-main').requestFullscreen || el.querySelector('.v3d-main').webkitRequestFullscreen); el.focus({ preventScroll: true }); modelWake();
+    peg.hidden = true; walkbar.hidden = false; walkbar.classList.remove('quiet'); clearTimeout(walkbar._t); walkbar._t = setTimeout(() => walkbar.classList.add('quiet'), 4500);
+    el.querySelector('.v3d-prompt')?.classList.add('gone'); el.focus({ preventScroll: true }); modelWake();
   };
   const toLocal = () => camera.position.clone().applyMatrix4(new THREE.Matrix4().copy(current.group.matrixWorld).invert());
   // move the eye (and the look point with it) by dx, dz in world inches: stay in the area, slide along anything in the way
@@ -232,7 +236,7 @@ function viewer(el) {
     let mx = clampX(p.x + dx) - p.x, mz = clampZ(p.z + dz) - p.z;
     const tryMove = (ax, az) => { const len = Math.hypot(ax, az); return len > 1e-4 && !blocked(p, new THREE.Vector3(ax / len, 0, az / len), len); };
     if (!tryMove(mx, mz)) { if (tryMove(mx, 0)) mz = 0; else if (tryMove(0, mz)) mx = 0; else return false; }
-    camera.position.x += mx; camera.position.z += mz; controls.target.x += mx; controls.target.z += mz;
+    camera.position.x += mx; camera.position.z += mz; applyLook();
     return true;
   };
   const hopTo = (x, z) => {
@@ -242,18 +246,19 @@ function viewer(el) {
   };
   let lastT = 0;
   const walkKeys = (now) => {
-    if (!walking || !keys.size) { lastT = 0; return false; }
+    if (!walking || flying || !keys.size) { lastT = 0; return false; }
     const dt = lastT ? Math.min(0.05, (now - lastT) / 1000) : 0.016; lastT = now;
-    const f = controls.target.clone().sub(camera.position); f.y = 0; f.normalize();
+    const f = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
     const sp = (keys.has('shift') ? 110 : 60) * dt, on = k => keys.has(k);
     let dx = 0, dz = 0;
     if (on('w') || on('arrowup')) { dx += f.x * sp; dz += f.z * sp; } if (on('s') || on('arrowdown')) { dx -= f.x * sp; dz -= f.z * sp; }
     if (on('a')) { dx += f.z * sp; dz -= f.x * sp; } if (on('d')) { dx -= f.z * sp; dz += f.x * sp; }
     const turn = (on('arrowleft') ? 1 : 0) - (on('arrowright') ? 1 : 0);
-    if (turn) { const o = controls.target.clone().sub(camera.position).applyAxisAngle(new THREE.Vector3(0, 1, 0), turn * 1.6 * dt); controls.target.copy(camera.position).add(o); }
+    if (turn) { yaw += turn * 1.7 * dt; applyLook(); }
     if (dx || dz) stepBy(dx, dz);
     return true;
   };
+  el.v3dDebug = () => ({ camera, controls, group: current?.group, THREE, wake: modelWake });
   el.tabIndex = -1; el.v3dState = () => ({ cam: camera.position.toArray().map(Math.round), walking, keys: [...keys], walkB, active: document.activeElement?.className });
   const WALK_KEYS = ['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'shift'];
   addEventListener('keydown', e => {
@@ -264,10 +269,13 @@ function viewer(el) {
   });
   addEventListener('keyup', e => keys.delete(e.key.toLowerCase())); addEventListener('blur', () => keys.clear());
   peg.addEventListener('click', enterWalk);
+  let lookDrag = null;
+  canvas.addEventListener('pointerdown', e => { if (!walking || flying) return; lookDrag = [e.clientX, e.clientY]; canvas.setPointerCapture?.(e.pointerId); });
+  canvas.addEventListener('pointermove', e => { if (!lookDrag) return; const k = 0.0042 * (camera.fov / 96); yaw += (e.clientX - lookDrag[0]) * k; pitch = Math.max(-1.1, Math.min(1.1, pitch + (e.clientY - lookDrag[1]) * k)); lookDrag = [e.clientX, e.clientY]; applyLook(); wake(); });
+  addEventListener('pointerup', () => { lookDrag = null; });
   // full screen keeps the view clean: the settings open on demand over the model
-  el.querySelector('.v3d-optbtn').addEventListener('click', e => { const m = el.querySelector('.v3d-main'), on = m.classList.toggle('v3d-opts'); e.currentTarget.setAttribute('aria-expanded', String(on)); e.currentTarget.textContent = on ? 'Hide options' : 'Options'; });
-  const fsAsk = el.querySelector('.v3d-fsask');
-  fsAsk.addEventListener('click', e => { const b = e.target.closest('[data-fs]'); if (!b) return; fsAsk.hidden = true; if (b.dataset.fs === '1') { const box = el.querySelector('.v3d-main'); (box.requestFullscreen || box.webkitRequestFullscreen)?.call(box); } el.focus({ preventScroll: true }); });
+  el.querySelector('.v3d-optbtn').addEventListener('click', e => { const m = el.querySelector('.v3d-main'), on = m.classList.toggle('v3d-opts'); e.currentTarget.setAttribute('aria-expanded', String(on)); e.currentTarget.querySelector('span').textContent = on ? 'Hide options' : 'Options'; });
+  el.querySelector('.v3d-wfs').addEventListener('click', () => { const box = el.querySelector('.v3d-main'); if (document.fullscreenElement) document.exitFullscreen(); else (box.requestFullscreen || box.webkitRequestFullscreen)?.call(box); el.focus({ preventScroll: true }); });
   el.querySelector('.v3d-exit').addEventListener('click', () => { overview(); syncActs(); showActs(); });
 
   // left alone, a model slowly turns and demonstrates itself (doors, drawers, carriages); any touch hands over control
@@ -300,7 +308,7 @@ function viewer(el) {
     home = { pos: c.clone().add(dir.multiplyScalar(dist)), target: c.clone() };
     camera.fov = 32; camera.near = r / 50; camera.far = r * 40; camera.updateProjectionMatrix();
     camera.position.copy(home.pos); controls.target.copy(home.target);
-    controls.minDistance = r * 0.6; controls.maxDistance = r * 4; home.r = r; walking = false;
+    controls.minDistance = r * 0.6; controls.maxDistance = r * 4; home.r = r; walking = false; flying = false; controls.enabled = true;
     ground.scale.setScalar(r * 3); ground.position.set(c.x, box.min.y + 0.05, c.z);
     sun.position.set(c.x + r * 1.2, c.y + r * 2.4, c.z + r * 1.6); sun.target.position.copy(c);
     const s = sun.shadow.camera; s.left = s.bottom = -r * 1.6; s.right = s.top = r * 1.6; s.near = r * 0.2; s.far = r * 6; s.updateProjectionMatrix();
@@ -383,7 +391,8 @@ function viewer(el) {
     last = active || controls.autoRotate || lowRes ? now : 0;
     if (stepped) { current?.tick?.(); camera.updateProjectionMatrix(); }
     let stepping = false; try { stepping = walkKeys(now); } catch (err) { console.error('walk', err.message, String(err.stack).slice(0, 300)); keys.clear(); }
-    const moving = controls.update(), busy = active || moving || controls.autoRotate || stepping;
+    const moving = walking ? false : controls.update(); if (walking && !flying) applyLook(); else if (walking) camera.lookAt(controls.target);
+    const busy = active || moving || controls.autoRotate || stepping;
     if (busy) setRes(true);
     // moving parts refresh shadows every few frames; a settled frame always gets a fresh shadow map
     if (sceneDirty || (active && !walking && ++shadowTick % (heavy ? 8 : 4) === 0)) { renderer.shadowMap.needsUpdate = true; sceneDirty = false; }

@@ -212,6 +212,8 @@ function smallThings(THREE, parent, x0, y, z0, w, d, r, maxH = 9, trays = false)
     tray: new THREE.MeshStandardMaterial({ color: 0xf7f5ef, roughness: 0.9 }), foam: new THREE.MeshStandardMaterial({ color: 0xf2f2ee, roughness: 1 }),
   });
   const add = (geo, m, px, py, pz, s = 1, rx = 0, ry = 0) => { const me = new THREE.Mesh(geo, m); me.position.set(px, py, pz); me.scale.setScalar(s); me.rotation.set(rx, ry, 0); parent.add(me); return me; };
+  if (trays === true) { const rows = Math.max(1, Math.floor(d / 9)), rd = d / rows; for (let q = 0; q < rows; q++) smallThings(THREE, parent, x0, y, z0 + q * rd, w, rd, r, maxH, 'row'); return; }
+  if (trays === 'row') trays = true;
   let x = x0 + 1;
   while (x < x0 + w - 4) {
     const kind = Math.floor(r() * (trays ? 5 : 4)), cz = z0 + d * (0.3 + r() * 0.4);
@@ -1721,9 +1723,9 @@ function museumCabinet(THREE, k, parent, opts) {
   const api = { open: false, moving: false, drawers: [], glass: true };
   const lazy = !!opts.lazy, out = {};
   const drawerIsOut = () => (lazy ? Object.keys(out).length > 0 : api.drawers.some(d => d.userData.open));
-  const slide = (dr, o) => { dr.userData.open = o; return tween(dr.position, 'z', o ? 20 : 0, o ? 700 : 600, 'out'); };
+  const slide = (dr, o) => { dr.userData.open = o; return tween(dr.position, 'z', o ? 24 : 0, o ? 750 : 600, 'out'); };
   const dy = i => y0 + 1.6 + i * 6.3;
-  const front = (g, y) => { bx(g, W - 4, 5.9, 0.6, paint, 2, y, D - 3.4); bx(g, 3.6, 2, 0.15, plate, W / 2 - 1.8, y + 3.2, D - 2.8); bx(g, 3, 1.4, 0.05, M.label, W / 2 - 1.5, y + 3.5, D - 2.62); bx(g, 8, 0.7, 0.6, plate, W / 2 - 4, y + 1.2, D - 2.8); };
+  const front = (g, y) => { bx(g, W - 4, 6.2, 0.6, paint, 2, y - 0.05, D - 3.4); bx(g, W - 4, 0.1, 0.02, M.dark, 2, y + 6.1, D - 2.79); bx(g, 3.6, 2, 0.15, plate, W / 2 - 1.8, y + 3.2, D - 2.8); bx(g, 3, 1.4, 0.05, M.label, W / 2 - 1.5, y + 3.5, D - 2.62); bx(g, 8, 0.7, 0.6, plate, W / 2 - 4, y + 1.2, D - 2.8); };
   // a whole drawer: box, front with label holder and pull, and specimen trays a hair above the floor so they never flicker
   const drawer = (i) => { const y = dy(i), dr = group(root); k.tray(dr, W - 5, 3.6, D - 5, tray, 2.5, y + 0.3, 1.5, 0.2); front(dr, y); smallThings(THREE, dr, 3, y + 0.54, 3, W - 7, D - 9, rng((opts.seed || 12) * 10 + i), 3, true); return dr; };
   if (!lazy) {
