@@ -10,6 +10,9 @@ import { mergeGeometries } from '../vendor/BufferGeometryUtils.js';
 const { MODELS } = await import('./models.js' + new URL(import.meta.url).search);
 
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+// phones, tablets and modest laptops get a lighter renderer: cheaper shadows, no antialiasing, a lower resolution cap
+const LOW = matchMedia('(pointer: coarse)').matches || (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 4;
+const PR_MAX = LOW ? 1.5 : 2;
 const ease = t => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
 // Merge every part that never moves into one mesh per material (hundreds of draw calls -> a handful).
@@ -90,23 +93,22 @@ function viewer(el) {
         <div class="v3d-toast" hidden></div>
         <button type="button" class="v3d-optbtn" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg><span>Options</span></button>
       </div>
-      <div class="v3d-presets" hidden></div>
       <div class="v3d-bar">
-        <div class="v3d-acts"></div>
-        <div class="v3d-fin"></div>
+        <div class="v3d-row"><div class="v3d-acts"></div><div class="v3d-fin"></div><button type="button" class="v3d-cust" aria-expanded="false" hidden><svg viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg><span>Customize</span><em></em></button></div>
+        <div class="v3d-panel" hidden><div class="v3d-presets" hidden></div><div class="v3d-set"></div></div>
       </div>
       <p class="v3d-note">Representative model. Sizes, finishes and accessories vary by manufacturer and configuration.</p>
     </div>
   </div>`;
 
   const canvas = el.querySelector('canvas'), stage = el.querySelector('.v3d-stage');
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: !LOW, alpha: true, powerPreference: 'high-performance' });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, PR_MAX));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.05;
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = LOW ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
   // shadows only re-render when the model changes, not when the camera turns
   renderer.shadowMap.autoUpdate = false;
 
@@ -114,7 +116,7 @@ function viewer(el) {
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
   const sun = new THREE.DirectionalLight(0xffffff, 1.6);
-  sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.6;
+  sun.castShadow = true; sun.shadow.mapSize.set(LOW ? 1024 : 2048, LOW ? 1024 : 2048); sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.6;
   const hemi = new THREE.HemisphereLight(0xffffff, 0xdfe7e7, 0.35), fill = new THREE.DirectionalLight(0xffffff, 0);
   scene.add(sun, sun.target, hemi, fill, fill.target);
   const ground = new THREE.Mesh(new THREE.CircleGeometry(1, 64), new THREE.ShadowMaterial({ opacity: 0.16 }));
@@ -138,7 +140,7 @@ function viewer(el) {
   // wait on the render clock, so chained steps stay in step with the animation
   const wait = ms => tween({ t: 0 }, 't', 1, ms, 'lin');
 
-  let current = null, frame = 0, dirty = true, home = null, clickables = [], slow = 0, pr = Math.min(devicePixelRatio, 2), last = 0;
+  let current = null, frame = 0, dirty = true, home = null, clickables = [], slow = 0, pr = Math.min(devicePixelRatio, PR_MAX), last = 0;
   let lastDraw = 0, wasActive = false, sceneDirty = true, lowRes = false, heavy = false, measured = false, shadowTick = 0;
   const wake = () => { dirty = true; if (!frame) frame = requestAnimationFrame(loop); };
   const modelWake = () => { sceneDirty = true; wake(); };
@@ -155,21 +157,23 @@ function viewer(el) {
     stage.appendChild(ov); ov.querySelector('.v3d-ov-x').addEventListener('click', closePanel);
     ovClean = build(ov.querySelector('.v3d-ov-b'), closePanel) || null;
   };
-  let moreOpen = false;
+  let panelOpen = false;
+  const setPanel = (on) => { panelOpen = on; const p = el.querySelector('.v3d-panel'), c = el.querySelector('.v3d-cust'); p.hidden = !on; c.setAttribute('aria-expanded', String(on)); c.classList.toggle('on', on); };
   const showActs = () => {
-    const nodes = [...el.querySelectorAll('.v3d-acts .v3d-ctl')], applies = nodes.filter(b => !(b._act?.when && !b._act.when()));
-    const choices = applies.filter(b => b._act && (b._act.options || b._act.toggle)), extra = choices.slice(2);
-    nodes.forEach(b => { b.hidden = !applies.includes(b) || (extra.includes(b) && !moreOpen); });
-    const mb = el.querySelector('.v3d-more'); if (mb) { mb.hidden = !extra.length; mb.textContent = moreOpen ? 'Fewer options' : 'More options (' + extra.length + ')'; }
+    const nodes = [...el.querySelectorAll('.v3d-bar .v3d-ctl')];
+    nodes.forEach(b => { b.hidden = !!(b._act?.when && !b._act.when()); });
+    const n = nodes.filter(b => !b.hidden && b.closest('.v3d-set')).length, hasPre = !el.querySelector('.v3d-presets').hidden;
+    const c = el.querySelector('.v3d-cust'); c.hidden = !n && !hasPre; c.querySelector('em').textContent = n ? String(n) : '';
+    if (c.hidden) setPanel(false);
   };
-  const syncActs = () => el.querySelectorAll('.v3d-acts .v3d-ctl').forEach(b => b._sync?.());
+  const syncActs = () => el.querySelectorAll('.v3d-bar .v3d-ctl').forEach(b => b._sync?.());
   const scan = () => { clickables = []; current?.group.traverse(o => { if (o.userData.onClick) clickables.push(o); }); };
   let walking = false, walkB = null, rings = null, walkFloor = null;
   const keys = new Set(), peg = el.querySelector('.v3d-peg'), walkbar = el.querySelector('.v3d-walkbar'), toastEl = el.querySelector('.v3d-toast');
   let toastT = 0;
   const toast = (msg) => { toastEl.textContent = msg; toastEl.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { toastEl.hidden = true; }, 3200); };
   // eye-level look: yaw and pitch you steer by dragging (or arrow keys); the orbit controls rest while you walk
-  let yaw = 0, pitch = 0, flying = false;
+  let yaw = 0, pitch = 0, flying = false, walkNear = 0;
   const lookDir = () => new THREE.Vector3(-Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch));
   const applyLook = () => { const t = camera.position.clone().add(lookDir().multiplyScalar(8)); controls.target.copy(t); camera.lookAt(t); };
   // glide the camera to a point and look at another
@@ -188,6 +192,8 @@ function viewer(el) {
   };
   const fly = (pos, target, ms = 800) => {
     walking = true; walkLight(true); shadowAround(pos, true); flying = true; controls.enabled = false; controls.autoRotate = false; tween(camera, 'fov', 96, ms);
+    // up close nothing should slice open: a 1" near plane at eye level (big models use a far one for the overview)
+    if (!walkNear) walkNear = camera.near; camera.near = 1; camera.updateProjectionMatrix();
     const d = target.clone().sub(pos).normalize(); yaw = Math.atan2(-d.x, -d.z); pitch = Math.asin(Math.max(-1, Math.min(1, d.y)));
     const t8 = pos.clone().add(d.multiplyScalar(8));
     ['x', 'y', 'z'].forEach(a => { tween(camera.position, a, pos[a], ms, 'out'); tween(controls.target, a, t8[a], ms, 'out'); });
@@ -196,7 +202,7 @@ function viewer(el) {
   };
   const overview = (ms = 700) => {
     if (!home) return; walking = false; flying = false; walkB = null; walkLight(false); keys.clear(); if (rings) { scene.remove(rings); rings = null; } if (walkFloor) { scene.remove(walkFloor); walkFloor = null; }
-    controls.enabled = true; controls.minDistance = home.r * 0.6; controls.maxDistance = home.r * 4; tween(camera, 'fov', 32, ms);
+    controls.enabled = true; if (walkNear) { camera.near = walkNear; walkNear = 0; camera.updateProjectionMatrix(); } controls.minDistance = home.r * 0.6; controls.maxDistance = home.r * 4; tween(camera, 'fov', 32, ms);
     walkbar.hidden = true; peg.hidden = !current;
     ['x', 'y', 'z'].forEach(a => { tween(camera.position, a, home.pos[a], ms, 'out'); tween(controls.target, a, home.target[a], ms, 'out'); });
     el.querySelector('.v3d-main').classList.remove('v3d-walk');
@@ -210,9 +216,9 @@ function viewer(el) {
   const sph = new THREE.Sphere();
   const blocked = (from, dir, len) => {
     if (len < 1e-4) return false;
-    const near = colliders.filter(o => { const bs = o.isInstancedMesh ? (o.boundingSphere || (o.computeBoundingSphere(), o.boundingSphere)) : (o.geometry.boundingSphere || (o.geometry.computeBoundingSphere(), o.geometry.boundingSphere)); sph.copy(bs).applyMatrix4(o.matrixWorld); const dy = Math.max(0, Math.abs(sph.center.y - (walkB.floor + 31)) - 29); return dy < sph.radius && Math.hypot(sph.center.x - from.x, sph.center.z - from.z) < sph.radius + len + 12; });
+    const near = colliders.filter(o => { const bs = o.isInstancedMesh ? (o.boundingSphere || (o.computeBoundingSphere(), o.boundingSphere)) : (o.geometry.boundingSphere || (o.geometry.computeBoundingSphere(), o.geometry.boundingSphere)); sph.copy(bs).applyMatrix4(o.matrixWorld); const dy = Math.max(0, Math.abs(sph.center.y - (walkB.floor + 33)) - 30); return dy < sph.radius && Math.hypot(sph.center.x - from.x, sph.center.z - from.z) < sph.radius + len + 12; });
     if (!near.length) return false;
-    for (const hgt of [18, 44]) { wray.set(new THREE.Vector3(from.x, walkB.floor + hgt, from.z), dir); wray.far = len + 10; if (wray.intersectObjects(near, false).some(solid)) return true; }
+    for (const hgt of [4, 18, 44, 62]) { wray.set(new THREE.Vector3(from.x, walkB.floor + hgt, from.z), dir); wray.far = len + 14; if (wray.intersectObjects(near, false).some(solid)) return true; }
     return false;
   };
   const enterWalk = () => {
@@ -283,12 +289,13 @@ function viewer(el) {
   });
   addEventListener('keyup', e => keys.delete(e.key.toLowerCase())); addEventListener('blur', () => keys.clear());
   peg.addEventListener('click', enterWalk);
+  el.querySelector('.v3d-cust').addEventListener('click', () => setPanel(!panelOpen));
   let lookDrag = null;
   canvas.addEventListener('pointerdown', e => { if (!walking || flying) return; lookDrag = [e.clientX, e.clientY]; canvas.setPointerCapture?.(e.pointerId); });
   canvas.addEventListener('pointermove', e => { if (!lookDrag) return; const k = 0.0042 * (camera.fov / 96); yaw += (e.clientX - lookDrag[0]) * k; pitch = Math.max(-1.1, Math.min(1.1, pitch + (e.clientY - lookDrag[1]) * k)); lookDrag = [e.clientX, e.clientY]; applyLook(); wake(); });
   addEventListener('pointerup', () => { lookDrag = null; });
   // full screen keeps the view clean: the settings open on demand over the model
-  el.querySelector('.v3d-optbtn').addEventListener('click', e => { const m = el.querySelector('.v3d-main'), on = m.classList.toggle('v3d-opts'); e.currentTarget.setAttribute('aria-expanded', String(on)); e.currentTarget.querySelector('span').textContent = on ? 'Hide options' : 'Options'; });
+  el.querySelector('.v3d-optbtn').addEventListener('click', e => { const m = el.querySelector('.v3d-main'), on = m.classList.toggle('v3d-opts'); if (on && !el.querySelector('.v3d-cust').hidden) setPanel(true); e.currentTarget.setAttribute('aria-expanded', String(on)); e.currentTarget.querySelector('span').textContent = on ? 'Hide options' : 'Options'; });
   el.querySelector('.v3d-wfs').addEventListener('click', () => { const box = el.querySelector('.v3d-main'); if (document.fullscreenElement) document.exitFullscreen(); else (box.requestFullscreen || box.webkitRequestFullscreen)?.call(box); el.focus({ preventScroll: true }); });
   el.querySelector('.v3d-exit').addEventListener('click', () => { overview(); syncActs(); showActs(); });
 
@@ -306,9 +313,9 @@ function viewer(el) {
     if (!vis.length) { demoT = setTimeout(demoStep, 3000); return; }
     const o = vis[Math.floor(Math.random() * vis.length)], h = demoHit(o);
     try { o.userData.onClick(h); modelWake(); } catch (err) { /* a demo click that does not apply is skipped */ }
-    demoT = setTimeout(() => { if (!demoOn) return; try { o.userData.onClick(h); modelWake(); } catch (err) { /* skip */ } demoT = setTimeout(demoStep, 1800); }, 2800);
+    demoT = setTimeout(() => { if (!demoOn) return; try { o.userData.onClick(h); modelWake(); } catch (err) { /* skip */ } demoT = setTimeout(demoStep, 4000); }, 2800);
   };
-  const startDemo = () => { if (reduce || touched || window.V3D_NODEMO) return; demoOn = true; controls.autoRotate = true; controls.autoRotateSpeed = 0.6; el.querySelector('[data-v=spin]')?.setAttribute('aria-pressed', 'true'); clearTimeout(demoT); demoT = setTimeout(demoStep, 2400); wake(); };
+  const startDemo = () => { if (reduce || touched || window.V3D_NODEMO) return; demoOn = true; controls.autoRotate = true; controls.autoRotateSpeed = 0.6; el.querySelector('[data-v=spin]')?.setAttribute('aria-pressed', 'true'); clearTimeout(demoT); if (!LOW) demoT = setTimeout(demoStep, 5000); wake(); };
   function stopDemoTimers() { clearTimeout(demoT); }
   function stopDemo() { if (touched) return; touched = true; demoOn = false; clearTimeout(demoT); controls.autoRotate = false; controls.autoRotateSpeed = 1.2; el.querySelector('[data-v=spin]')?.setAttribute('aria-pressed', 'false'); }
   ['pointerdown', 'wheel', 'keydown', 'touchstart'].forEach(t => el.addEventListener(t, stopDemo, { capture: true, passive: true }));
@@ -341,22 +348,37 @@ function viewer(el) {
     el.querySelector('.v3d-load').hidden = false;
     loadT = setTimeout(() => load(id), current ? 160 : 0);
   };
-  const release = (g) => g.traverse(o => { o.geometry?.dispose?.(); for (const m of [].concat(o.material || [])) { if (!m) continue; for (const k of ['map', 'alphaMap', 'normalMap']) m[k]?.dispose?.(); m.dispose?.(); } });
+  // geometry and one-off textures go; materials stay, so their compiled shaders are reused by the next model (no recompile hitch)
+  let finPick = 0, finKey = '';
+  function renderFin() {
+    const fin = el.querySelector('.v3d-fin'), list = current?.finishes || [], key = list.map(f => f.name).join('|');
+    if (key === finKey) return; finKey = key; if (finPick >= list.length) finPick = 0;
+    if (list.length < 2) { fin.replaceChildren(); return; }
+    const name = Object.assign(document.createElement('em'), { textContent: list[finPick].name });
+    const sw = list.map((f, i) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'v3d-sw'; b.title = f.name; b.setAttribute('aria-label', 'Finish: ' + f.name); b.style.background = f.swatch; b.setAttribute('aria-pressed', String(i === finPick));
+      b.addEventListener('click', () => { finPick = i; fin.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); current.setFinish(f); name.textContent = f.name; wake(); }); return b; });
+    fin.replaceChildren(Object.assign(document.createElement('span'), { textContent: 'Finish' }), ...sw, name);
+  }
+  const release = (g) => g.traverse(o => { o.geometry?.dispose?.(); for (const m of [].concat(o.material || [])) { if (!m) continue; for (const k of ['map', 'alphaMap', 'normalMap']) { const t = m[k]; if (t && !t.userData?.keep) t.dispose(); } } });
   async function load(id) {
     const tok = ++loadTok;
     closePanel(); stopDemoTimers();
     if (walking) overview(1);
-    if (current) { scene.remove(current.group); release(current.group); current = null; clickables = []; }
+    // a model whose shaders are still compiling is released only after the compile settles (never mid-compile)
+    if (current) { scene.remove(current.group); if (current._compiling) current._stale = true; else release(current.group); current = null; clickables = []; }
     await new Promise(r => requestAnimationFrame(r)); if (tok !== loadTok) return;
     const def = MODELS[id];
     current = def.build({ THREE, tween, wait, wake: modelWake, bake: g => bake(THREE, g), panel, toast, lite: el.dataset.lite === '1', fly: (p, t) => { const m = current.group.matrixWorld; fly(new THREE.Vector3(...p).applyMatrix4(m), new THREE.Vector3(...t).applyMatrix4(m)); }, overview: () => overview(), isWalking: () => walking, playerPos: () => (walking ? toLocal() : null), refresh: () => { syncActs(); showActs(); }, refit: () => { if (current) { if (walking) overview(1); fit(current.group, current.view); wake(); } } });
     scan();
     current.group.traverse(o => { if (o.isMesh && !o.userData.noShadow) { o.castShadow = true; o.receiveShadow = true; } });
     bake(THREE, current.group);
-    const built = current;
+    const sph = new THREE.Sphere();
+    current.group.traverse(o => { if (!o.isMesh || o.userData.noShadow) return; if (o.isInstancedMesh) { o.castShadow = false; return; } if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere(); sph.copy(o.geometry.boundingSphere); o.castShadow = sph.radius * Math.max(o.scale.x, o.scale.y, o.scale.z) > 5; });
+    const built = current; built._compiling = true;
     try { await renderer.compileAsync(built.group, camera, scene); } catch (err) { /* older browsers compile on first draw */ }
-    if (tok !== loadTok || current !== built) { release(built.group); return; }
-    scene.add(current.group);
+    built._compiling = false;
+    if (built._stale || tok !== loadTok || current !== built) { release(built.group); return; }
+    scene.add(current.group); measured = false;
     fit(current.group, current.view);
     curId = id; el.querySelectorAll('.v3d-side details').forEach(d => { if (d.querySelector('[data-id="' + id + '"]')) d.open = true; });
     { const nb = el.querySelector('.v3d-side [data-id="' + id + '"]'), nav = nb?.closest('.v3d-side'); if (nb && nav && nb.offsetTop - nav.scrollTop > nav.clientHeight - 40) nav.scrollTop = nb.offsetTop - nav.clientHeight / 2; }
@@ -364,24 +386,35 @@ function viewer(el) {
     el.querySelector('.v3d-title span').textContent = def.dims || '';
     el.querySelectorAll('[data-id]').forEach(x => x.setAttribute('aria-selected', String(x.dataset.id === id)));
     const sel = el.querySelector('.v3d-pick select'); if (sel) sel.value = id;
-    const acts = el.querySelector('.v3d-acts');
-    const after = () => { scan(); syncActs(); showActs(); modelWake(); };
-    const btnRow = document.createElement('div'), setGrid = document.createElement('div'); btnRow.className = 'v3d-btns'; setGrid.className = 'v3d-set';
-    acts.replaceChildren(btnRow, setGrid);
-    (current.actions || []).map(a => {
+    const acts = el.querySelector('.v3d-acts'), setGrid = el.querySelector('.v3d-set');
+    const after = () => { scan(); syncActs(); showActs(); renderFin(); modelWake(); };
+    const btnRow = document.createElement('div'); btnRow.className = 'v3d-btns';
+    acts.replaceChildren(btnRow); setGrid.replaceChildren();
+    const exitWalk = () => { if (walking) overview(1); };
+    (current.actions || []).forEach(a => {
       let node;
       if (a.options) {
-        node = document.createElement('label'); node.className = 'v3d-opt';
-        const sel = document.createElement('select'); sel.setAttribute('aria-label', a.label);
-        a.options.forEach((o, i) => sel.add(new Option(o, i)));
-        sel.addEventListener('change', () => { if (walking) overview(1); a.set(+sel.value); after(); });
-        node.append(Object.assign(document.createElement('span'), { textContent: a.label }), sel);
-        node._sync = () => { sel.value = String(a.get()); };
+        // a few short choices read best as buttons you tap; long lists stay a dropdown
+        const short = a.options.length <= 4 && a.options.join('').length <= 46;
+        node = document.createElement('div'); node.className = short ? 'v3d-choice' : 'v3d-opt';
+        const lab = Object.assign(document.createElement('span'), { textContent: a.label });
+        if (short) {
+          const row = document.createElement('div'); row.className = 'v3d-pills'; row.setAttribute('role', 'radiogroup'); row.setAttribute('aria-label', a.label);
+          const bs = a.options.map((o, i) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = o; b.setAttribute('role', 'radio'); b.addEventListener('click', () => { exitWalk(); a.set(i); after(); }); return b; });
+          row.append(...bs); node.append(lab, row);
+          node._sync = () => { const v = a.get(); bs.forEach((b, i) => b.setAttribute('aria-checked', String(i === v))); };
+        } else {
+          const sel = document.createElement('select'); sel.setAttribute('aria-label', a.label);
+          a.options.forEach((o, i) => sel.add(new Option(o, i)));
+          sel.addEventListener('change', () => { exitWalk(); a.set(+sel.value); after(); });
+          node.append(lab, sel);
+          node._sync = () => { sel.value = String(a.get()); };
+        }
       } else if (a.toggle) {
-        node = document.createElement('label'); node.className = 'v3d-chk';
-        const cb = document.createElement('input'); cb.type = 'checkbox';
-        cb.addEventListener('change', () => { if (walking) overview(1); a.set(cb.checked); after(); });
-        node.append(cb, document.createTextNode(a.label));
+        node = document.createElement('label'); node.className = 'v3d-switch';
+        const cb = document.createElement('input'); cb.type = 'checkbox'; cb.setAttribute('role', 'switch');
+        cb.addEventListener('change', () => { exitWalk(); a.set(cb.checked); after(); });
+        node.append(cb, Object.assign(document.createElement('i'), {}), Object.assign(document.createElement('span'), { textContent: a.label }));
         node._sync = () => { cb.checked = !!a.get(); };
       } else {
         node = document.createElement('button'); node.type = 'button'; node.textContent = a.label;
@@ -390,22 +423,13 @@ function viewer(el) {
       node._act = a; node.classList.add('v3d-ctl');
       (a.options || a.toggle ? setGrid : btnRow).appendChild(node);
     });
-    const mb = document.createElement('button'); mb.type = 'button'; mb.className = 'v3d-more'; mb.addEventListener('click', () => { moreOpen = !moreOpen; showActs(); }); btnRow.appendChild(mb);
-    syncActs();
-    showActs();
     peg.hidden = false; walkbar.hidden = true; if (rings) { scene.remove(rings); rings = null; } if (walkFloor) { scene.remove(walkFloor); walkFloor = null; } walkB = null;
     const pr = el.querySelector('.v3d-presets'), pl = el.dataset.lite === '1' ? [] : current.presets || [];
-    pr.hidden = !pl.length; pr.replaceChildren(...(pl.length ? [Object.assign(document.createElement('span'), { textContent: 'Start from' })] : []), ...pl.map(p => { const b = document.createElement('button'); b.type = 'button'; b.textContent = p.label; b.addEventListener('click', () => { if (walking) overview(1); pr.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); p.run(); after(); }); return b; }));
+    pr.hidden = !pl.length; pr.replaceChildren(...(pl.length ? [Object.assign(document.createElement('span'), { textContent: 'Start from' })] : []), ...pl.map(p => { const b = document.createElement('button'); b.type = 'button'; b.textContent = p.label; b.addEventListener('click', () => { exitWalk(); pr.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); p.run(); after(); }); return b; }));
+    syncActs(); showActs(); setPanel(panelOpen && !el.querySelector('.v3d-cust').hidden);
     const pm = el.querySelector('.v3d-prompt'), ptxt = current.prompt || (clickables.length ? 'Tap parts of the model to open or move them' : '');
     pm.textContent = ptxt; pm.hidden = !ptxt; pm.classList.remove('gone');
-    const fin = el.querySelector('.v3d-fin');
-    const swatches = (current.finishes || []).map((f, i) => {
-      const b = document.createElement('button'); b.type = 'button'; b.className = 'v3d-sw'; b.title = f.name; b.setAttribute('aria-label', `Finish: ${f.name}`);
-      b.style.background = f.swatch; if (!i) b.setAttribute('aria-pressed', 'true');
-      b.addEventListener('click', () => { fin.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); current.setFinish(f); fin.querySelector('em').textContent = f.name; wake(); });
-      return b;
-    });
-    fin.replaceChildren(...(swatches.length ? [Object.assign(document.createElement('span'), { textContent: 'Finish' }), ...swatches, Object.assign(document.createElement('em'), { textContent: current.finishes[0].name })] : []));
+    finPick = 0; finKey = ''; renderFin();
     el.querySelector('.v3d-load').hidden = true;
     modelWake(); startDemo();
   }
@@ -429,10 +453,10 @@ function viewer(el) {
     const busy = active || moving || controls.autoRotate || stepping;
     if (busy) setRes(true);
     // moving parts refresh shadows every few frames; a settled frame always gets a fresh shadow map
-    if (sceneDirty || (active && ++shadowTick % (heavy ? 6 : 3) === 0) || (wasActive && !active)) { renderer.shadowMap.needsUpdate = true; sceneDirty = false; }
+    if (sceneDirty || (active && !heavy && !LOW && ++shadowTick % 4 === 0) || (wasActive && !active)) { renderer.shadowMap.needsUpdate = true; sceneDirty = false; }
     wasActive = active;
     const idleSpin = demoOn && !active && !stepping && !dirty && now - lastDraw < 32;
-    if ((dirty || busy) && !idleSpin) { lastDraw = now; renderer.render(scene, camera); dirty = false; if (!measured) { measured = true; heavy = renderer.info.render.calls > 110; } }
+    if ((dirty || busy) && !idleSpin) { lastDraw = now; renderer.render(scene, camera); dirty = false; if (!measured) { measured = true; heavy = renderer.info.render.calls > 90; } }
     if (busy) frame = requestAnimationFrame(loop);
     else if (lowRes) { setRes(false); renderer.shadowMap.needsUpdate = true; renderer.render(scene, camera); }
   }

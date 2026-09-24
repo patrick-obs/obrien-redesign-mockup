@@ -488,7 +488,28 @@ const CSS3D = `.v3d-ov{position:absolute;right:12px;top:12px;z-index:6;width:min
   .v3d-pick select{flex:1;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font:inherit;font-size:1rem;color:var(--ink);background:#fff}
 }
 @media (max-width:640px){.v3d-stage{height:58vh;margin:0 10px}.v3d-top{padding:14px 12px 8px}.v3d-bar{padding:12px}.v3d-fin em{display:none}}
-`;
+
+.v3d-bar{display:block;padding:12px 18px 6px}
+.v3d-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px}
+.v3d-row .v3d-acts{flex:1 1 auto;order:0;display:block}.v3d-row .v3d-fin{order:0}
+.v3d-cust{margin-left:auto;display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:999px;padding:8px 14px;font:inherit;font-size:.88rem;font-weight:700;cursor:pointer}
+.v3d-cust svg{width:16px;height:16px;fill:#fff;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.v3d-cust em{font-style:normal;background:#e4f1f1;color:var(--teal-dark);border-radius:999px;padding:1px 7px;font-size:.75rem}.v3d-cust em:empty{display:none}
+.v3d-cust.on{background:var(--teal-dark);color:#fff;border-color:var(--teal-dark)}.v3d-cust.on svg{fill:var(--teal-dark)}.v3d-cust.on em{background:rgba(255,255,255,.2);color:#fff}.v3d-cust[hidden]{display:none}
+.v3d-panel{margin-top:12px;padding:14px;border:1px solid var(--line);border-radius:14px;background:#f8fafa}.v3d-panel[hidden]{display:none}
+.v3d-panel .v3d-presets{padding:0 0 12px;margin-bottom:12px;border-bottom:1px solid var(--line)}.v3d-panel .v3d-presets[hidden]{display:none}
+.v3d-panel .v3d-set{grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px 18px}
+.v3d-choice{display:flex;flex-direction:column;gap:6px;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.v3d-pills{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}
+.v3d-pills button{flex:1 1 auto;border:0;border-right:1px solid var(--line);background:#fff;padding:8px 10px;font:inherit;font-size:.84rem;font-weight:600;text-transform:none;letter-spacing:0;color:var(--ink);cursor:pointer;white-space:nowrap}
+.v3d-pills button:last-child{border-right:0}.v3d-pills button:hover{background:#eef5f5}.v3d-pills button[aria-checked=true]{background:var(--teal);color:#fff}
+.v3d-switch{position:relative;display:flex;align-items:center;gap:10px;font-size:.9rem;font-weight:600;color:var(--ink);cursor:pointer;align-self:end;min-height:38px}
+.v3d-switch input{position:absolute;opacity:0;pointer-events:none}
+.v3d-switch i{width:36px;height:20px;border-radius:999px;background:#c9d3d3;position:relative;flex:none;transition:background .2s}
+.v3d-switch i::after{content:'';position:absolute;left:2px;top:2px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s}
+.v3d-switch input:checked+i{background:var(--teal)}.v3d-switch input:checked+i::after{transform:translateX(16px)}.v3d-switch input:focus-visible+i{outline:2px solid var(--teal);outline-offset:2px}
+.v3d-set [hidden]{display:none!important}
+@media (max-width:640px){.v3d-cust{margin-left:0}.v3d-panel .v3d-set{grid-template-columns:1fr}}`;
 
 module.exports = { viewer3d, home3d, showroomPage, with3d, CSS3D, photos, specPanel, designSpecifyPage, servicePage, notFound, enrich, sitemap, ROBOTS, CSS };
 
