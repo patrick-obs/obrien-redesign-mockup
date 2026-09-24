@@ -443,6 +443,7 @@ def('evidence-lockers', 'Pass-Through Evidence Lockers', 'Set into a wall: offic
 /* ---------------- 7. flat files ---------------- */
 def('flat-files', 'Flat File Cabinets', 'Two stacked 5-drawer units, 50" W x 38" D', ({ THREE, tween }) => {
   const k = kit(THREE), { M, bx, group } = k, root = new THREE.Group();
+  const slide = k.std(0xc9ced2, 0.25, 0.9);
   const paint = k.std(0xeeefed, 0.45, 0.3), inner = k.std(0xd7dada, 0.5, 0.3), paper = [M.white, k.std(0xf1ede2, 0.85, 0), k.std(0xe6ecef, 0.85, 0)];
   const W = 50, D = 38, uh = 16.5, base = 4, r = rng(3);
   bx(root, W - 2, base, D - 3, M.dark, 1, 0, 1);
@@ -453,7 +454,13 @@ def('flat-files', 'Flat File Cabinets', 'Two stacked 5-drawer units, 50" W x 38"
     bx(root, 0.6, uh, D, paint, 0, y0, 0); bx(root, 0.6, uh, D, paint, W - 0.6, y0, 0); bx(root, W, uh, 0.4, paint, 0, y0, 0);
     for (let i = 0; i < 5; i++) {
       // open-top drawer: front, floor, sides, back and a rear hood, with loose sheets inside
-      const dy = y0 + 0.5 + i * 3.1, dr = group(root, 0, 0, 0), iw = W - 3, id = D - 3.5, ih = 2.2;
+      const dy = y0 + 0.5 + i * 3.1, dr = group(root, 0, 0, 0), mid = group(root, 0, 0, 0), iw = W - 3, id = D - 2.8, ih = 2.2;
+      // full-extension slides: cabinet member fixed, middle member travels half, drawer member rides the box
+      for (const [x0, x1, x2] of [[0.6, 0.92, 1.2], [W - 0.9, W - 1.17, W - 1.5]]) {
+        bx(root, 0.3, 1, D - 2, slide, x0, dy + 0.75, 0.5);
+        bx(mid, 0.25, 0.8, D - 5, slide, x1, dy + 0.85, 1.5);
+        bx(dr, 0.3, 0.9, id - 1.5, slide, x2, dy + 0.8, 2);
+      }
       bx(dr, W - 1.6, 2.9, 0.8, paint, 0.8, dy, D - 0.8);
       bx(dr, iw, 0.12, id, inner, 1.5, dy + 0.1, 1);
       bx(dr, 0.15, ih, id, inner, 1.5, dy + 0.1, 1); bx(dr, 0.15, ih, id, inner, 1.5 + iw - 0.15, dy + 0.1, 1);
@@ -463,7 +470,7 @@ def('flat-files', 'Flat File Cabinets', 'Two stacked 5-drawer units, 50" W x 38"
       for (let s = 0; s < sheets; s++) bx(dr, 36 - r() * 6, 0.05, 24 - r() * 4, paper[s % 3], 5 + r() * 2, dy + 0.25 + s * 0.09, 7 + r() * 2);
       bx(dr, 22, 0.5, 0.9, M.chrome, W / 2 - 11, dy + 1.9, D);
       bx(dr, 3, 1.3, 0.1, M.label, W / 2 - 1.5, dy + 0.4, D + 0.02);
-      dr.userData.onClick = () => { dr.userData.open = !dr.userData.open; tween(dr.position, 'z', dr.userData.open ? 28 : 0, 700); };
+      dr.userData.onClick = () => { dr.userData.open = !dr.userData.open; const o = dr.userData.open; tween(dr.position, 'z', o ? 28 : 0, 700, 'out'); tween(mid.position, 'z', o ? 14 : 0, 700, 'out'); };
       drawers.push(dr);
     }
   }
