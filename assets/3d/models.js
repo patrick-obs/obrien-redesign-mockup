@@ -413,6 +413,7 @@ const HD_KINDS = {
   shelving: { label: 'Storage: shelving', L: 108, d: 15, h: 84, N: 5, aisle: 36, cH: 5, panels: true },
   open: { label: 'Storage: open shelving', L: 144, d: 24, h: 96, N: 4, aisle: 42, cH: 6 },
   flat: { label: 'Storage: flat files', L: 100, d: 38, h: 50, N: 3, aisle: 60, cH: 6, panels: true },
+  gear: { label: 'Storage: gear and equipment', L: 108, d: 22, h: 84, N: 3, aisle: 42, cH: 6, panels: true },
   wardrobe: { label: 'Storage: wardrobe cabinets', L: 108, d: 24, h: 78, N: 3, aisle: 48, cH: 6, panels: true },
   museum: { label: 'Storage: museum cabinets', L: 147, d: 31, h: 76, N: 3, aisle: 60, cH: 6, panels: true },
   tire: { label: 'Storage: tire racks', L: 144, d: 28, h: 94, N: 3, aisle: 40, cH: 6 },
@@ -424,7 +425,7 @@ const HD_KINDS = {
 };
 const UNIT_COLORS = [['Standard', 0], ['Light gray', 0xbfc4c7], ['Putty', 0xd6ccb9], ['White', 0xeeefed], ['Black', 0x2c2f31], ['Blue', 0x2a4d7a]];
 const AISLE_STD = [['36 in (ADA minimum)', 36], ['42 in', 42], ['48 in', 48], ['60 in (carts, pallet jack)', 60], ['72 in', 72]], AISLE_FORK = [['8 ft (reach truck)', 96], ['10 ft', 120], ['12 ft (forklift)', 144]];
-const HD_ORDER = ['shelving', 'open', 'library', 'flat', 'museum', 'wardrobe', 'textile', 'art', 'tire', 'grow', 'pallet'];
+const HD_ORDER = ['shelving', 'open', 'gear', 'library', 'flat', 'museum', 'wardrobe', 'textile', 'art', 'tire', 'grow', 'pallet'];
 // tires: a lathed cross-section (sidewalls, flat tread, bead) with a block tread texture; labels on the tread
 let TIRE = null;
 function tireParts(THREE) {
@@ -459,7 +460,7 @@ function hdMobile(id, name, dims, start, opts = {}) {
     const gWhite = k.std(0xf1f2f0, 0.4, 0.25), wire = k.meshMat(144, 26, 1.5, '#e9ecee', 0.6), trayM = k.std(0x1c1d1f, 0.7, 0.05), leaf = k.std(0xffffff, 0.7, 0), led = k.std(0xffffff, 0.3, 0, { emissive: 0xfff8e8, emissiveIntensity: 1.1 });
     const tBlue = k.std(0x1f5fb0, 0.45, 0.35), tBlueP = k.postMat(tBlue), bumperM = k.std(0x111213, 0.9, 0);
     const black = k.std(0x1c1e20, 0.45, 0.15), red = k.std(0xc4241c, 0.4, 0.1), go = k.std(0x39d353, 0.3, 0, { emissive: 0x1f8a33, emissiveIntensity: 0.9 }), stop = k.std(0xc92a2a, 0.35, 0.1, { emissive: 0x5a1414, emissiveIntensity: 0.5 });
-    let kind = start, electric = !!opts.electric, open = 2, unit, ranges = [], C, panelsOn = null, closedShelf = true, loadColor = {}, openParts = new Set(), aisleW = null, twoLevel = !!opts.twoLevel, open2 = 1, ranges2 = [], arms = [];
+    let kind = start, electric = !!opts.electric, open = 2, unit, ranges = [], C, panelsOn = null, closedShelf = true, gearKind = opts.gear || 0, loadColor = {}, openParts = new Set(), aisleW = null, twoLevel = !!opts.twoLevel, open2 = 1, ranges2 = [], arms = [];
     const armM = k.std(0x3a3f44, 0.5, 0.5), mzDeck = k.std(0x5d6468, 0.75, 0.4), railY = k.std(0xe0a526, 0.45, 0.35), steelM = k.std(0x4b5a63, 0.5, 0.5);
     const lPost = k.postMat(paint), tFrame = k.std(0x3a3f44, 0.45, 0.35), tTube = k.std(0xf6f7f5, 0.35, 0.1), aWhite = k.std(0xf3f4f2, 0.45, 0.25), gilt = k.std(0xa6832f, 0.35, 0.7);
     const tWraps = [k.std(0xe3e7ea, 0.3, 0.35), k.std(0xeceeee, 0.55, 0.1)], tBare = [k.std(0x9b2226, 0.85, 0), k.std(0x7a5230, 0.9, 0), k.std(0x3d5a7a, 0.85, 0), k.std(0x5e4a7a, 0.85, 0)];
@@ -584,6 +585,56 @@ function hdMobile(id, name, dims, start, opts = {}) {
         doorPair(p, x, 48, y0, H, dir > 0 ? fz : fz + 0.9 - 0.9, dir, true, mWhite);
       }
     };
+    // gear storage: open steel sections fitted with the accessories that hold each kind of equipment
+    const GEAR = ['Athletic gear', 'Golf bags', 'Musical instruments'];
+    const team = k.std(0x8c1d2c, 0.4, 0.1), ballM = k.std(0xd1621f, 0.7, 0), padM = k.std(0x2f3336, 0.7, 0.05), jerseyM = k.std(0xf2f2ee, 0.85, 0), rackM = k.std(0x9aa1a6, 0.35, 0.8);
+    const bagMs = [0x1c1d1f, 0x2a4d7a, 0x8c1d2c, 0xe7e4dc, 0x2f5a3e].map(c => k.std(c, 0.6, 0.1)), clubM = k.std(0xc9ced2, 0.25, 0.9), caseMs = [0x1c1d1f, 0x3a2a1e, 0x2b2d2f, 0x4a3b2c].map(c => k.std(c, 0.55, 0.1)), velvet = k.std(0x6b1f2a, 0.9, 0);
+    const gearFace = (p, y0, z0, dir, r) => {
+      const D = C.d, H = C.h, bw = 36, front = dir > 0 ? z0 + D : z0, inZ = (depth) => (dir > 0 ? z0 + D - depth - 0.5 : z0 + 0.5);
+      // frame: uprights with slots facing in, a back panel and a top
+      for (let i = 0; i <= 3; i++) { const x = Math.min(i * bw, C.L - 1.25); for (const zz of [z0, z0 + D - 1.25]) { bx(p, 1.25, H, 1.25, paint, x, y0, zz); if (i < 3) k.slots(p, lPost, x + 1.25, y0, zz, 1.25, H, 1); if (i > 0) k.slots(p, lPost, x, y0, zz, 1.25, H, -1); } }
+      bx(p, C.L, H, 0.1, paint, 0, y0, dir > 0 ? z0 : z0 + D - 0.1); bx(p, C.L, 0.6, D, paint, 0, y0 + H - 0.6, z0);
+      for (let b = 0; b < 3; b++) {
+        const x0 = b * bw + 1.25, w = bw - 1.25;
+        if (gearKind === 0) {
+          // helmet shelf up top, shoulder pads and jerseys on hangers, ball cradle rack at the bottom
+          bx(p, w, 0.6, D - 1, paint, x0, y0 + 60, z0 + 0.5);
+          for (let q = 0; q < 3; q++) { const hm = new THREE.Mesh(new THREE.SphereGeometry(5, 18, 12, 0, Math.PI * 2, 0, Math.PI * 0.62), team); hm.position.set(x0 + 6 + q * 11.5, y0 + 62.2, z0 + D / 2); p.add(hm); bx(p, 5, 0.5, 0.5, M.white, x0 + 3.5 + q * 11.5, y0 + 63.4, dir > 0 ? front - 5.4 : front + 4.9); }
+          cyl(p, 0.5, w, M.chrome, x0 + w / 2, y0 + 56, z0 + D / 2, 12, 'x');
+          for (let q = 0; q < 3; q++) { bx(p, 1, 24, 14, jerseyM, x0 + 5 + q * 11, y0 + 30, z0 + D / 2 - 7); bx(p, 9, 6, 11, padM, x0 + 1 + q * 11, y0 + 48, z0 + D / 2 - 5.5); }
+          bx(p, w, 0.6, D - 1, paint, x0, y0 + 14, z0 + 0.5);
+          for (const zz of [dir > 0 ? front - 2 : front + 1.2]) cyl(p, 0.4, w, rackM, x0 + w / 2, y0 + 3, zz, 8, 'x');
+          for (let q = 0; q < 3; q++) for (const zz of [0.3, 0.7]) { const bl = new THREE.Mesh(new THREE.SphereGeometry(4.7, 18, 12), ballM); bl.position.set(x0 + 6 + q * 11.5, y0 + 5.5, z0 + D * zz); p.add(bl); }
+        } else if (gearKind === 1) {
+          // golf bag bays: a divider every 12", a strap bar across the front, bags standing with clubs showing
+          for (let q = 1; q < 3; q++) bx(p, 0.12, 44, D - 2, paint, x0 + q * 12, y0, z0 + 1);
+          bx(p, w, 0.6, D - 1, paint, x0, y0 + 46, z0 + 0.5);
+          cyl(p, 0.4, w, rackM, x0 + w / 2, y0 + 30, dir > 0 ? front - 1 : front + 1, 8, 'x');
+          for (const ly of [0, 46.6]) for (let q = 0; q < 3; q++) {
+            if (ly && r() > 0.7) continue;
+            const bh = ly ? 25 : 34, m = bagMs[Math.floor(r() * bagMs.length)], g2 = group(p, x0 + 6 + q * 12, y0 + ly, z0 + D / 2); g2.rotation.x = dir * -0.12;
+            cyl(g2, 4.5, bh, m, 0, bh / 2, 0, 18); cyl(g2, 4.8, 3, m, 0, bh - 1.5, 0, 18);
+            for (let c = 0; c < 5; c++) { cyl(g2, 0.25, 6, clubM, -2 + (c % 3) * 2, bh + 3, -1.4 + Math.floor(c / 3) * 2.6, 6); bx(g2, 1.6, 1, 2.2, clubM, -2.8 + (c % 3) * 2, bh + 5.6, -2.5 + Math.floor(c / 3) * 2.6); }
+          }
+        } else {
+          // instrument cubbies: shelves at three levels, cases sized to each instrument
+          for (const sy of [0, 28, 56]) bx(p, w, 0.6, D - 1, paint, x0, y0 + sy, z0 + 0.5);
+          const CASES = [[40, 16, 6], [26, 10, 5], [32, 8, 8], [22, 9, 9], [14, 5, 16]];
+          for (const sy of [0.6, 28.6, 56.6]) {
+            let x = x0 + 1;
+            while (x < x0 + w - 6) {
+              const [cl, cw, ch] = CASES[Math.floor(r() * CASES.length)];
+              const upright = cl > 30 && r() > 0.5, sw = upright ? ch : Math.min(cw, 12), sh = Math.min(upright ? Math.min(cl, 26) : ch, 26);
+              if (x + sw > x0 + w - 0.5) break;
+              const m = caseMs[Math.floor(r() * caseMs.length)];
+              bx(p, sw, sh, Math.min(D - 2, upright ? cw : cl * 0.5), m, x, y0 + sy, inZ(Math.min(D - 2, upright ? cw : cl * 0.5)));
+              bx(p, sw * 0.4, 0.8, 0.4, rackM, x + sw * 0.3, y0 + sy + sh * 0.6, dir > 0 ? front - 0.6 : front + 0.4);
+              x += sw + 1.2;
+            }
+          }
+        }
+      }
+    };
     // wardrobe cabinets: steel cases, solid double doors, hat shelf and hanging rod inside
     const wardM = k.std(0xb5babd, 0.45, 0.35);
     const wardrobeFace = (p, y0, z0, dir) => {
@@ -681,6 +732,8 @@ function hdMobile(id, name, dims, start, opts = {}) {
           for (const [z, dir] of faces) flatFace(g, cH, z, dir);
         } else if (kind === 'museum') {
           for (const [z, dir] of faces) museumFace(g, cH, z, dir);
+        } else if (kind === 'gear') {
+          for (const [z, dir] of faces) gearFace(g, cH, z, dir, r);
         } else if (kind === 'wardrobe') {
           for (const [z, dir] of faces) wardrobeFace(g, cH, z, dir);
         } else if (kind === 'library') {
@@ -806,6 +859,7 @@ function hdMobile(id, name, dims, start, opts = {}) {
         { label: 'Close all aisles', run: () => { open = C.N; move(); } },
         { label: 'Electric drive', when: () => !C.electricOnly, run: () => { if (C.electricOnly) return 'Electric only'; electric = !electric; [...ranges, ...ranges2].forEach(g => { if (g.userData.fixed) return; g.userData.wheel.visible = !electric; g.userData.pad.visible = electric; }); arms.forEach(q => { q.g.visible = electric; }); tick(); return electric ? 'Mechanical assist' : 'Electric drive'; } },
         { label: 'End panels', toggle: true, when: () => kind !== 'pallet', get: () => panelsOn ?? (kind !== 'art' && !!C.panels), set: v => { panelsOn = v; make(); } },
+        { label: 'Holds', when: () => kind === 'gear', options: GEAR, get: () => gearKind, set: n => { gearKind = n; make(); } },
         { label: 'Closed shelving', toggle: true, when: () => kind === 'shelving', get: () => closedShelf, set: v => { closedShelf = v; make(); } },
         { label: 'Unit color', options: UNIT_COLORS.map(c => c[0]), get: () => loadColor[kind] || 0, set: n => { loadColor[kind] = n; paintLoad(); } },
         { label: HD_KINDS[start].label, run: () => { const was = HD_KINDS[kind].electricOnly; kind = HD_ORDER[(HD_ORDER.indexOf(kind) + 1) % HD_ORDER.length]; panelsOn = null; aisleW = null; openParts.clear(); if (HD_KINDS[kind].electricOnly) electric = true; else if (was) electric = false; open = 1; make(); refit?.(); return HD_KINDS[kind].label; } },
@@ -822,6 +876,7 @@ hdMobile('hd-mobile-museum', 'Mobile Museum Cabinets', 'Museum storage cabinets 
 hdMobile('hd-mobile-library', 'Mobile Library Shelving', 'Double-faced cantilever library shelving on mobile carriages', 'library');
 hdMobile('hd-mobile-textile', 'Mobile Rolled Textile Storage', 'Double-sided textile racks on mobile carriages', 'textile');
 hdMobile('hd-mobile-art', 'Mobile Art Screens', 'Art screens on skinny mobile carriages: gussets at every upright, chain box and crank', 'art');
+hdMobile('hd-mobile-gear', 'Mobile Gear Storage', 'Mobile shelving fitted with accessories: helmet shelves, ball racks, golf bag bays, instrument cubbies', 'gear');
 hdMobile('hd-mobile-wardrobe', 'Mobile Wardrobe Cabinets', 'Steel wardrobe cabinets on mobile carriages, doors that open', 'wardrobe');
 hdMobile('hd-mobile-mezz', 'Two-Level Mobile Storage', 'Electric mobile shelving under and on top of a structural mezzanine, with aisles on both levels', 'shelving', { twoLevel: true, electric: true });
 
@@ -2274,5 +2329,5 @@ def('painting-bins', 'Painting Storage Bins', 'Steel shelving with dividers on 1
   };
 });
 
-const SHORT = { 'four-post': '4-post', 'bin-shelving': 'Bin shelving', 'wire-shelving': 'Wire', library: 'Library', 'hd-mobile': 'Mobile', lockers: 'Lockers', 'evidence-lockers': 'Evidence', 'flat-files': 'Flat files', rotary: 'Rotary', 'museum-cabinet': 'Museum cabinet', 'art-screens': 'Art screens', 'pallet-rack': 'Pallet rack', mezzanine: 'Mezzanine', vlm: 'VLM', casework: 'Casework', 'wire-cage': 'Wire cage', athletic: 'Athletic', 'mail-sorter': 'Mail sorter', weapons: 'Weapons', 'tire-rack': 'Tire rack', 'wire-track': 'Wire on track', 'ss-table': 'Stainless tables', install: 'Install steps', 'hd-mobile-open': 'Mobile shelving', 'hd-mobile-tire': 'Mobile tires', 'hd-mobile-grow': 'Mobile grow racks', 'hd-mobile-flat': 'Mobile flat files', 'hd-mobile-museum': 'Mobile cabinets', 'hd-mobile-library': 'Mobile library', 'hd-mobile-textile': 'Mobile textiles', 'hd-mobile-art': 'Mobile art screens', 'hd-mobile-mezz': 'Two-level mobile', 'hd-mobile-wardrobe': 'Mobile wardrobes', 'painting-bins': 'Painting bins', 'four-post-solander': 'Solander boxes', workstation: 'Workstation', fireproof: 'Fireproof', 'wall-art': 'Wall art screens', 'textile-rack': 'Textile racks' };
+const SHORT = { 'four-post': '4-post', 'bin-shelving': 'Bin shelving', 'wire-shelving': 'Wire', library: 'Library', 'hd-mobile': 'Mobile', lockers: 'Lockers', 'evidence-lockers': 'Evidence', 'flat-files': 'Flat files', rotary: 'Rotary', 'museum-cabinet': 'Museum cabinet', 'art-screens': 'Art screens', 'pallet-rack': 'Pallet rack', mezzanine: 'Mezzanine', vlm: 'VLM', casework: 'Casework', 'wire-cage': 'Wire cage', athletic: 'Athletic', 'mail-sorter': 'Mail sorter', weapons: 'Weapons', 'tire-rack': 'Tire rack', 'wire-track': 'Wire on track', 'ss-table': 'Stainless tables', install: 'Install steps', 'hd-mobile-open': 'Mobile shelving', 'hd-mobile-tire': 'Mobile tires', 'hd-mobile-grow': 'Mobile grow racks', 'hd-mobile-flat': 'Mobile flat files', 'hd-mobile-museum': 'Mobile cabinets', 'hd-mobile-library': 'Mobile library', 'hd-mobile-textile': 'Mobile textiles', 'hd-mobile-art': 'Mobile art screens', 'hd-mobile-mezz': 'Two-level mobile', 'hd-mobile-wardrobe': 'Mobile wardrobes', 'hd-mobile-gear': 'Mobile gear', 'painting-bins': 'Painting bins', 'four-post-solander': 'Solander boxes', workstation: 'Workstation', fireproof: 'Fireproof', 'wall-art': 'Wall art screens', 'textile-rack': 'Textile racks' };
 for (const [id, s] of Object.entries(SHORT)) if (MODELS[id]) MODELS[id].short = s;
