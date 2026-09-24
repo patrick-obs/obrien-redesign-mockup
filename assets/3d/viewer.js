@@ -147,12 +147,12 @@ function viewer(el) {
   };
   let moreOpen = false;
   const showActs = () => {
-    const nodes = [...el.querySelectorAll('.v3d-acts > :not(.v3d-more)')], applies = nodes.filter(b => !(b._act?.when && !b._act.when()));
+    const nodes = [...el.querySelectorAll('.v3d-acts .v3d-ctl')], applies = nodes.filter(b => !(b._act?.when && !b._act.when()));
     const choices = applies.filter(b => b._act && (b._act.options || b._act.toggle)), extra = choices.slice(2);
     nodes.forEach(b => { b.hidden = !applies.includes(b) || (extra.includes(b) && !moreOpen); });
     const mb = el.querySelector('.v3d-more'); if (mb) { mb.hidden = !extra.length; mb.textContent = moreOpen ? 'Fewer options' : 'More options (' + extra.length + ')'; }
   };
-  const syncActs = () => el.querySelectorAll('.v3d-acts > *').forEach(b => b._sync?.());
+  const syncActs = () => el.querySelectorAll('.v3d-acts .v3d-ctl').forEach(b => b._sync?.());
   const scan = () => { clickables = []; current?.group.traverse(o => { if (o.userData.onClick) clickables.push(o); }); };
   function fit(group, view) {
     const box = new THREE.Box3().setFromObject(group), size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
@@ -187,7 +187,9 @@ function viewer(el) {
     const sel = el.querySelector('.v3d-pick select'); if (sel) sel.value = id;
     const acts = el.querySelector('.v3d-acts');
     const after = () => { scan(); syncActs(); showActs(); modelWake(); };
-    acts.replaceChildren(...(current.actions || []).map(a => {
+    const btnRow = document.createElement('div'), setGrid = document.createElement('div'); btnRow.className = 'v3d-btns'; setGrid.className = 'v3d-set';
+    acts.replaceChildren(btnRow, setGrid);
+    (current.actions || []).map(a => {
       let node;
       if (a.options) {
         node = document.createElement('label'); node.className = 'v3d-opt';
@@ -206,10 +208,10 @@ function viewer(el) {
         node = document.createElement('button'); node.type = 'button'; node.textContent = a.label;
         node.addEventListener('click', () => { const r = a.run(); if (typeof r === 'string') node.textContent = r; after(); });
       }
-      node._act = a;
-      return node;
-    }));
-    const mb = document.createElement('button'); mb.type = 'button'; mb.className = 'v3d-more'; mb.addEventListener('click', () => { moreOpen = !moreOpen; showActs(); }); acts.appendChild(mb);
+      node._act = a; node.classList.add('v3d-ctl');
+      (a.options || a.toggle ? setGrid : btnRow).appendChild(node);
+    });
+    const mb = document.createElement('button'); mb.type = 'button'; mb.className = 'v3d-more'; mb.addEventListener('click', () => { moreOpen = !moreOpen; showActs(); }); btnRow.appendChild(mb);
     syncActs();
     showActs();
     const fin = el.querySelector('.v3d-fin');

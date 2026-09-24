@@ -852,6 +852,7 @@ function hdMobile(id, name, dims, start, opts = {}) {
       finishes: [{ name: 'Black', swatch: '#2c2f31', color: 0x2c2f31 }, { name: 'O\'Brien teal', swatch: '#0f7377', color: 0x0f7377 }, { name: 'Maple laminate', swatch: '#c79a66', color: 0xc79a66 }, { name: 'Light gray', swatch: '#c3c7ca', color: 0xbfc4c7 }, { name: 'Navy', swatch: '#2a3d5c', color: 0x2a3d5c }],
       setFinish: k.finisher(panel),
       actions: [
+        { label: 'Storage', options: HD_ORDER.map(q => HD_KINDS[q].label.replace('Storage: ', '').replace(/^./, c => c.toUpperCase())), get: () => HD_ORDER.indexOf(kind), set: n => { const was = HD_KINDS[kind].electricOnly; kind = HD_ORDER[n]; panelsOn = null; aisleW = null; openParts.clear(); if (HD_KINDS[kind].electricOnly) electric = true; else if (was) electric = false; open = 1; make(); refit?.(); } },
         { label: 'Aisle', when: () => kind !== 'pallet', options: AISLE_STD.map(a => a[0]), get: () => nearest(AISLE_STD), set: n => { aisleW = AISLE_STD[n][1]; make(); refit?.(); } },
         { label: 'Forklift aisle', when: () => kind === 'pallet', options: AISLE_FORK.map(a => a[0]), get: () => nearest(AISLE_FORK), set: n => { aisleW = AISLE_FORK[n][1]; make(); refit?.(); } },
         { label: 'Open next aisle', run: () => { open = (open + 1) % (C.N + 1); move(); } },
@@ -862,7 +863,6 @@ function hdMobile(id, name, dims, start, opts = {}) {
         { label: 'Holds', when: () => kind === 'gear', options: GEAR, get: () => gearKind, set: n => { gearKind = n; make(); } },
         { label: 'Closed shelving', toggle: true, when: () => kind === 'shelving', get: () => closedShelf, set: v => { closedShelf = v; make(); } },
         { label: 'Unit color', options: UNIT_COLORS.map(c => c[0]), get: () => loadColor[kind] || 0, set: n => { loadColor[kind] = n; paintLoad(); } },
-        { label: HD_KINDS[start].label, run: () => { const was = HD_KINDS[kind].electricOnly; kind = HD_ORDER[(HD_ORDER.indexOf(kind) + 1) % HD_ORDER.length]; panelsOn = null; aisleW = null; openParts.clear(); if (HD_KINDS[kind].electricOnly) electric = true; else if (was) electric = false; open = 1; make(); refit?.(); return HD_KINDS[kind].label; } },
       ],
     };
   });
