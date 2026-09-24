@@ -156,15 +156,29 @@ function viewer(el) {
   };
   const syncActs = () => el.querySelectorAll('.v3d-acts .v3d-ctl').forEach(b => b._sync?.());
   const scan = () => { clickables = []; current?.group.traverse(o => { if (o.userData.onClick) clickables.push(o); }); };
+  let walking = false;
+  // glide the camera to a point and look at another; eye level views look around from where you stand
+  const fly = (pos, target, ms = 1300) => {
+    walking = true; controls.minDistance = 0.5; controls.autoRotate = false; tween(camera, 'fov', 58, ms);
+    // pivot a few inches in front of the eye, so dragging looks around instead of orbiting
+    target = pos.clone().add(target.clone().sub(pos).normalize().multiplyScalar(8));
+    ['x', 'y', 'z'].forEach(a => { tween(camera.position, a, pos[a], ms); tween(controls.target, a, target[a], ms); });
+    el.querySelector('.v3d-main').classList.add('v3d-walk');
+  };
+  const overview = (ms = 1100) => {
+    if (!home) return; walking = false; controls.minDistance = home.r * 0.6; tween(camera, 'fov', 32, ms);
+    ['x', 'y', 'z'].forEach(a => { tween(camera.position, a, home.pos[a], ms); tween(controls.target, a, home.target[a], ms); });
+    el.querySelector('.v3d-main').classList.remove('v3d-walk');
+  };
   function fit(group, view) {
     const box = new THREE.Box3().setFromObject(group), size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
     const r = size.length() / 2;
     const dist = r / Math.sin((camera.fov * Math.PI) / 360) * 1.02;
     const dir = new THREE.Vector3(...(view || [0.9, 0.55, 1.25])).normalize();
     home = { pos: c.clone().add(dir.multiplyScalar(dist)), target: c.clone() };
-    camera.near = r / 50; camera.far = r * 40; camera.updateProjectionMatrix();
+    camera.fov = 32; camera.near = r / 50; camera.far = r * 40; camera.updateProjectionMatrix();
     camera.position.copy(home.pos); controls.target.copy(home.target);
-    controls.minDistance = r * 0.6; controls.maxDistance = r * 4;
+    controls.minDistance = r * 0.6; controls.maxDistance = r * 4; home.r = r; walking = false;
     ground.scale.setScalar(r * 3); ground.position.set(c.x, box.min.y + 0.05, c.z);
     sun.position.set(c.x + r * 1.2, c.y + r * 2.4, c.z + r * 1.6); sun.target.position.copy(c);
     const s = sun.shadow.camera; s.left = s.bottom = -r * 1.6; s.right = s.top = r * 1.6; s.near = r * 0.2; s.far = r * 6; s.updateProjectionMatrix();
@@ -175,7 +189,7 @@ function viewer(el) {
     closePanel();
     if (current) { scene.remove(current.group); current.group.traverse(o => { o.geometry?.dispose?.(); }); }
     const def = MODELS[id];
-    current = def.build({ THREE, tween, wait, wake: modelWake, bake: g => bake(THREE, g), panel, refresh: () => { syncActs(); showActs(); }, refit: () => { if (current) { fit(current.group, current.view); wake(); } } });
+    current = def.build({ THREE, tween, wait, wake: modelWake, bake: g => bake(THREE, g), panel, fly: (p, t) => { const m = current.group.matrixWorld; fly(new THREE.Vector3(...p).applyMatrix4(m), new THREE.Vector3(...t).applyMatrix4(m)); }, overview: () => overview(), isWalking: () => walking, refresh: () => { syncActs(); showActs(); }, refit: () => { if (current) { fit(current.group, current.view); wake(); } } });
     scan();
     current.group.traverse(o => { if (o.isMesh && !o.userData.noShadow) { o.castShadow = true; o.receiveShadow = true; } });
     bake(THREE, current.group);
@@ -244,7 +258,7 @@ function viewer(el) {
     // slow machine: step the render resolution down instead of dropping frames
     if (last && now - last > 26) { if (++slow > 24 && pr > 1) { pr = Math.max(1, pr - 0.25); renderer.setPixelRatio(pr); resize(); slow = 0; } } else slow = Math.max(0, slow - 1);
     last = active || controls.autoRotate || lowRes ? now : 0;
-    if (active) current?.tick?.();
+    if (active) { current?.tick?.(); camera.updateProjectionMatrix(); }
     const moving = controls.update(), busy = active || moving || controls.autoRotate;
     if (busy) setRes(true);
     // moving parts refresh shadows every few frames; a settled frame always gets a fresh shadow map
@@ -288,7 +302,7 @@ function viewer(el) {
     hoverQ = [e.clientX, e.clientY];
   });
 
-  el.querySelector('[data-v=reset]').addEventListener('click', () => { if (home) { camera.position.copy(home.pos); controls.target.copy(home.target); controls.update(); wake(); } });
+  el.querySelector('[data-v=reset]').addEventListener('click', () => { if (walking) { overview(); syncActs(); showActs(); return; } if (home) { camera.position.copy(home.pos); controls.target.copy(home.target); controls.update(); wake(); } });
   const spin = el.querySelector('[data-v=spin]');
   spin.addEventListener('click', () => { controls.autoRotate = !controls.autoRotate; spin.setAttribute('aria-pressed', String(controls.autoRotate)); wake(); });
   el.querySelector('[data-v=full]').addEventListener('click', () => {

@@ -7,29 +7,7 @@
 // Copy rules: no em dashes, region-first geography, floor loading is the engineer of record's call.
 const SITE = 'https://redesign.patrick-obrien.com';
 
-/* ---------------- which lines we carry, and typical CSI sections ---------------- */
-// Lines per product family come from the O'Brien line card (Notion). Pat to confirm before go-live.
-const LINES = {
-  'high-density-mobile-storage': ['Montel', 'Aurora Storage', 'Datum', 'Bruynzeel', 'Borroughs'],
-  'lifts-carousels': ['Modula'],
-  'lockers': ['Montel', 'Datum', 'Borroughs', 'Tennsco'],
-  'static-shelving': ['Aurora Storage', 'Borroughs', 'Tennsco', 'Metro'],
-  'cabinets': ['Tennsco', 'Borroughs', 'Aurora Storage', 'Datum'],
-  'modular-casework': ['Hamilton Casework'],
-  'four-post-shelving': ['Aurora Storage', 'Tennsco', 'Borroughs', 'Datum'],
-  'wire-shelving': ['Metro'],
-  'cantilever-shelving': ['Estey', 'Montel', 'Aurora Storage'],
-  'bin-storage': ['Borroughs', 'Tennsco', 'Aurora Storage'],
-  'pallet-rack': ['Steel King'],
-  'mezzanines': ['Steele Solutions'],
-  'evidence-lockers': ['Aurora Storage', 'Datum'],
-  'athletic-storage': ['Montel'],
-  'rotary-cabinets': ['Aurora Storage'],
-  'wardrobe-cabinets': ['Tennsco'],
-  'museum-cabinets': ['Delta Designs', 'Hamilton Casework'],
-  'art-screens': ['Montel', 'Datum', 'Delta Designs', 'Stabaarte'],
-  'mail-sorters': ['Hamilton Casework'],
-};
+/* ---------------- typical CSI sections ---------------- */
 // MasterFormat numbers we are confident in; anything else is left off rather than guessed.
 const CSI = {
   'high-density-mobile-storage': '10 56 26 Mobile Storage Shelving',
@@ -49,34 +27,21 @@ const BROCHURE_FOR = {
   'museum-cabinets': 'museum', 'art-screens': 'museum', 'pallet-rack': 'materialHandling', 'mezzanines': 'materialHandling',
   'wire-partitions': 'materialHandling', 'lifts-carousels': 'materialHandling', 'wire-shelving': 'healthcare',
 };
-// where each manufacturer publishes specs, CAD/Revit and data sheets (link out, never re-host)
-const MFR_RESOURCES = [
-  ['Montel', 'Resource Center: CSI specs, data sheets, Revit, LEED', 'https://www.montel.com/resource-center'],
-  ['Hamilton Casework', 'Downloads: specs, drawings, brochures', 'https://hamiltoncs.com/downloads/'],
-  ['Datum', 'BIM downloads and product specs', 'https://www.datumstorage.com/'],
-  ['Borroughs', 'Product specifications and install instructions', 'https://www.borroughs.com/resources/product-specifications/'],
-  ['Modula', 'Vertical lift module documentation', 'https://modula.us/'],
-  ['Tennsco', 'Shelving, cabinet and locker specifications', 'https://www.tennsco.com/'],
-  ['Steel King', 'Rack specifications and design support', 'https://www.steelking.com/'],
-  ['Delta Designs', 'Museum cabinet specifications', 'https://www.deltadesignsltd.com/'],
-];
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const attr = (s) => esc(s).replace(/'/g, '&#39;');
 
 /* ---------------- Specify & quote panel ---------------- */
 function specPanel(slug, name, brochures) {
-  const lines = LINES[slug] || [];
   const csi = CSI[slug];
   const b = BROCHURE_FOR[slug] && brochures.find(x => x[2] === BROCHURE_FOR[slug]);
-  if (!lines.length && !csi && !b) return '';
+  if (!csi && !b) return '';
   return `
 <section class="spec" aria-label="Specify and quote">
   <div class="spec-l">
     <span class="eyebrow">Specify &amp; quote</span>
     <h2>Ready to plan ${esc(name.toLowerCase())}?</h2>
     <dl>
-      ${lines.length ? `<dt>Lines we carry</dt><dd>${lines.map(l => `<a href="partners.html">${esc(l)}</a>`).join(', ')}</dd>` : ''}
       ${csi ? `<dt>Typical CSI section</dt><dd>${esc(csi)} <small>(confirm against your project manual)</small></dd>` : ''}
       <dt>What you get</dt><dd>Layout drawings, equipment load data for your structural engineer, and an itemized quote</dd>
       ${b ? `<dt>Brochure</dt><dd><a href="${b[1]}" target="_blank" rel="noopener">${esc(b[0])} (PDF)</a></dd>` : ''}
@@ -118,7 +83,7 @@ function designSpecifyPage(shell, heroImg) {
     </table>
     <p class="est-note">Section numbers follow MasterFormat conventions; confirm against the edition your project manual uses.</p>
     <h2 class="sec-h">Manufacturer specs, CAD and Revit</h2>
-    <div class="mfr-res">${MFR_RESOURCES.map(r => `<a href="${r[2]}" target="_blank" rel="noopener"><b>${esc(r[0])}</b><span>${esc(r[1])}</span><span class="ext">Open &nearr;</span></a>`).join('')}</div>
+    <p class="lead">Every line we install publishes its own specifications, data sheets, and CAD or Revit content. Tell us what you're drawing and we'll send the current files for the products on your project, so your documents match what gets installed.</p>
     <div class="spec" style="margin-top:44px">
       <div class="spec-l"><span class="eyebrow">Working on a project?</span><h2>Send us the plan</h2><p style="margin:0">We'll return a layout, capacities and a budget number for the storage scope, usually within a few business days.</p></div>
       <div class="spec-r">
@@ -132,8 +97,7 @@ function designSpecifyPage(shell, heroImg) {
 }
 
 /* ---------------- Request service ---------------- */
-function servicePage(shell, heroImg, partners) {
-  const brands = partners.map(p => p[0].replace(/\b\w+/g, w => w[0] + w.slice(1).toLowerCase()));
+function servicePage(shell, heroImg) {
   return shell(`Request Service | O'Brien Systems`, heroImg, `
 <div class="page-hero">
   <div class="wrap crumbs"><a href="index.html">Home</a> / <a href="services.html">Services</a> / Request Service</div>
@@ -154,7 +118,7 @@ function servicePage(shell, heroImg, partners) {
       <div class="svc-step"><span class="svc-n">2</span><div><h2>The equipment</h2><p>Your best guess is fine. We service many brands.</p></div></div>
       <div class="row2">
         <label>Equipment<select><option>Mobile shelving (high-density)</option><option>Vertical lift module / carousel</option><option>Lockers</option><option>Cabinets / rotary files</option><option>Shelving or rack</option><option>Other</option></select></label>
-        <label>Brand<select><option>Not sure</option>${brands.map(b => `<option>${esc(b)}</option>`).join('')}<option>Other brand</option></select></label>
+        <label>Brand, if known<input placeholder="Check the end panel or carriage label"></label>
       </div>
       <fieldset class="svc-chips"><legend>Drive type</legend>
         ${['Not sure', 'Manual (push)', 'Mechanical assist (handle)', 'Powered (electric)'].map((t, i) => `<label><input type="radio" name="drive" ${i ? '' : 'checked'}><span>${t}</span></label>`).join('')}
@@ -199,7 +163,7 @@ const notFound = (shell, heroImg) => shell(`Page not found | O'Brien Systems`, h
   </div>
 </div>
 <section class="block"><div class="wrap"><div class="chips">
-  <a href="solutions.html">All solutions</a><a href="industries.html">Industries</a><a href="projects.html">Projects</a><a href="blog.html">Blog</a><a href="contact.html">Contact</a>
+  <a href="solutions.html">All solutions</a><a href="industries.html">Industries</a><a href="showroom.html">3D Showroom</a><a href="blog.html">Blog</a><a href="contact.html">Contact</a>
 </div></div></section>`);
 
 /* ---------------- search/share plumbing, applied to each finished page ---------------- */
@@ -257,6 +221,9 @@ a,button{-webkit-tap-highlight-color:transparent}
 .btn:active{transform:none;box-shadow:none}
 .btn-ghost{background:transparent;border:2px solid var(--teal);color:var(--teal);cursor:pointer;font:inherit;font-weight:700}
 .btn-ghost:hover{background:var(--teal);color:#fff}
+/* on dark photo heroes the teal outline disappears: use a white outline over a tinted fill */
+.hero .btn-ghost,.page-hero .btn-ghost{background:rgba(2,41,43,.55);border-color:#fff;color:#fff;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+.hero .btn-ghost:hover,.page-hero .btn-ghost:hover{background:#fff;color:var(--teal-ink)}
 button.btn{font:inherit;font-weight:700;cursor:pointer}
 ::selection{background:var(--teal-soft);color:var(--teal-ink)}
 
@@ -280,12 +247,6 @@ button.btn{font:inherit;font-weight:700;cursor:pointer}
 .csi th{color:var(--muted);font-weight:600;font-size:.85rem;text-transform:uppercase;letter-spacing:.04em}
 .csi td:first-child{white-space:nowrap;font-weight:600;color:var(--teal-ink)}
 .csi a{color:var(--teal)}
-.mfr-res{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
-.mfr-res a{display:flex;flex-direction:column;gap:4px;padding:14px 16px;border:1px solid var(--line);border-radius:12px;transition:border-color .15s,transform .15s,box-shadow .15s}
-.mfr-res a:hover{border-color:var(--teal);transform:translateY(-2px);box-shadow:var(--shadow)}
-.mfr-res span{font-size:.88rem;color:var(--muted)} .mfr-res .ext{color:var(--teal);font-weight:600}
-
-.photo-credit{font-size:.78rem;color:var(--muted);padding-top:18px;padding-bottom:18px}
 
 /* service */
 .svc-wrap{background:var(--mist)}
@@ -326,14 +287,13 @@ button.btn{font:inherit;font-weight:700;cursor:pointer}
 
 /* ---------------- accurate product photos (photo-swaps.json, from the Sept 2026 image audit) ---------------- */
 // Each entry: {page, kind: hero|side|gallery|card, n (gallery position, 1-based), added, cur, file, credit, remove}
-// Photos come only from O'Brien's manufacturer partners and are credited on the page.
+// Photos come only from O'Brien's manufacturer partners. Credits are not rendered on the page.
 let SWAPS = [];
 try { SWAPS = require('./photo-swaps.json'); } catch {}
 function photos(file, html) {
   const page = file.replace(/\.html$/, '');
   const mine = SWAPS.filter(s => s.page === page);
   if (!mine.length) return html;
-  const credits = new Set();
   const tile = (u) => `<div class="g" style="background-image:url('${u}')"></div>`;
   const added = [];
   for (const s of mine) {
@@ -341,7 +301,6 @@ function photos(file, html) {
       if (s.kind === 'side') html = html.replace(/<div class="side-img">[\s\S]*?<\/div>/, '');
       continue;
     }
-    if (s.credit) credits.add(s.credit);
     if (s.kind === 'hero') html = html.replace(/--hero-img:url\('[^']*'\)/, `--hero-img:url('${s.file}')`);
     else if (s.kind === 'side') html = html.replace(/(<div class="side-img"><img src=")[^"]*(")/, `$1${s.file}$2`);
     else if (s.kind === 'card' && s.cur) html = html.split(s.cur).join(s.file);
@@ -355,7 +314,6 @@ function photos(file, html) {
     if (/<div class="gallery">/.test(html)) html = html.replace(/(<div class="gallery">[\s\S]*?)(\n    <\/div>)/, (m, a, b) => a + added.map(u => `\n      ${tile(u)}`).join('') + b);
     else html = html.replace(/(\n    )(<div class="faq">|<h2 style="margin-top:52px)/, `$1<div class="gallery">\n      ${added.map(tile).join('\n      ')}\n    </div>$1$2`);
   }
-  if (credits.size) html = html.replace('<div class="cta" id="contact">', `<p class="wrap photo-credit">Product photos courtesy of our manufacturer partners: ${[...credits].sort().join(', ')}.</p>\n<div class="cta" id="contact">`);
   return html;
 }
 
@@ -445,7 +403,7 @@ const CSS3D = `.v3d-ov{position:absolute;right:12px;top:12px;z-index:6;width:min
 .v3d-g button:hover{background:#eef4f4}
 .v3d-g button[aria-selected=true]{background:var(--teal);color:#fff;font-weight:600}
 .v3d-pick{display:none}
-.v3d-seg{display:flex;gap:4px;margin:14px 14px 0;padding:4px;background:#eef2f2;border-radius:12px;width:max-content;max-width:calc(100% - 28px);overflow-x:auto}
+.v3d-seg{display:flex;gap:4px;margin:14px 14px 0;padding:4px;background:#eef2f2;border-radius:12px;flex-wrap:wrap;max-width:calc(100% - 28px);width:fit-content}
 .v3d-seg button{flex:none;border:0;background:none;padding:8px 14px;border-radius:9px;font:inherit;font-size:.88rem;font-weight:600;color:var(--teal-ink);cursor:pointer;white-space:nowrap}
 .v3d-seg button[aria-selected=true]{background:#fff;color:var(--teal);box-shadow:0 2px 8px rgba(2,60,63,.12)}
 .v3d-main{display:flex;flex-direction:column;min-width:0;background:#fff}
@@ -510,4 +468,4 @@ const CSS3D = `.v3d-ov{position:absolute;right:12px;top:12px;z-index:6;width:min
 @media (max-width:640px){.v3d-stage{height:58vh;margin:0 10px}.v3d-top{padding:14px 12px 8px}.v3d-bar{padding:12px}.v3d-fin em{display:none}}
 `;
 
-module.exports = { viewer3d, home3d, showroomPage, with3d, CSS3D, photos, specPanel, designSpecifyPage, servicePage, notFound, enrich, sitemap, ROBOTS, CSS, LINES };
+module.exports = { viewer3d, home3d, showroomPage, with3d, CSS3D, photos, specPanel, designSpecifyPage, servicePage, notFound, enrich, sitemap, ROBOTS, CSS };

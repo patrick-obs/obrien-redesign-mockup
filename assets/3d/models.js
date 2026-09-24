@@ -134,7 +134,7 @@ function kit(THREE) {
   return { M, bx, cyl, bar, group, grid, meshMat, many, FIN, finisher, std, postMat, tray, dim, inch, slots };
 }
 
-const KRAFT = ['#b58a55', '#c49a64', '#a97d49', '#d1ab77', '#e4e1d6', '#ffffff'];
+const KRAFT = ['#c49a64', '#ece9df', '#b58a55', '#f2efe6', '#e4e1d6', '#ffffff'];
 const SOLANDER = ['#3b3f44', '#2d3136', '#4a4f55', '#565b61', '#6b4f3a', '#43464a'];
 const BOOKS = ['#7c2d2d', '#2d4a7c', '#2f6b4f', '#a3782b', '#5a3d6e', '#1f1f1f', '#b5563a', '#35667a', '#8d8d86', '#c7b58f'];
 
@@ -186,6 +186,15 @@ function shelving(k, parent, o) {
         while (x < x0 + w - 3) { const t = 1.6 + r() * 1.4; if (r() > 0.12) items.push({ x, y: y + 0.06, z: d - 11.5, w: t - 0.15, h: Math.min(11.5, gap - 0.5), d: 10.5, color: BOOKS[Math.floor(r() * BOOKS.length)] }); x += t; }
       }
     }
+  }
+  // record storage boxes: a lid with a lip, a handhold cut into the front end, a label below it
+  if (contents === 'boxes') {
+    const lids = [], holes = [], tags = [];
+    items.forEach(b => { if (b.h < 6) return; const out = b.z + b.d / 2 < d / 2 - 0.5 ? -1 : 1, fz = out > 0 ? b.z + b.d + 0.16 : b.z - 0.21;
+      lids.push({ x: b.x - 0.16, y: b.y + b.h - 1.5, z: b.z - 0.16, w: b.w + 0.32, h: 1.6, d: b.d + 0.32, color: b.color });
+      holes.push({ x: b.x + b.w / 2 - 2.1, y: b.y + b.h - 4.2, z: fz, w: 4.2, h: 1.3, d: 0.05, color: '#2b2118' });
+      tags.push({ x: b.x + b.w / 2 - 2.8, y: b.y + b.h * 0.3, z: fz, w: 5.6, h: 2.6, d: 0.05, color: '#fbf9f2' }); });
+    many(g, lids, M.kraft); many(g, holes, k.std(0xffffff, 0.9, 0)); many(g, tags, k.std(0xffffff, 0.8, 0));
   }
   if (contents) many(g, items, contents === 'bins' ? k.std(0xffffff, 0.35, 0) : contents === 'solander' ? k.std(0xffffff, 0.85, 0) : M.kraft);
   g.userData.W = W; g.userData.D = d; g.userData.H = h; g.userData.ys = ys; g.userData.w = w; g.userData.bays = bays;
@@ -484,7 +493,7 @@ function tireMesh(THREE, parent, list) {
   lm.instanceMatrix.needsUpdate = true; parent.add(lm);
 }
 function hdMobile(id, name, dims, start, opts = {}) {
-  def(id, name, dims, ({ THREE, tween, wake, bake, refit }) => {
+  def(id, name, dims, ({ THREE, tween, wake, bake, refit, fly, overview, isWalking }) => {
     const k = kit(THREE), { M, bx, cyl, group, many } = k, root = new THREE.Group();
     const paint = k.std(0xbfc4c7, 0.5, 0.3), panel = k.std(0x2c2f31, 0.45, 0.25), ff = k.std(0xeeefed, 0.45, 0.3);
     const up = k.std(0x1f4e8c, 0.45, 0.35), beam = k.std(0xe3671c, 0.45, 0.35);
@@ -923,7 +932,14 @@ function hdMobile(id, name, dims, start, opts = {}) {
         { label: 'Aisle', when: () => kind !== 'pallet', options: AISLE_STD.map(a => a[0]), get: () => nearest(AISLE_STD), set: n => { aisleW = AISLE_STD[n][1]; make(); refit?.(); } },
         { label: 'Forklift aisle', when: () => kind === 'pallet', options: AISLE_FORK.map(a => a[0]), get: () => nearest(AISLE_FORK), set: n => { aisleW = AISLE_FORK[n][1]; make(); refit?.(); } },
         { label: 'Two levels on a mezzanine', toggle: true, when: () => kind !== 'pallet', get: () => twoLevel, set: v => { twoLevel = v; open2 = open; make(); refit?.(); } },
-        { label: 'Close all aisles', run: () => { open = C.N; move(); } },
+        { label: 'Close all aisles', run: () => { if (isWalking?.()) overview?.(); open = C.N; move(); } },
+        { label: 'Step into the aisle', when: () => !isWalking?.(), run: () => {
+          // open an aisle if none is, then stand in it at eye level looking down its length
+          const a = ranges[open], b = ranges[open + 1], deckY = 1.85;
+          const z0 = a.userData.base + a.userData.dd + 0.8, z1 = b.userData.base + (aisleW ?? C.aisle), zc = (z0 + z1) / 2;
+          setTimeout(() => fly?.([C.L - 10, deckY + 64, zc], [C.L * 0.3, deckY + 56, zc]), openParts.size ? 800 : 50);
+        } },
+        { label: 'Back to overview', when: () => !!isWalking?.(), run: () => { overview?.(); } },
         { label: 'Electric', toggle: true, when: () => !C.electricOnly && !C.noElectric, get: () => electric, set: v => { electric = v; [...ranges, ...ranges2].forEach(g => { if (g.userData.fixed) return; g.userData.wheel.visible = !electric; g.userData.pad.visible = electric; }); arms.forEach(q => { q.g.visible = electric; }); tick(); wake(); } },
         { label: 'End panels', toggle: true, when: () => kind !== 'pallet', get: () => panelsOn ?? (kind !== 'art' && !!C.panels), set: v => { panelsOn = v; make(); } },
         { label: 'Roll-up doors', toggle: true, when: () => kind === 'bins', get: () => binDoors, set: v => { binDoors = v; make(); } },
@@ -1430,7 +1446,7 @@ def('mezzanine', 'Structural Steel Mezzanine', '20 ft x 16 ft platform, 9 ft cle
 });
 
 /* ---------------- 13. vertical lift module ---------------- */
-def('vlm', 'Vertical Lift Module (VLM)', 'About 10 ft W x 9 ft D, 15 ft H with one bay or 20 ft H serving two floors', ({ THREE, tween, wake, bake, panel, refit }) => {
+def('vlm', 'Vertical Lift Module (VLM)', 'About 10 ft W x 9 ft D, 15 ft H with one bay or 20 ft H serving two floors', ({ THREE, tween, wake, bake, panel, refit, fly, overview, isWalking }) => {
   const k = kit(THREE), { M, bx, cyl, group, many } = k, root = new THREE.Group();
   const shell = k.std(0xf2f3f1, 0.4, 0.2), trim = k.std(0xd9dcda, 0.45, 0.3), itemMat = k.std(0xffffff, 0.45, 0.05);
   const lightM = k.std(0xfff6d5, 0.3, 0, { emissive: 0xfff2c4, emissiveIntensity: 0.9 });
@@ -1650,6 +1666,8 @@ def('vlm', 'Vertical Lift Module (VLM)', 'About 10 ft W x 9 ft D, 15 ft H with o
     group: root, prompt: 'Tap any tray to call it, or the terminal to run a pick list', finishes: [{ name: 'White', swatch: '#f2f3f1', color: 0xf2f3f1 }, { name: 'Light gray', swatch: '#c9cdcf', color: 0xc9cdcf }, { name: 'Dark gray', swatch: '#4a5055', color: 0x4a5055 }], setFinish: k.finisher(shell), view: [1.25, 0.5, 0.95],
     actions: [
       { label: 'Open the operator console', run: () => { openConsole(); } },
+      { label: 'Stand at the bay', when: () => !isWalking?.(), run: () => { fly?.([W / 2 - 6, 64, D + 40], [W / 2, 40, D - 6]); } },
+      { label: 'Back to overview', when: () => !!isWalking?.(), run: () => { overview?.(); } },
       { label: 'Call a tray', run: () => { const free = trays.filter(t => !t.userData.at && !t.userData.busy); if (free.length) request(free[Math.floor(Math.random() * free.length)]); } },
       { label: 'Return all trays', run: () => { bays.forEach(b => b.tray && request(b.tray)); } },
       { label: 'Second bay on the floor above', toggle: true, get: () => nBays === 2, set: v => { if (idle()) { nBays = v ? 2 : 1; make(); refit?.(); } } },

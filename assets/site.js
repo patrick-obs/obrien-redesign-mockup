@@ -6,7 +6,7 @@ document.documentElement.classList.add('js');
   if (reduce || !('IntersectionObserver' in window)) return;
 
   /* scroll-reveal: fade-up as tiles enter the viewport */
-  var els = document.querySelectorAll('.card,.proj,a.pt,.dlc,.steps>div,.stats .grid>div,.sb-badge,.gallery img,.ccard,.team>div');
+  var els = document.querySelectorAll('.card,.dlc,.steps>div,.stats .grid>div,.sb-badge,.gallery img,.ccard,.team>div');
   els.forEach(function(el,i){ el.classList.add('rv'); el.style.transitionDelay = Math.min((i%6)*60,300)+'ms'; });
   var io = new IntersectionObserver(function(entries){
     entries.forEach(function(e){
