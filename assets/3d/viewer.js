@@ -89,7 +89,7 @@ function viewer(el) {
         <div class="v3d-wheel" hidden>Click the model first to zoom with the scroll wheel</div>
         <div class="v3d-prompt" hidden></div>
         <button type="button" class="v3d-peg" hidden title="Step inside" aria-label="Step inside at eye level"><svg viewBox="0 0 24 24"><circle cx="12" cy="4.5" r="2.6"/><path d="M8.5 22l1.2-8.2-2.2 1.2V10.5c0-1.4 1.1-2.5 2.5-2.5h4c1.4 0 2.5 1.1 2.5 2.5V15l-2.2-1.2L15.5 22"/></svg><span>Step inside</span></button>
-        <div class="v3d-walkbar" hidden><span>Drag to look &middot; WASD or arrows to walk &middot; tap a circle to go there</span><button type="button" class="v3d-wfs" aria-label="Full screen">Full screen</button><button type="button" class="v3d-exit">Step out <kbd>Esc</kbd></button></div>
+        <div class="v3d-walkbar" hidden><div class="v3d-stops" role="group" aria-label="Tour stops"></div><span>Drag to look</span><button type="button" class="v3d-wfs" aria-label="Full screen">Full screen</button><button type="button" class="v3d-exit">Step out <kbd>Esc</kbd></button></div>
         <div class="v3d-toast" hidden></div>
         <button type="button" class="v3d-optbtn" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg><span>Options</span></button>
       </div>
@@ -207,87 +207,49 @@ function viewer(el) {
     ['x', 'y', 'z'].forEach(a => { tween(camera.position, a, home.pos[a], ms, 'out'); tween(controls.target, a, home.target[a], ms, 'out'); });
     el.querySelector('.v3d-main').classList.remove('v3d-walk');
   };
-  // step inside: stand at eye level anywhere around the model and walk it like a sim. The model can say where to start
-  // (walk(): eye, look, floor, spots); walls, shelving and carriages block you, and you can always walk all the way around
-  const wray = new THREE.Raycaster();
-  const solid = h => { let q = h.object; while (q) { if (!q.visible) return false; q = q.parent; } const m = h.object.material; return !h.object.userData.noShadow && !(m && m.transparent && m.opacity < 0.5 && !m.isMeshPhysicalMaterial); };
-  // only parts near the walker are tested, so walking stays smooth in big systems
-  let colliders = [];
-  const sph = new THREE.Sphere();
-  const blocked = (from, dir, len) => {
-    if (len < 1e-4) return false;
-    const near = colliders.filter(o => { const bs = o.isInstancedMesh ? (o.boundingSphere || (o.computeBoundingSphere(), o.boundingSphere)) : (o.geometry.boundingSphere || (o.geometry.computeBoundingSphere(), o.geometry.boundingSphere)); sph.copy(bs).applyMatrix4(o.matrixWorld); const dy = Math.max(0, Math.abs(sph.center.y - (walkB.floor + 33)) - 30); return dy < sph.radius && Math.hypot(sph.center.x - from.x, sph.center.z - from.z) < sph.radius + len + 12; });
-    if (!near.length) return false;
-    for (const hgt of [4, 18, 44, 62]) { wray.set(new THREE.Vector3(from.x, walkB.floor + hgt, from.z), dir); wray.far = len + 14; if (wray.intersectObjects(near, false).some(solid)) return true; }
-    return false;
+  // step inside: a guided tour at eye level. The model names its own stops (walk().stops: an aisle's mouth, middle and far
+  // end), every model gets stops all the way around it, and tapping one glides you there; drag to look, Esc to step out
+  let tourStops = [], tourAt = 0;
+  const tourBar = el.querySelector('.v3d-stops');
+  const stopsNow = () => {
+    const m = current.group.matrixWorld, V = a => new THREE.Vector3(...a).applyMatrix4(m), w = current.walk?.() || {};
+    const box = new THREE.Box3().setFromObject(current.group), c = box.getCenter(new THREE.Vector3()), floor = w.floor != null ? V([0, w.floor, 0]).y : box.min.y;
+    const eyeY = floor + 64, look = new THREE.Vector3(c.x, floor + 46, c.z), hx = (box.max.x - box.min.x) / 2 + 60, hz = (box.max.z - box.min.z) / 2 + 60;
+    const own = (w.stops || (w.eye ? [{ label: 'Step in', eye: w.eye, look: w.look }] : [])).map(q => ({ label: q.label, eye: V(q.eye), look: V(q.look) }));
+    const around = [['Front', 0, 1], ['Right side', 1, 0], ['Behind', 0, -1], ['Left side', -1, 0]].map(([label, sx, sz]) => ({ label, eye: new THREE.Vector3(c.x + sx * hx, eyeY, c.z + sz * hz), look }));
+    return { stops: [...own, ...around], floor, box };
+  };
+  const goStop = (i) => {
+    if (!current) return; const { stops } = stopsNow(); if (!stops.length) return;
+    tourAt = (i + stops.length) % stops.length; const q = stops[tourAt];
+    fly(q.eye, q.look, walking ? 900 : 800);
+    tourBar.querySelectorAll('button').forEach((b2, n) => b2.setAttribute('aria-pressed', String(n === tourAt)));
   };
   const enterWalk = () => {
     if (!current) return;
     stopDemo(); closePanel();
-    const m = current.group.matrixWorld, V = a => new THREE.Vector3(...a).applyMatrix4(m), w = current.walk?.() || {};
-    const box = new THREE.Box3().setFromObject(current.group), c = box.getCenter(new THREE.Vector3()), floor = w.floor != null ? V([0, w.floor, 0]).y : box.min.y;
-    walkB = { x: [box.min.x - 96, box.max.x + 96], z: [box.min.z - 96, box.max.z + 96], floor };
-    colliders = []; current.group.traverse(o => { if (o.isMesh && !o.userData.noShadow) colliders.push(o); });
-    const eye = w.eye ? V(w.eye) : new THREE.Vector3(c.x, floor + 64, box.max.z + 54), look = w.look ? V(w.look) : new THREE.Vector3(c.x, floor + 50, c.z);
-    fly(eye, look);
-    // floor circles: the model's own spots (an aisle), plus a loop all the way around the system
-    rings = new THREE.Group(); const ringM = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, depthWrite: false }), dotM = new THREE.MeshBasicMaterial({ color: 0x0f7377, transparent: true, opacity: 0.35, depthWrite: false });
-    const spots = (w.spots || []).map(([x, z]) => V([x, 0, z])), o = 40;
-    const x0 = box.min.x - o, x1 = box.max.x + o, z0 = box.min.z - o, z1 = box.max.z + o;
-    for (const [ax, az, bx2, bz] of [[x0, z1, x1, z1], [x1, z1, x1, z0], [x1, z0, x0, z0], [x0, z0, x0, z1]]) { const len = Math.hypot(bx2 - ax, bz - az), n = Math.max(1, Math.round(len / 54)); for (let i = 0; i < n; i++) spots.push(new THREE.Vector3(ax + ((bx2 - ax) * i) / n, 0, az + ((bz - az) * i) / n)); }
-    for (const p of spots) {
-      const g = new THREE.Group(), r1 = new THREE.Mesh(new THREE.RingGeometry(6, 7.4, 40), ringM), r2 = new THREE.Mesh(new THREE.CircleGeometry(6, 40), dotM);
-      [r1, r2].forEach(q => { q.rotation.x = -Math.PI / 2; g.add(q); }); g.position.set(p.x, floor + 0.3, p.z); g.userData.spot = [p.x, p.z]; rings.add(g);
-    }
-    scene.add(rings);
-    // a real floor to stand on, with a faint grid so walking reads as motion
-    const fw = walkB.x[1] - walkB.x[0] + 200, fd = walkB.z[1] - walkB.z[0] + 200;
+    const { stops, floor, box } = stopsNow(); tourStops = stops;
+    walkB = { floor };
+    tourBar.replaceChildren(...stops.map((q, n) => { const b2 = document.createElement('button'); b2.type = 'button'; b2.textContent = q.label; b2.addEventListener('click', () => goStop(n)); return b2; }));
+    // a real floor to stand on, with a faint grid
+    const fw = box.max.x - box.min.x + 400, fd = box.max.z - box.min.z + 400;
     const fl = new THREE.Mesh(new THREE.PlaneGeometry(fw, fd), new THREE.MeshLambertMaterial({ color: 0xd3d7d6 })); fl.rotation.x = -Math.PI / 2;
     const grid = new THREE.GridHelper(Math.max(fw, fd), Math.round(Math.max(fw, fd) / 24), 0xbfc5c4, 0xc7cccb); grid.position.y = 0.02;
-    walkFloor = new THREE.Group(); walkFloor.add(fl, grid); walkFloor.position.set((walkB.x[0] + walkB.x[1]) / 2, floor - 0.08, (walkB.z[0] + walkB.z[1]) / 2); scene.add(walkFloor);
+    walkFloor = new THREE.Group(); walkFloor.add(fl, grid); walkFloor.position.set((box.min.x + box.max.x) / 2, floor - 0.08, (box.min.z + box.max.z) / 2); scene.add(walkFloor);
+    goStop(0);
     peg.hidden = true; walkbar.hidden = false; walkbar.classList.remove('quiet'); clearTimeout(walkbar._t); walkbar._t = setTimeout(() => walkbar.classList.add('quiet'), 4500);
     el.querySelector('.v3d-prompt')?.classList.add('gone'); el.focus({ preventScroll: true }); modelWake();
   };
   const toLocal = () => camera.position.clone().applyMatrix4(new THREE.Matrix4().copy(current.group.matrixWorld).invert());
-  // move the eye (and the look point with it) by dx, dz in world inches: stay in the area, slide along anything in the way
-  const stepBy = (dx, dz) => {
-    if (!walkB) return;
-    const p = camera.position, clampX = v => Math.max(walkB.x[0], Math.min(walkB.x[1], v)), clampZ = v => Math.max(walkB.z[0], Math.min(walkB.z[1], v));
-    let mx = clampX(p.x + dx) - p.x, mz = clampZ(p.z + dz) - p.z;
-    const tryMove = (ax, az) => { const len = Math.hypot(ax, az); return len > 1e-4 && !blocked(p, new THREE.Vector3(ax / len, 0, az / len), len); };
-    if (!tryMove(mx, mz)) { if (tryMove(mx, 0)) mz = 0; else if (tryMove(0, mz)) mx = 0; else return false; }
-    camera.position.x += mx; camera.position.z += mz; applyLook();
-    return true;
-  };
-  const hopTo = (x, z) => {
-    const o = { t: 0 }, sx = camera.position.x, sz = camera.position.z; let lx = sx, lz = sz; tween(o, 't', 1, Math.min(1600, 400 + Math.hypot(x - sx, z - sz) * 6));
-    const step = () => { const nx = sx + (x - sx) * ease(o.t), nz = sz + (z - sz) * ease(o.t); stepBy(nx - lx, nz - lz); lx = camera.position.x; lz = camera.position.z; wake(); if (o.t < 1 && walking) requestAnimationFrame(step); };
-    step();
-  };
-  let lastT = 0;
-  const walkKeys = (now) => {
-    if (!walking || flying || !keys.size) { lastT = 0; return false; }
-    const dt = lastT ? Math.min(0.05, (now - lastT) / 1000) : 0.016; lastT = now;
-    const f = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
-    const sp = (keys.has('shift') ? 110 : 60) * dt, on = k => keys.has(k);
-    let dx = 0, dz = 0;
-    if (on('w') || on('arrowup')) { dx += f.x * sp; dz += f.z * sp; } if (on('s') || on('arrowdown')) { dx -= f.x * sp; dz -= f.z * sp; }
-    if (on('a')) { dx += f.z * sp; dz -= f.x * sp; } if (on('d')) { dx -= f.z * sp; dz += f.x * sp; }
-    const turn = (on('arrowleft') ? 1 : 0) - (on('arrowright') ? 1 : 0);
-    if (turn) { yaw += turn * 1.7 * dt; applyLook(); }
-    if (dx || dz) stepBy(dx, dz);
-    return true;
-  };
+  const walkKeys = () => false;
   el.v3dDebug = () => ({ camera, controls, group: current?.group, THREE, wake: modelWake });
-  el.tabIndex = -1; el.v3dState = () => ({ cam: camera.position.toArray().map(Math.round), walking, keys: [...keys], walkB, active: document.activeElement?.className });
-  const WALK_KEYS = ['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'shift'];
+  el.tabIndex = -1; el.v3dState = () => ({ cam: camera.position.toArray().map(Math.round), walking, stop: tourAt, active: document.activeElement?.className });
   addEventListener('keydown', e => {
     if (!walking || !(el.contains(document.activeElement) || el.matches(':hover') || document.fullscreenElement)) return;
     const k = e.key.toLowerCase();
     if (k === 'escape') { overview(); syncActs(); showActs(); e.preventDefault(); return; }
-    if (WALK_KEYS.includes(k)) { keys.add(k); e.preventDefault(); wake(); }
+    if (k === 'arrowright' || k === 'arrowleft') { goStop(tourAt + (k === 'arrowright' ? 1 : -1)); e.preventDefault(); }
   });
-  addEventListener('keyup', e => keys.delete(e.key.toLowerCase())); addEventListener('blur', () => keys.clear());
   peg.addEventListener('click', enterWalk);
   el.querySelector('.v3d-cust').addEventListener('click', () => setPanel(!panelOpen));
   let lookDrag = null;
@@ -476,7 +438,6 @@ function viewer(el) {
     const r = canvas.getBoundingClientRect();
     ptr.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
     ray.setFromCamera(ptr, camera);
-    if (rings) { const rh = ray.intersectObject(rings, true)[0]; if (rh) { let g = rh.object; while (g && !g.userData.spot) g = g.parent; if (g) { hopTo(...g.userData.spot); return; } } }
     // first solid surface wins, except that a part you can pick (a box, bin or drawer) just behind a thin edge takes the click
     const ok = hit => { const m = hit.object.material; if (!hit.object.visible) return false; let q = hit.object.parent; while (q) { if (!q.visible) return false; q = q.parent; } return !(m && (m.transparent && m.opacity < 0.6 || m.alphaTest > 0 && !hit.object.userData.onClick && !hit.object.parent?.userData.onClick)); };
     const hits = ray.intersectObject(current.group, true).filter(ok);

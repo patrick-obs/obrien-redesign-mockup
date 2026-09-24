@@ -1475,8 +1475,14 @@ function hdMobile(id, name, dims, start, opts = {}) {
       walk: () => {
         const a = ranges[open], b = ranges[open + 1]; if (!a || !b) return null;
         const z0 = a.userData.base + a.userData.dd + 0.8, z1 = b.userData.base + (aisleW ?? C.aisle), zc = (z0 + z1) / 2, eye = 1.85 + 64;
-        const spots = []; for (let x = 20; x < C.L + 30; x += 32) spots.push([x, zc]);
-        return { eye: [C.L + 34, eye, zc], look: [C.L * 0.3, eye - 8, zc], floor: 1.9, spots };
+        // tour stops in the open aisle: its mouth, the middle facing each side, and the far end looking back
+        const mid = C.L * 0.5, sideZ = (z1 - z0) / 2 + 12;
+        return { floor: 1.9, stops: [
+          { label: 'Aisle entrance', eye: [C.L + 30, eye, zc], look: [C.L * 0.3, eye - 8, zc] },
+          { label: 'Mid-aisle, left', eye: [mid + 20, eye, zc], look: [mid - 30, eye - 5, zc - sideZ] },
+          { label: 'Mid-aisle, right', eye: [mid + 20, eye, zc], look: [mid - 30, eye - 5, zc + sideZ] },
+          { label: 'Far end', eye: [14, eye, zc], look: [C.L, eye - 8, zc] },
+        ] };
       },
       presets: lite ? [] : [
         ['Records room', { kind: 'shelving', electric: false, twoLevel: false }],

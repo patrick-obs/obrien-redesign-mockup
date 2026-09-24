@@ -454,6 +454,9 @@ const CSS3D = `.v3d-ov{position:absolute;right:12px;top:12px;z-index:6;width:min
 .v3d-walkbar .v3d-wfs{background:rgba(255,255,255,.16);color:#fff}.v3d-main:fullscreen .v3d-wfs{background:rgba(255,255,255,.28)}
 .v3d-optbtn{align-items:center;gap:6px}.v3d-optbtn svg{width:16px;height:16px;fill:#fff;stroke:#0b1b1c;stroke-width:2;stroke-linecap:round}
 .v3d-main:fullscreen:not(.v3d-walk) .v3d-optbtn{display:flex}
+.v3d-stops{display:flex;gap:6px;flex-wrap:wrap}.v3d-stops button{border:0;border-radius:999px;padding:6px 12px;background:rgba(255,255,255,.16);color:#fff;font-weight:700;font-size:.82rem;cursor:pointer;white-space:nowrap}.v3d-stops button:hover{background:rgba(255,255,255,.28)}.v3d-stops button[aria-pressed=true]{background:#fff;color:#0b1b1c}
+.v3d-walkbar{flex-wrap:wrap}.v3d-walkbar>span{flex:1;min-width:80px;text-align:right;opacity:.7}
+@media (max-width:640px){.v3d-stops{overflow-x:auto;flex-wrap:nowrap;max-width:100%}.v3d-walkbar>span{display:none}}
 .v3d-toast{position:absolute;left:50%;top:56px;transform:translateX(-50%);max-width:calc(100% - 24px);padding:9px 14px;border-radius:10px;background:#1b1c1e;color:#fff;font-size:.85rem;z-index:5;text-align:center}
 @keyframes v3dPing{0%{box-shadow:0 0 0 0 rgba(255,255,255,.8)}100%{box-shadow:0 0 0 10px rgba(255,255,255,0)}}
 .v3d-bar .v3d-fin{order:1}
