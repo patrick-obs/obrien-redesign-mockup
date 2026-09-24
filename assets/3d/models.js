@@ -196,13 +196,19 @@ function wireModel(id, name, dims0, start, layouts) {
     const cols = ['#c49a64', '#ece8de', '#e9eef2', '#2f6fb3', '#b58a55', '#f3f1ea'];
     let layout = start, casters = false, dims = false, unit, movers = [], X1 = 0;
     const SLOTS = 4, mw = 24, md = 48, mp = mw + 1, gaps = { f: 0 };
+    const wheelM = k.std(0x8f969a, 0.4, 0.3);
     const unitAt = (p, x, z, rot, wheels, seed, uw = w, ud = d, tall = 0) => {
       const g = group(p, x, 0, z); g.rotation.y = rot;
       const r = rng(seed), wires = [], items = [], lf = wheels ? lift : 1.2, ph = h + tall;
       for (const [px, pz] of [[0, 0], [uw, 0], [0, ud], [uw, ud]]) {
         cyl(g, 0.5, ph, M.chrome, px, lf + ph / 2, pz, 14);
         // swivel casters: the wheel rolls along the run, so it faces front
-        if (wheels) { cyl(g, 2.3, 1.5, k.std(0x8f969a, 0.4, 0.3), px, 2.4, pz, 18, 'z'); bx(g, 1.8, 1.6, 2, M.chrome, px - 0.9, 3.9, pz - 1); cyl(g, 1.6, 0.5, navy, px, 5.6, pz, 18); }
+        if (wheels) {
+          const wg = group(g, px, 2.4, pz); wg.userData.dyn = true;
+          cyl(wg, 2.3, 1.5, wheelM, 0, 0, 0, 18, 'z'); cyl(wg, 1, 1.6, M.chrome, 0, 0, 0, 12, 'z'); bx(wg, 3.8, 0.5, 1.62, M.dark, -1.9, -0.25, -0.81);
+          (g.userData.wheels = g.userData.wheels || []).push(wg);
+          bx(g, 1.8, 1.6, 2, M.chrome, px - 0.9, 3.9, pz - 1); cyl(g, 1.6, 0.5, navy, px, 5.6, pz, 18);
+        }
         else cyl(g, 0.9, lf, M.chrome, px, lf / 2, pz, 12);
       }
       if (tall) { for (const zz of [0, ud]) cyl(g, 0.4, uw, M.chrome, uw / 2, lf + ph - 1, zz, 8, 'x'); for (const xx of [0, uw]) cyl(g, 0.4, ud, M.chrome, xx, lf + ph - 1, ud / 2, 8, 'z'); }
@@ -238,17 +244,19 @@ function wireModel(id, name, dims0, start, layouts) {
       } else {
         // units turned short end out roll sideways under two track runs, one over their front ends and one over the back;
         // the tracks span between tall fixed end units
-        const tall = 14, ty = lift + h + 3, trackM = k.std(0xc9ced2, 0.3, 0.8), runs = [3, md - 3];
+        const tall = 14, ty = lift + h + 3, trackM = k.std(0xc9ced2, 0.3, 0.8), runs = [0, md];
         X1 = mw + 1; const X2 = X1 + SLOTS * mp;
         for (const ex of [0, X2]) { const u = unitAt(unit, ex, 0, 0, false, seed++, mw, md, tall); first = first || u; }
         for (let q = 0; q < SLOTS; q++) {
           if (q === gaps.f) continue;
           const u = unitAt(unit, X1 + q * mp, 0, 0, true, seed++, mw, md); u.userData.slot = q; u.userData.row = 'f';
-          for (const zz of runs) { bx(u, 1, ty - (lift + h), 1, M.chrome, mw / 2 - 0.5, lift + h, zz - 0.5); cyl(u, 1.8, 0.9, navy, mw / 2, ty - 0.2, zz, 20); }
+          // a guide roller on top of every post, riding in the track above it
+          for (const zz of runs) for (const xx of [0, mw]) { cyl(u, 0.5, ty - 0.8 - (lift + h), M.chrome, xx, (lift + h + ty - 0.8) / 2, zz, 10); cyl(u, 1.6, 1, navy, xx, ty - 0.5, zz, 20); }
           u.userData.onClick = () => slide(u);
           movers.push(u);
         }
-        for (const zz of runs) { bx(unit, X2 - X1 + 1, 3, 2.6, trackM, X1 - 0.5, ty, zz - 1.3); for (const x of [mw, X2]) bx(unit, 1.2, 1.2, 4.2, M.chrome, x - 0.6, ty + 0.9, zz < md / 2 ? 0 : zz - 1.2); }
+        // tracks run along the post lines and clamp to the tall end-unit posts
+        for (const zz of runs) { bx(unit, X2 - mw, 3, 2.6, trackM, mw, ty, zz - 1.3); for (const x of [mw, X2]) bx(unit, 2.6, 4, 3, M.chrome, x - 1.3, ty - 0.5, zz - 1.5); }
       }
       if (dims && first) {
         const dg = group(unit), { ys, lf, uw, ud, ph } = first.userData; dg.userData.dyn = true; const x0 = first.position.x, z0 = first.position.z;
@@ -260,7 +268,14 @@ function wireModel(id, name, dims0, start, layouts) {
       unit.traverse(q => { if (q.isMesh && !q.userData.noShadow) { q.castShadow = q.receiveShadow = true; } });
       bake?.(unit); wake();
     };
-    const slide = (u) => { const r = u.userData.row, to = gaps[r]; if (Math.abs(u.userData.slot - to) !== 1) return; gaps[r] = u.userData.slot; u.userData.slot = to; tween(u.position, 'x', X1 + to * mp, 900); };
+    const slide = (u) => {
+      const r = u.userData.row, to = gaps[r]; if (Math.abs(u.userData.slot - to) !== 1) return;
+      gaps[r] = u.userData.slot; u.userData.slot = to;
+      const x = X1 + to * mp, dx = x - u.position.x;
+      tween(u.position, 'x', x, 900);
+      // casters roll: turn by distance over radius
+      (u.userData.wheels || []).forEach(wg => tween(wg.rotation, 'z', wg.rotation.z - dx / 2.3, 900));
+    };
     const slideRow = (r) => { const u = movers.find(m => m.userData.row === r && Math.abs(m.userData.slot - gaps[r]) === 1); if (u) slide(u); };
     make();
     return {
