@@ -364,15 +364,15 @@ function photos(file, html) {
 const VIEW3D = {
   'four-post-shelving': 'four-post', 'bin-storage': 'bin-shelving', 'wire-shelving': 'wire-shelving,wire-track', 'cantilever-shelving': 'library,hd-mobile-library',
   'static-shelving': 'four-post,bin-shelving,wire-shelving,library,tire-rack', 'high-density-mobile-storage': 'hd-mobile,hd-mobile-mezz,wire-track', 'lockers': 'lockers,athletic,evidence-lockers,weapons', 'evidence-lockers': 'evidence-lockers',
-  'cabinets': 'flat-files,fireproof,rotary,museum-cabinet', 'rotary-cabinets': 'rotary', 'museum-cabinets': 'museum-cabinet,hd-mobile-museum,four-post-solander,textile-rack,hd-mobile-textile', 'art-screens': 'art-screens,hd-mobile-art,wall-art',
+  'cabinets': 'flat-files,fireproof,rotary,museum-cabinet', 'rotary-cabinets': 'rotary', 'museum-cabinets': 'museum-cabinet,hd-mobile-museum,four-post-solander,textile-rack,hd-mobile-textile', 'art-screens': 'art-screens,hd-mobile-art,painting-bins,wall-art',
   'pallet-rack': 'pallet-rack', 'mezzanines': 'mezzanine,hd-mobile-mezz', 'lifts-carousels': 'vlm', 'modular-casework': 'casework,ss-table', 'wire-partitions': 'wire-cage',
-  'weapons-storage': 'weapons,hd-mobile', 'athletic-storage': 'athletic,lockers', 'athletics': 'athletic,lockers,hd-mobile', 'mail-sorters': 'mail-sorter', 'fireproof-cabinets': 'fireproof',
-  'military': 'weapons,hd-mobile,pallet-rack', 'museums': 'four-post-solander,art-screens,hd-mobile-art,museum-cabinet,hd-mobile-museum,textile-rack,hd-mobile-textile', 'libraries': 'library,hd-mobile-library', 'material-handling-warehouse': 'hd-mobile-open,hd-mobile-mezz,pallet-rack,mezzanine,vlm,workstation,wire-cage',
+  'weapons-storage': 'weapons,hd-mobile', 'athletic-storage': 'athletic,lockers', 'athletics': 'athletic,lockers,hd-mobile', 'mail-sorters': 'mail-sorter', 'fireproof-cabinets': 'fireproof', 'wardrobe-cabinets': 'hd-mobile-wardrobe',
+  'military': 'weapons,hd-mobile,pallet-rack', 'museums': 'four-post-solander,painting-bins,art-screens,hd-mobile-art,museum-cabinet,hd-mobile-museum,textile-rack,hd-mobile-textile', 'libraries': 'library,hd-mobile-library', 'material-handling-warehouse': 'hd-mobile-open,hd-mobile-mezz,pallet-rack,mezzanine,vlm,workstation,wire-cage',
   'vertical-farming': 'hd-mobile-grow,ss-table,wire-track', 'pharmaceutical-healthcare': 'casework,ss-table,wire-track,hd-mobile', 'education': 'lockers,athletic,library,hd-mobile,mail-sorter', 'government-public-safety': 'evidence-lockers,weapons,hd-mobile,wire-cage',
   'corporate-legal': 'hd-mobile,rotary,fireproof,hd-mobile-flat,mail-sorter', 'automotive': 'tire-rack,hd-mobile-tire,bin-shelving,workstation,pallet-rack,vlm', 'retail': 'hd-mobile,four-post,bin-shelving,wire-track',
   'general-contractors': 'install,hd-mobile,mezzanine', 'design-specify': 'install,hd-mobile',
 };
-const ALL3D = 'hd-mobile,wire-track,vlm,rotary,four-post,bin-shelving,wire-shelving,library,tire-rack,lockers,athletic,evidence-lockers,weapons,flat-files,fireproof,museum-cabinet,art-screens,wall-art,textile-rack,casework,workstation,ss-table,mail-sorter,pallet-rack,mezzanine,wire-cage,install';
+const ALL3D = 'hd-mobile,wire-track,vlm,rotary,four-post,bin-shelving,wire-shelving,library,tire-rack,lockers,athletic,evidence-lockers,weapons,flat-files,fireproof,museum-cabinet,art-screens,wall-art,textile-rack,painting-bins,casework,workstation,ss-table,mail-sorter,pallet-rack,mezzanine,wire-cage,install';
 const viewer3d = (slug, name) => VIEW3D[slug] ? `
 <section class="v3d-sec">
   <div class="wrap">
@@ -383,7 +383,7 @@ const viewer3d = (slug, name) => VIEW3D[slug] ? `
 const home3d = () => `
 <section class="v3d-sec v3d-home">
   <div class="wrap">
-    <div class="v3d-head"><div><span class="eyebrow">3D showroom</span><h2>Spin it, open it, see how it works</h2><p>Drag to look at every side. Tap a carriage to open an aisle, pull a drawer, swing a door.</p></div><a class="v3d-all" href="showroom.html">All 27 models &rarr;</a></div>
+    <div class="v3d-head"><div><span class="eyebrow">3D showroom</span><h2>Spin it, open it, see how it works</h2><p>Drag to look at every side. Tap a carriage to open an aisle, pull a drawer, swing a door.</p></div><a class="v3d-all" href="showroom.html">All 28 models &rarr;</a></div>
     <div class="v3d" data-models="hd-mobile,four-post,lockers,flat-files,vlm"></div>
   </div>
 </section>`;
@@ -394,7 +394,7 @@ function showroomPage(shell, heroImg) {
   <div class="wrap">
     <span class="eyebrow">3D showroom</span>
     <h1>Walk around the products</h1>
-    <p>Twenty-seven of the systems we plan and install, as interactive models. Drag to see every side, zoom in on the details, and try how they move.</p>
+    <p>Twenty-eight of the systems we plan and install, as interactive models. Drag to see every side, zoom in on the details, and try how they move.</p>
   </div>
 </div>
 <section class="v3d-sec v3d-room"><div class="wrap">

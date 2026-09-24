@@ -44,7 +44,7 @@ const GROUPS = [
   { name: 'Shelving & racks', ids: ['four-post', 'bin-shelving', 'wire-shelving', 'library', 'tire-rack'] },
   { name: 'Lockers & security', ids: ['lockers', 'athletic', 'evidence-lockers', 'weapons'] },
   { name: 'Cabinets', ids: ['flat-files', 'fireproof', 'museum-cabinet'] },
-  { name: 'Museum & art', ids: ['art-screens', 'wall-art', 'textile-rack'] },
+  { name: 'Museum & art', ids: ['art-screens', 'wall-art', 'textile-rack', 'painting-bins'] },
   { name: 'Workspace', ids: ['casework', 'workstation', 'ss-table', 'mail-sorter'] },
   { name: 'Industrial', ids: ['pallet-rack', 'mezzanine', 'wire-cage'] },
   { name: 'For architects & GCs', ids: ['install'] },
@@ -251,7 +251,7 @@ function viewer(el) {
     ray.setFromCamera(ptr, camera);
     for (const hit of ray.intersectObject(current.group, true)) {
       let o = hit.object; while (o && !o.userData.onClick) o = o.parent;
-      if (o) { o.userData.onClick(); modelWake(); break; }
+      if (o) { o.userData.onClick(hit); modelWake(); break; }
     }
   });
   let hoverQ = null;

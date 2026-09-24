@@ -408,8 +408,9 @@ def('library', 'Library Cantilever Shelving', 'Double-faced cantilever shelving,
 const HD_KINDS = {
   shelving: { label: 'Storage: shelving', L: 108, d: 15, h: 84, N: 5, aisle: 36, cH: 5, panels: true },
   open: { label: 'Storage: open shelving', L: 144, d: 24, h: 96, N: 4, aisle: 42, cH: 6 },
-  flat: { label: 'Storage: flat files', L: 100, d: 38, h: 50, N: 3, aisle: 40, cH: 6, panels: true },
-  museum: { label: 'Storage: museum cabinets', L: 98, d: 31, h: 76, N: 3, aisle: 40, cH: 6, panels: true },
+  flat: { label: 'Storage: flat files', L: 100, d: 38, h: 50, N: 3, aisle: 50, cH: 6, panels: true },
+  wardrobe: { label: 'Storage: wardrobe cabinets', L: 108, d: 24, h: 78, N: 3, aisle: 48, cH: 6, panels: true },
+  museum: { label: 'Storage: museum cabinets', L: 147, d: 31, h: 76, N: 3, aisle: 50, cH: 6, panels: true },
   tire: { label: 'Storage: tire racks', L: 144, d: 28, h: 94, N: 3, aisle: 40, cH: 6 },
   grow: { label: 'Storage: grow racks', L: 144, d: 26, h: 96, N: 3, aisle: 36, cH: 6 },
   library: { label: 'Storage: library shelving', L: 108, d: 11.5, h: 84, N: 4, aisle: 36, cH: 5, panels: true },
@@ -417,7 +418,7 @@ const HD_KINDS = {
   art: { label: 'Storage: art screens', L: 120, d: 5, h: 96, N: 6, aisle: 40, cH: 4, dm: 12, df: 12 },
   pallet: { label: 'Storage: pallet rack', L: 198, d: 42, h: 144, N: 3, aisle: 120, cH: 8, electricOnly: true },
 };
-const HD_ORDER = ['shelving', 'open', 'library', 'flat', 'museum', 'textile', 'art', 'tire', 'grow', 'pallet'];
+const HD_ORDER = ['shelving', 'open', 'library', 'flat', 'museum', 'wardrobe', 'textile', 'art', 'tire', 'grow', 'pallet'];
 // tires: a lathed cross-section (sidewalls, flat tread, bead) with a block tread texture; labels on the tread
 let TIRE = null;
 function tireParts(THREE) {
@@ -515,28 +516,63 @@ function hdMobile(id, name, dims, start, opts = {}) {
       }
     };
 
+    // flat file faces are one clickable piece; the drawer you click is built on the spot and slides out
+    const ffIn = k.std(0xd7dada, 0.5, 0.3), ffGap = k.std(0x2a2d30, 0.9, 0), ffPaper = k.std(0xf6f4ee, 0.85, 0);
     const flatFace = (p, y0, z0, dir) => {
+      const fg = group(p), dh = C.h / 15, fz = dir > 0 ? z0 + C.d : z0 - 0.8, open = {};
       for (let u = 0; u < 2; u++) {
-        const x = u * 50; bx(p, 50, C.h, C.d, ff, x, y0, z0);
-        const fz = dir > 0 ? z0 + C.d : z0 - 0.8;
-        for (let i = 0; i < 15; i++) { const y = y0 + 0.4 + i * (C.h / 15); bx(p, 48.6, C.h / 15 - 0.35, 0.8, ff, x + 0.7, y, fz); bx(p, 20, 0.45, 0.8, M.chrome, x + 15, y + C.h / 15 - 1.4, dir > 0 ? fz + 0.8 : fz - 0.8); }
+        const x = u * 50; bx(fg, 50, C.h, C.d, ff, x, y0, z0);
+        for (let i = 0; i < 15; i++) { const y = y0 + 0.4 + i * dh; bx(fg, 48.6, dh - 0.35, 0.8, ff, x + 0.7, y, fz); bx(fg, 20, 0.45, 0.8, M.chrome, x + 15, y + dh - 1.4, dir > 0 ? fz + 0.8 : fz - 0.8); }
       }
+      fg.userData.onClick = (hit) => {
+        if (!hit) return;
+        const q = fg.worldToLocal(hit.point.clone()), u = Math.max(0, Math.min(1, Math.floor(q.x / 50))), i = Math.max(0, Math.min(14, Math.floor((q.y - y0 - 0.4) / dh))), key = u + ':' + i;
+        const out = C.d * 0.72 * dir, x = u * 50, y = y0 + 0.4 + i * dh;
+        if (open[key]) { const d0 = open[key]; delete open[key]; tween(d0.position, 'z', 0, 650, 'out').then(() => { fg.remove(d0.userData.gap); p.remove(d0); wake(); }); return; }
+        const dr = group(p); dr.userData.dyn = true;
+        const bz = dir > 0 ? z0 + 1 : z0 + 1.2;
+        bx(dr, 48.6, dh - 0.35, 0.8, ff, x + 0.7, y, fz); bx(dr, 20, 0.45, 0.8, M.chrome, x + 15, y + dh - 1.4, dir > 0 ? fz + 0.8 : fz - 0.8);
+        k.tray(dr, 47, dh - 0.8, C.d - 2.4, ffIn, x + 1.5, y + 0.1, bz, 0.12);
+        for (let s2 = 0; s2 < 3; s2++) bx(dr, 34 - s2 * 3, 0.05, 22 - s2 * 2, ffPaper, x + 6 + s2, y + 0.25 + s2 * 0.08, bz + 5 + s2);
+        const gap = bx(fg, 48.6, dh - 0.5, 0.05, ffGap, x + 0.7, y + 0.08, dir > 0 ? fz + 0.02 : fz + 0.73); fg.remove(gap); dr.userData.gap = gap;
+        fg.add(gap); open[key] = dr; tween(dr.position, 'z', out, 700, 'out'); wake();
+      };
     };
     const mWhite = k.std(0xf1f2f0, 0.38, 0.2), mPlate = k.std(0xd7dbde, 0.25, 0.85), mObj = [0xb56f4a, 0x6b8f71, 0xc9a227, 0x3d5a7a].map(c => k.std(c, 0.6, 0.05));
     // museum cabinet pair: white case, glass double doors with latch plates, drawers low and shelves high behind the glass
+    // one cabinet case with a pair of swinging doors; each pair opens together when you click it
+    const doorPair = (p, x, cw, y0, H, fz, dir, glass, frameM) => {
+      const doors = [];
+      for (const side of [0, 1]) {
+        const pv = group(p, side ? x + cw : x, y0, fz), dw = cw / 2 - 0.1, sx = side ? -dw : 0; pv.userData.dyn = true;
+        if (glass) { bx(pv, dw, 4, 0.9, frameM, sx, H - 4, 0); bx(pv, dw, 4, 0.9, frameM, sx, 0, 0); bx(pv, 4, H, 0.9, frameM, sx, 0, 0); bx(pv, 4, H, 0.9, frameM, sx + dw - 4, 0, 0); bx(pv, dw - 8, H - 8, 0.2, M.glass, sx + 4, 4, 0.35); }
+        else { bx(pv, dw, H - 0.4, 0.8, frameM, sx, 0.2, 0); for (let v = 0; v < 5; v++) bx(pv, dw - 6, 0.3, 0.1, M.dark, sx + 3, H - 5 - v * 0.9, dir > 0 ? 0.82 : -0.02); }
+        bx(pv, 1, 7, 0.8, M.chrome, side ? -dw + 1.2 : dw - 2.2, H / 2 - 3.5, dir > 0 ? 0.9 : -0.8);
+        doors.push(pv);
+      }
+      const toggle = () => { const o = !doors[0].userData.open; doors.forEach((d, n) => { d.userData.open = o; tween(d.rotation, 'y', o ? (n ? 1 : -1) * dir * 1.9 : 0, 800, 'out'); }); };
+      doors.forEach(d => { d.userData.onClick = toggle; });
+    };
     const museumFace = (p, y0, z0, dir) => {
       const D = C.d, H = C.h, fz = dir > 0 ? z0 + D : z0 - 0.9, back = dir > 0 ? z0 : z0 + D - 1;
-      for (let u = 0; u < 2; u++) {
+      for (let u = 0; u < 3; u++) {
         const x = u * 49;
         bx(p, 48, 1, D, mWhite, x, y0, z0); bx(p, 48, 1, D, mWhite, x, y0 + H - 1, z0); bx(p, 1, H, D, mWhite, x, y0, z0); bx(p, 1, H, D, mWhite, x + 47, y0, z0); bx(p, 48, H, 1, mWhite, x, y0, back);
         for (let i = 0; i < 5; i++) bx(p, 44, 5.4, 0.5, mWhite, x + 2, y0 + 2 + i * 6.2, dir > 0 ? z0 + D - 3 : z0 + 2.5);
         for (const sy of [42, 56]) { bx(p, 46, 0.6, D - 4, mWhite, x + 1, y0 + sy, z0 + 2); bx(p, 8, 5, 8, mObj[(u + sy) % 4], x + 6, y0 + sy + 0.6, z0 + D / 2 - 4); bx(p, 10, 4, 7, mObj[(u + sy + 1) % 4], x + 28, y0 + sy + 0.6, z0 + D / 2 - 3); }
-        for (const side of [0, 1]) {
-          const dx = x + side * 24;
-          bx(p, 24, 4, 0.9, mWhite, dx, y0 + H - 4, fz); bx(p, 24, 4, 0.9, mWhite, dx, y0, fz); bx(p, 4, H, 0.9, mWhite, dx, y0, fz); bx(p, 4, H, 0.9, mWhite, dx + 20, y0, fz);
-          bx(p, 16, H - 8, 0.2, M.glass, dx + 4, y0 + 4, fz + 0.35);
-          bx(p, 2.6, 9, 0.25, mPlate, dx + (side ? 0.7 : 20.7), y0 + H / 2 - 4.5, dir > 0 ? fz + 0.9 : fz - 0.25);
-        }
+        doorPair(p, x, 48, y0, H, dir > 0 ? fz : fz + 0.9 - 0.9, dir, true, mWhite);
+      }
+    };
+    // wardrobe cabinets: steel cases, solid double doors, hat shelf and hanging rod inside
+    const wardM = k.std(0xb5babd, 0.45, 0.35);
+    const wardrobeFace = (p, y0, z0, dir) => {
+      const D = C.d, H = C.h, fz = dir > 0 ? z0 + D : z0 - 0.8, back = dir > 0 ? z0 : z0 + D - 0.6;
+      for (let u = 0; u < 3; u++) {
+        const x = u * 36;
+        bx(p, 36, 0.8, D, wardM, x, y0, z0); bx(p, 36, 0.8, D, wardM, x, y0 + H - 0.8, z0); bx(p, 0.6, H, D, wardM, x, y0, z0); bx(p, 0.6, H, D, wardM, x + 35.4, y0, z0); bx(p, 36, H, 0.6, wardM, x, y0, back);
+        bx(p, 34.8, 0.4, D - 2, wardM, x + 0.6, y0 + H - 12, z0 + 1);
+        cyl(p, 0.5, 34.8, M.chrome, x + 18, y0 + H - 16, z0 + D / 2, 12, 'x');
+        doorPair(p, x + 0.2, 35.6, y0 + 0.4, H - 0.8, fz, dir, false, wardM);
       }
     };
     const palletFace = (p, y0, z0, loads, r) => {
@@ -624,6 +660,8 @@ function hdMobile(id, name, dims, start, opts = {}) {
           for (const [z, dir] of faces) flatFace(g, cH, z, dir);
         } else if (kind === 'museum') {
           for (const [z, dir] of faces) museumFace(g, cH, z, dir);
+        } else if (kind === 'wardrobe') {
+          for (const [z, dir] of faces) wardrobeFace(g, cH, z, dir);
         } else if (kind === 'library') {
           const books = []; for (const [z, dir] of faces) libFace(g, cH, z, dir, books, r); many(g, books, k.std(0xffffff, 0.7, 0));
         } else if (kind === 'textile') {
@@ -644,7 +682,7 @@ function hdMobile(id, name, dims, start, opts = {}) {
         } else if (kind === 'pallet') bx(g, 2, cH + 10, dd, panel, L + 2, 0, 0);
         else if (kind !== 'art') bx(g, 1.6, 34, dd - 0.3, kind === 'grow' ? gWhite : panel, L, 0, 0.15);
         if (!fixed) {
-          const hy = { shelving: 50, library: 50, flat: 34, museum: 34, art: 40, textile: 30 }[kind] || 26, ex = kind === 'pallet' ? L + 4 : kind === 'art' ? L + (artPanels ? 3 : 1.4) : L + 1.6;
+          const hy = { shelving: 50, library: 50, flat: 34, museum: 34, wardrobe: 40, art: 40, textile: 30 }[kind] || 26, ex = kind === 'pallet' ? L + 4 : kind === 'art' ? L + (artPanels ? 3 : 1.4) : L + 1.6;
           const hub = group(g, ex + 0.2, hy, dd / 2);
           cyl(hub, 2.6, 2, handleM, 1, 0, 0, 28, 'x'); cyl(hub, 1.6, 0.4, M.chrome, 2.1, 0, 0, 24, 'x');
           for (let s = 0; s < 3; s++) {
@@ -686,7 +724,7 @@ function hdMobile(id, name, dims, start, opts = {}) {
         // stair down from the walkway on the handle side
         const steps = Math.ceil(MZ / 7.5), rise = MZ / steps, run = 11, sx = x1, sz = z1 - 50;
         for (let i = 0; i < steps; i++) bx(unit, run + 1, 1.2, 40, mzDeck, sx + i * run, MZ - (i + 1) * rise, sz);
-        for (const zz of [sz - 0.8, sz + 40.8]) k.bar(unit, sx, MZ - 4, sx + steps * run, -4, zz, 9, steelM, 1.5);
+        for (const zz of [sz - 0.8, sz + 40.8]) { k.bar(unit, sx, MZ - 4, sx + steps * run, -4, zz, 9, steelM, 1.5); k.bar(unit, sx, MZ + 36, sx + steps * run, 36, zz, 1.6, railY, 1.6); for (let i = 1; i < steps; i += 3) bx(unit, 1.6, 37, 1.6, railY, sx + i * run + run / 2 - 0.8, MZ - (i + 1) * rise, zz - 0.8); }
         ranges2 = buildRanges(MZ - deck, true);
       }
       // telescopic cable arms over the end panels: power and data follow every carriage
@@ -750,6 +788,7 @@ hdMobile('hd-mobile-museum', 'Mobile Museum Cabinets', 'Museum storage cabinets 
 hdMobile('hd-mobile-library', 'Mobile Library Shelving', 'Double-faced cantilever library shelving on mobile carriages', 'library');
 hdMobile('hd-mobile-textile', 'Mobile Rolled Textile Storage', 'Double-sided textile racks on mobile carriages', 'textile');
 hdMobile('hd-mobile-art', 'Mobile Art Screens', 'Art screens on skinny mobile carriages: gussets at every upright, chain box and crank', 'art');
+hdMobile('hd-mobile-wardrobe', 'Mobile Wardrobe Cabinets', 'Steel wardrobe cabinets on mobile carriages, doors that open', 'wardrobe');
 hdMobile('hd-mobile-mezz', 'Two-Level Mobile Storage', 'Electric mobile shelving under and on top of a structural mezzanine, with aisles on both levels', 'shelving', { twoLevel: true, electric: true });
 
 /* ---------------- 6. lockers ---------------- */
@@ -1116,38 +1155,61 @@ def('art-screens', 'Sliding Art Screens', 'Two facing banks of 8 ft x 8 ft mesh 
 });
 
 /* ---------------- 11. pallet rack ---------------- */
-def('pallet-rack', 'Selective Pallet Rack', 'Two 96" bays, 42" deep frames, 16 ft uprights', ({ THREE, wake }) => {
-  const k = kit(THREE), { M, bx, bar, group, many } = k, root = new THREE.Group();
-  const up = k.std(0x1f4e8c, 0.45, 0.35), beam = k.std(0xe3671c, 0.45, 0.35), bays = 2, bw = 96, D = 42, H = 192, r = rng(4);
-  const levels = [0, 60, 120];
+def('pallet-rack', 'Selective Pallet Rack', 'Two 96" bays, 42" deep frames, 16 ft uprights: wire decks, pallet supports, back stops, post protectors', ({ THREE, wake }) => {
+  const k = kit(THREE), { M, bx, group, many } = k, root = new THREE.Group();
+  const up = k.std(0x1f4e8c, 0.45, 0.35), upP = k.postMat(up), beam = k.std(0xe3671c, 0.45, 0.35), bays = 2, bw = 96, D = 42, H = 192, r = rng(4);
+  const levels = [0, 60, 120], galv = k.std(0xb9c0c4, 0.4, 0.7);
   for (let i = 0; i <= bays; i++) {
     const x = i * (bw + 3);
-    for (const z of [0, D - 3]) bx(root, 3, H, 3, up, x, 0, z);
+    for (const z of [0, D - 3]) bx(root, 3, H, 3, upP, x, 0, z);
     const f = group(root, x + 1.5, 0, 0);
     for (let y = 6, n = 0; y < H - 30; y += 36, n++) { const z1 = n % 2 ? 3 : D - 3, z2 = n % 2 ? D - 3 : 3; const b = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.4, Math.hypot(D - 6, 36)), up); b.position.set(0, y + 18, (z1 + z2) / 2); b.rotation.x = Math.atan2(z2 - z1, 36) * (n % 2 ? 1 : -1); f.add(b); }
     for (let y = 6; y < H; y += 36) bx(f, 1.4, 1.4, D - 6, up, -0.7, y, 3);
     bx(root, 7, 0.5, 7, M.steel, x - 2, 0, -2); bx(root, 7, 0.5, 7, M.steel, x - 2, 0, D - 5);
   }
-  const loads = [];
+  const decks = group(root), supports = group(root), stops = group(root), loads = [];
+  [decks, supports, stops].forEach(g => { g.userData.dyn = true; });
   for (let b = 0; b < bays; b++) {
     const x0 = b * (bw + 3) + 3;
     for (const y of levels) {
-      if (y > 0) { bx(root, bw, 4.5, 1.8, beam, x0, y, 0); bx(root, bw, 4.5, 1.8, beam, x0, y, D - 1.8); const deck = new THREE.Mesh(new THREE.PlaneGeometry(bw, D - 2), k.meshMat(bw, D, 2.5, '#b9c0c4')); deck.rotation.x = -Math.PI / 2; deck.position.set(x0 + bw / 2, y + 4.6, D / 2); root.add(deck); }
+      if (y > 0) {
+        bx(root, bw, 4.5, 1.8, beam, x0, y, 0); bx(root, bw, 4.5, 1.8, beam, x0, y, D - 1.8);
+        const deck = new THREE.Mesh(new THREE.PlaneGeometry(bw, D - 2), k.meshMat(bw, D, 2.5, '#b9c0c4')); deck.rotation.x = -Math.PI / 2; deck.position.set(x0 + bw / 2, y + 4.6, D / 2); decks.add(deck);
+        // pallet support bars front to back, under each pallet's runners
+        for (const px of [x0 + 8, x0 + 38, x0 + 54, x0 + 84]) bx(supports, 3, 1.4, D - 2, galv, px, y + 3.2, 1);
+        // back stop: an upturned angle on the rear beam so pallets cannot push through
+        bx(stops, bw, 4, 1.2, beam, x0, y + 4.5, D - 1.8); bx(stops, bw, 0.4, 2.4, beam, x0, y + 4.5, D - 3);
+      } else {
+        // floor level: a stop bar between the rear uprights
+        bx(stops, bw, 3, 2, beam, x0, 8, D - 2.5);
+      }
       for (let p = 0; p < 2; p++) {
         const px = x0 + 3 + p * 46, py = y + (y ? 4.6 : 0);
-        for (let s = 0; s < 3; s++) loads.push({ x: px, y: py, z: 1 + s * 18.5, w: 40, h: 5, d: 3.5, color: '#b08658' });
+        for (let q = 0; q < 3; q++) loads.push({ x: px, y: py, z: 1 + q * 18.5, w: 40, h: 5, d: 3.5, color: '#b08658' });
         loads.push({ x: px, y: py + 5, z: 1, w: 40, h: 0.8, d: 40, color: '#c49a6a' });
         const stack = 1 + Math.floor(r() * 2);
         for (let c = 0; c < stack; c++) for (let q = 0; q < 2; q++) if (r() > 0.1) loads.push({ x: px + 1 + q * 19.5, y: py + 5.8 + c * 20, z: 2, w: 18.5, h: 19, d: 36, color: KRAFT[Math.floor(r() * 4)] });
       }
     }
   }
-  const lm = many(root, loads, M.kraft);
+  const lm = many(root, loads, M.kraft); if (lm) lm.userData.dyn = true;
   const guard = group(root); guard.userData.dyn = true;
   const yel = k.std(0xf2c230, 0.5, 0.2), blk = k.std(0x1a1a1a, 0.6, 0.1), endX = bays * (bw + 3) + 3;
   for (let i = 0; i <= bays; i++) { const x = i * (bw + 3); bx(guard, 5, 18, 4.6, yel, x - 1, 0, D - 3.6); for (const y of [4, 11]) bx(guard, 5.2, 2.4, 4.8, blk, x - 1.1, y, D - 3.7); }
   for (const x of [-9, endX + 5]) { for (const z of [-3, D - 1]) bx(guard, 4, 16, 4, yel, x, 0, z); bx(guard, 3, 6, D + 6, yel, x + 0.5, 8, -3); bx(guard, 3.1, 1.4, D + 6.1, blk, x + 0.45, 10, -3.05); }
-  return { group: root, finishes: [{ name: 'Blue and orange', swatch: 'linear-gradient(90deg,#1f4e8c 50%,#e3671c 50%)', up: 0x1f4e8c, beam: 0xe3671c }, { name: 'Green and orange', swatch: 'linear-gradient(90deg,#2f6b4f 50%,#e3671c 50%)', up: 0x2f6b4f, beam: 0xe3671c }, { name: 'Gray and yellow', swatch: 'linear-gradient(90deg,#6b7378 50%,#f2b705 50%)', up: 0x6b7378, beam: 0xf2b705 }, { name: 'All black', swatch: '#26292b', up: 0x26292b, beam: 0x26292b }], setFinish: f => { up.color.setHex(f.up); beam.color.setHex(f.beam); }, actions: [{ label: 'Hide post protectors', run: () => { guard.visible = !guard.visible; wake(); return guard.visible ? 'Hide post protectors' : 'Show post protectors'; } }, { label: 'Hide loads', run: () => { lm.visible = !lm.visible; wake(); return lm.visible ? 'Hide loads' : 'Show loads'; } }] };
+  supports.visible = false; stops.visible = true;
+  const deckKind = () => (decks.visible ? 0 : supports.visible ? 1 : 2);
+  return {
+    group: root,
+    finishes: [{ name: 'Blue and orange', swatch: 'linear-gradient(90deg,#1f4e8c 50%,#e3671c 50%)', up: 0x1f4e8c, beam: 0xe3671c }, { name: 'Green and orange', swatch: 'linear-gradient(90deg,#2f6b4f 50%,#e3671c 50%)', up: 0x2f6b4f, beam: 0xe3671c }, { name: 'Gray and yellow', swatch: 'linear-gradient(90deg,#6b7378 50%,#f2b705 50%)', up: 0x6b7378, beam: 0xf2b705 }, { name: 'All black', swatch: '#26292b', up: 0x26292b, beam: 0x26292b }],
+    setFinish: f => { up.color.setHex(f.up); upP.color.setHex(f.up); beam.color.setHex(f.beam); },
+    actions: [
+      { label: 'Decking', options: ['Wire decks', 'Pallet supports', 'Open beams'], get: deckKind, set: n => { decks.visible = n === 0; supports.visible = n === 1; wake(); } },
+      { label: 'Pallet stops', toggle: true, get: () => stops.visible, set: v => { stops.visible = v; wake(); } },
+      { label: 'Post protectors', toggle: true, get: () => guard.visible, set: v => { guard.visible = v; wake(); } },
+      { label: 'Loads', toggle: true, get: () => !!lm?.visible, set: v => { if (lm) lm.visible = v; wake(); } },
+    ],
+  };
 });
 
 /* ---------------- 12. mezzanine ---------------- */
@@ -1167,9 +1229,11 @@ def('mezzanine', 'Structural Steel Mezzanine', '20 ft x 16 ft platform, 9 ft cle
   railSide(0, D, W, D, [W - 60, W - 18]); railSide(0, 0, W, 0); railSide(0, 0, 0, D); railSide(W, 0, W, D);
   const st = group(root, W - 58, 0, D);
   const steps = 13, rise = H / steps, run = 11;
-  for (const x of [0, 40]) { const s = bar(st, 0, 0, 0, 0, 0, 1, steel); s.scale.set(Math.hypot(steps * run, H), 10, 1.5); s.position.set(x + 0.75, H / 2, (steps * run) / 2); s.rotation.set(0, Math.PI / 2, Math.atan2(H, steps * run)); }
+  // stringers and rails run from the deck edge down to the floor along the stair
+  const slope = (x, y0, w, t, m) => { const Ls = steps * run, len = Math.hypot(Ls, H), b = new THREE.Mesh(new THREE.BoxGeometry(w, t, len), m); b.position.set(x, y0 + H / 2, Ls / 2); b.rotation.x = Math.atan2(H, Ls); st.add(b); return b; };
+  for (const x of [-0.75, 40.75]) slope(x, -5, 1.5, 10, steel);
   for (let i = 0; i < steps; i++) bx(st, 40, 1.2, run + 1, k.std(0x5d6468, 0.8, 0.3), 0, H - (i + 1) * rise, i * run);
-  for (const x of [-1, 41]) { const hr = bar(st, 0, 0, 0, 0, 0, 1.6, rail); hr.scale.set(Math.hypot(steps * run, H), 1.6, 1.6); hr.position.set(x, H / 2 + 36, (steps * run) / 2); hr.rotation.set(0, Math.PI / 2, Math.atan2(H, steps * run)); }
+  for (const x of [-1, 41]) { slope(x, 36, 1.6, 1.6, rail); slope(x, 18, 1.2, 1.2, rail); for (let i = 1; i < steps; i += 3) bx(st, 1.6, 37, 1.6, rail, x - 0.8, H - (i + 1) * rise, i * run + run / 2 - 0.8); }
   const under = group(root, 20, 0, 20); under.userData.dyn = true;
   shelving(k, under, { bays: 4, closed: false, shelves: 5, h: 84, contents: 'boxes', seed: 21 });
   shelving(k, under, { bays: 4, closed: false, shelves: 5, h: 84, contents: 'boxes', seed: 22, z: 70 });
@@ -2045,5 +2109,65 @@ def('install', 'Mobile Storage Install, Step by Step', 'Rails in the floor or on
   };
 });
 
-const SHORT = { 'four-post': '4-post', 'bin-shelving': 'Bin shelving', 'wire-shelving': 'Wire', library: 'Library', 'hd-mobile': 'Mobile', lockers: 'Lockers', 'evidence-lockers': 'Evidence', 'flat-files': 'Flat files', rotary: 'Rotary', 'museum-cabinet': 'Museum cabinet', 'art-screens': 'Art screens', 'pallet-rack': 'Pallet rack', mezzanine: 'Mezzanine', vlm: 'VLM', casework: 'Casework', 'wire-cage': 'Wire cage', athletic: 'Athletic', 'mail-sorter': 'Mail sorter', weapons: 'Weapons', 'tire-rack': 'Tire rack', 'wire-track': 'Wire on track', 'ss-table': 'Stainless tables', install: 'Install steps', 'hd-mobile-open': 'Mobile shelving', 'hd-mobile-tire': 'Mobile tires', 'hd-mobile-grow': 'Mobile grow racks', 'hd-mobile-flat': 'Mobile flat files', 'hd-mobile-museum': 'Mobile cabinets', 'hd-mobile-library': 'Mobile library', 'hd-mobile-textile': 'Mobile textiles', 'hd-mobile-art': 'Mobile art screens', 'hd-mobile-mezz': 'Two-level mobile', 'four-post-solander': 'Solander boxes', workstation: 'Workstation', fireproof: 'Fireproof', 'wall-art': 'Wall art screens', 'textile-rack': 'Textile racks' };
+/* ---------------- 28. painting storage bins ---------------- */
+def('painting-bins', 'Painting Storage Bins', 'Steel shelving with dividers on 12" centers for framed art, split in two if needed, roll-up doors to keep the dust out', ({ THREE, tween, wake, bake, refit }) => {
+  const k = kit(THREE), { M, bx, group, many } = k, root = new THREE.Group();
+  const paint = k.std(0xbfc4c7, 0.5, 0.3), post = k.postMat(paint), slatM = [], hoodM = k.std(0xf1f2f0, 0.35, 0.3), guideM = k.std(0xdfe2e4, 0.35, 0.5);
+  const W = 48, D = 48, H = 96, r = rng(33);
+  let sections = 2, split = false, doorsOn = true, unit, doors = [];
+  const slatTex = () => { const c = document.createElement('canvas'); c.width = 16; c.height = 32; const g = c.getContext('2d'); g.fillStyle = '#f4f5f3'; g.fillRect(0, 0, 16, 32); g.fillStyle = '#d6d9d8'; g.fillRect(0, 26, 16, 3); g.fillStyle = '#ffffff'; g.fillRect(0, 2, 16, 4); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8; return t; };
+  const make = () => {
+    if (unit) root.remove(unit);
+    unit = group(root); unit.userData.dyn = true; doors = []; slatM.length = 0;
+    const frames = [];
+    for (let s = 0; s < sections; s++) {
+      const x0 = s * (W + 1);
+      for (const xx of [x0, x0 + W - 1.25]) for (const zz of [0, D - 1.25]) bx(unit, 1.25, H, 1.25, post, xx, 0, zz);
+      for (const y of split ? [2, H / 2, H - 0.6] : [2, H - 0.6]) { bx(unit, W, 0.6, D, paint, x0, y, 0); bx(unit, W, 1.4, 0.1, paint, x0, y - 0.8, D - 0.1); }
+      bx(unit, W, H, 0.1, paint, x0, 0, 0); if (s === 0) bx(unit, 0.1, H, D, paint, x0, 0, 0); bx(unit, 0.1, H, D, paint, x0 + W - 0.1, 0, 0);
+      const comps = split ? [[2.6, H / 2], [H / 2 + 0.6, H - 0.6]] : [[2.6, H - 0.6]];
+      for (const [ya, yb] of comps) {
+        for (let dx = 12; dx < W - 1; dx += 12) bx(unit, 0.12, yb - ya, D - 3, paint, x0 + dx, ya, 1.5);
+        // framed works on edge in each 12" slot
+        for (let slot = 0; slot < 4; slot++) {
+          let x = x0 + slot * 12 + 1.2; const n = 1 + Math.floor(r() * 3);
+          for (let q = 0; q < n && x < x0 + slot * 12 + 10.5; q++) { const t = 1.8 + r() * 1.4, ph = Math.min(yb - ya - 2, 18 + r() * 40), pd = Math.min(D - 6, 20 + r() * 24); frames.push({ x, y: ya, z: D - 3 - pd, w: t, h: ph, d: pd, color: ['#a6832f', '#6b4428', '#2b2d2f', '#c9b79a'][Math.floor(r() * 4)] }); x += t + 0.6; }
+        }
+      }
+      // roll-up door: side guides, slats, bottom bar, and the coil hood sitting on the top shelf
+      const dg = group(unit); dg.visible = doorsOn;
+      for (const gx of [x0 + 0.1, x0 + W - 1.6]) bx(dg, 1.5, H - 1, 1.6, guideM, gx, 0, D + 0.1);
+      const tex = slatTex(), m = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.4, metalness: 0.3 }); slatM.push(m);
+      const geo = new THREE.PlaneGeometry(W - 3, H - 1); geo.translate(0, -(H - 1) / 2, 0);
+      const curtain = new THREE.Mesh(geo, m); curtain.position.set(x0 + W / 2, H - 0.5, D + 0.9); curtain.userData.dyn = true; dg.add(curtain);
+      const btm = new THREE.Mesh(new THREE.BoxGeometry(W - 3, 1.4, 0.8), guideM); btm.position.set(x0 + W / 2, 0.7, D + 0.9); btm.userData.dyn = true; dg.add(btm);
+      tex.repeat.set(1, (H - 1) / 3);
+      bx(dg, W + 0.4, 10, 11, hoodM, x0 - 0.2, H, D - 8);
+      const s2 = new THREE.Shape(); s2.moveTo(0, 0); s2.lineTo(11, 0); s2.lineTo(11, 3); s2.lineTo(0, 0); const cap = new THREE.Mesh(new THREE.ExtrudeGeometry(s2, { depth: W + 0.4, bevelEnabled: false }), hoodM); cap.rotation.y = -Math.PI / 2; cap.position.set(x0 + W + 0.2, H + 10, D - 8); dg.add(cap);
+      const d = { curtain, btm, tex, open: false, h0: H - 1 };
+      const click = () => { d.open = !d.open; tween(curtain.scale, 'y', d.open ? 0.04 : 1, 1400); tween(btm.position, 'y', d.open ? H - 1 : 0.7, 1400); };
+      curtain.userData.onClick = btm.userData.onClick = click;
+      doors.push(d);
+    }
+    many(unit, frames, k.std(0xffffff, 0.6, 0.1));
+    unit.traverse(o => { if (o.isMesh) { o.castShadow = o.receiveShadow = true; } });
+    if (doorsOn && doors[0]) { doors[0].open = true; doors[0].curtain.scale.y = 0.04; doors[0].btm.position.y = H - 1; }
+    bake?.(unit); tick(); wake();
+  };
+  // keep the slat spacing true while a door rolls up
+  const tick = () => doors.forEach(d => { d.tex.repeat.y = Math.max(0.2, (d.h0 * d.curtain.scale.y) / 3); });
+  make();
+  return {
+    group: root, view: [0.7, 0.35, 1.3], tick,
+    finishes: [{ name: 'Light gray', swatch: '#c3c7ca', color: 0xbfc4c7 }, { name: 'Putty', swatch: '#d9cfbd', color: 0xd6ccb9 }, { name: 'White', swatch: '#f1f2f0', color: 0xeeefed }, { name: 'Black', swatch: '#2c2f31', color: 0x2c2f31 }], setFinish: k.finisher(paint, post),
+    actions: [
+      { label: 'Open doors', when: () => doorsOn, run: () => { const o = !doors.every(d => d.open); doors.forEach(d => { if (d.open !== o) d.curtain.userData.onClick(); }); return o ? 'Close doors' : 'Open doors'; } },
+      { label: 'Sections', options: ['1', '2', '3', '4'], get: () => sections - 1, set: n => { sections = n + 1; make(); refit?.(); } },
+      { label: 'Split into two compartments', toggle: true, get: () => split, set: v => { split = v; make(); } },
+      { label: 'Roll-up doors', toggle: true, get: () => doorsOn, set: v => { doorsOn = v; make(); } },
+    ],
+  };
+});
+
+const SHORT = { 'four-post': '4-post', 'bin-shelving': 'Bin shelving', 'wire-shelving': 'Wire', library: 'Library', 'hd-mobile': 'Mobile', lockers: 'Lockers', 'evidence-lockers': 'Evidence', 'flat-files': 'Flat files', rotary: 'Rotary', 'museum-cabinet': 'Museum cabinet', 'art-screens': 'Art screens', 'pallet-rack': 'Pallet rack', mezzanine: 'Mezzanine', vlm: 'VLM', casework: 'Casework', 'wire-cage': 'Wire cage', athletic: 'Athletic', 'mail-sorter': 'Mail sorter', weapons: 'Weapons', 'tire-rack': 'Tire rack', 'wire-track': 'Wire on track', 'ss-table': 'Stainless tables', install: 'Install steps', 'hd-mobile-open': 'Mobile shelving', 'hd-mobile-tire': 'Mobile tires', 'hd-mobile-grow': 'Mobile grow racks', 'hd-mobile-flat': 'Mobile flat files', 'hd-mobile-museum': 'Mobile cabinets', 'hd-mobile-library': 'Mobile library', 'hd-mobile-textile': 'Mobile textiles', 'hd-mobile-art': 'Mobile art screens', 'hd-mobile-mezz': 'Two-level mobile', 'hd-mobile-wardrobe': 'Mobile wardrobes', 'painting-bins': 'Painting bins', 'four-post-solander': 'Solander boxes', workstation: 'Workstation', fireproof: 'Fireproof', 'wall-art': 'Wall art screens', 'textile-rack': 'Textile racks' };
 for (const [id, s] of Object.entries(SHORT)) if (MODELS[id]) MODELS[id].short = s;
