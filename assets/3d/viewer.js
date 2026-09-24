@@ -69,7 +69,7 @@ function viewer(el) {
       : ids.length > 1 ? `<div class="v3d-seg" role="tablist">${ids.map(id => `<button type="button" role="tab" data-id="${id}">${MODELS[id].short || MODELS[id].name}</button>`).join('')}</div>` : ''}
     <div class="v3d-main">
       <div class="v3d-top">
-        ${ids.length > 1 ? '<button type="button" class="v3d-step" data-step="-1" aria-label="Previous system">&lsaquo;</button>' : ''}<div class="v3d-title"><b></b><span></span></div>${ids.length > 1 ? '<button type="button" class="v3d-step" data-step="1" aria-label="Next system">&rsaquo;</button>' : ''}
+        ${ids.length > 1 ? '<div class="v3d-steps"><button type="button" class="v3d-step" data-step="-1" aria-label="Previous system">&lsaquo;</button><button type="button" class="v3d-step" data-step="1" aria-label="Next system">&rsaquo;</button></div>' : ''}<div class="v3d-title"><b></b><span></span></div>
         <div class="v3d-icons">
           <button type="button" data-v="spin" aria-pressed="false" title="Auto-rotate" aria-label="Auto-rotate">${ICON.spin}</button>
           <button type="button" data-v="reset" title="Reset view" aria-label="Reset view">${ICON.reset}</button>
@@ -81,7 +81,9 @@ function viewer(el) {
         <div class="v3d-load">Loading 3D model...</div>
         <div class="v3d-hint">Drag to turn &middot; Click, then scroll to zoom &middot; Tap parts to move them</div>
         <div class="v3d-wheel" hidden>Click the model first to zoom with the scroll wheel</div>
+        <div class="v3d-prompt" hidden></div>
       </div>
+      <div class="v3d-presets" hidden></div>
       <div class="v3d-bar">
         <div class="v3d-acts"></div>
         <div class="v3d-fin"></div>
@@ -214,6 +216,10 @@ function viewer(el) {
     const mb = document.createElement('button'); mb.type = 'button'; mb.className = 'v3d-more'; mb.addEventListener('click', () => { moreOpen = !moreOpen; showActs(); }); btnRow.appendChild(mb);
     syncActs();
     showActs();
+    const pr = el.querySelector('.v3d-presets'), pl = current.presets || [];
+    pr.hidden = !pl.length; pr.replaceChildren(...(pl.length ? [Object.assign(document.createElement('span'), { textContent: 'Start from' })] : []), ...pl.map(p => { const b = document.createElement('button'); b.type = 'button'; b.textContent = p.label; b.addEventListener('click', () => { pr.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); p.run(); after(); }); return b; }));
+    const pm = el.querySelector('.v3d-prompt'), ptxt = current.prompt || (clickables.length ? 'Tap parts of the model to open or move them' : '');
+    pm.textContent = ptxt; pm.hidden = !ptxt; pm.classList.remove('gone');
     const fin = el.querySelector('.v3d-fin');
     const swatches = (current.finishes || []).map((f, i) => {
       const b = document.createElement('button'); b.type = 'button'; b.className = 'v3d-sw'; b.title = f.name; b.setAttribute('aria-label', `Finish: ${f.name}`);
@@ -266,7 +272,7 @@ function viewer(el) {
     for (const hit of ray.intersectObject(current.group, true)) {
       const m = hit.object.material; if (!hit.object.visible || (m && (m.transparent && m.opacity < 0.6 || m.alphaTest > 0 && !hit.object.userData.onClick && !hit.object.parent?.userData.onClick))) continue;
       let o = hit.object; while (o && !o.userData.onClick) o = o.parent;
-      if (o) { o.userData.onClick(hit); modelWake(); }
+      if (o) { o.userData.onClick(hit); modelWake(); el.querySelector('.v3d-prompt')?.classList.add('gone'); }
       break;
     }
   });

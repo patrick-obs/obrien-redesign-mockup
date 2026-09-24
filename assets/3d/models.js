@@ -23,6 +23,21 @@ function footballHelmet(THREE, shellM, x, y, z, rotY = 0, s = 1) {
 }
 let FB_MASK = null, FB_WHITE = null, FB_DARK = null;
 
+// small artworks as textures: paintings, architectural drawings, maps, prints
+const ART = [];
+function artMat(THREE, i) {
+  if (!ART.length) for (let n = 0; n < 8; n++) {
+    const c = document.createElement('canvas'); c.width = 128; c.height = 96; const g = c.getContext('2d'), q = rng(50 + n);
+    if (n % 4 === 0) { const sky = g.createLinearGradient(0, 0, 0, 96); sky.addColorStop(0, ['#8fb8d8', '#e7b07a'][n % 2]); sky.addColorStop(1, '#f3eadb'); g.fillStyle = sky; g.fillRect(0, 0, 128, 96); g.fillStyle = '#4f6b3a'; g.beginPath(); g.moveTo(0, 70); for (let x = 0; x <= 128; x += 16) g.lineTo(x, 55 + q() * 22); g.lineTo(128, 96); g.lineTo(0, 96); g.fill(); }
+    else if (n % 4 === 1) { g.fillStyle = '#1f4f8f'; g.fillRect(0, 0, 128, 96); g.strokeStyle = '#dfe9f5'; g.lineWidth = 1; for (let k2 = 0; k2 < 9; k2++) { const x = 10 + q() * 90, y = 10 + q() * 60; g.strokeRect(x, y, 10 + q() * 30, 8 + q() * 24); } g.beginPath(); g.moveTo(6, 88); g.lineTo(122, 88); g.stroke(); }
+    else if (n % 4 === 2) { g.fillStyle = '#efe3c6'; g.fillRect(0, 0, 128, 96); g.strokeStyle = '#8a6a3a'; for (let k2 = 0; k2 < 7; k2++) { g.beginPath(); g.moveTo(0, q() * 96); g.bezierCurveTo(40, q() * 96, 80, q() * 96, 128, q() * 96); g.stroke(); } g.fillStyle = '#7ea3b8'; g.beginPath(); g.ellipse(80, 40, 22, 14, 0.4, 0, 7); g.fill(); }
+    else { g.fillStyle = '#f6f2e8'; g.fillRect(0, 0, 128, 96); for (let k2 = 0; k2 < 6; k2++) { g.fillStyle = ['#b5563a', '#2d4a7c', '#c9a227', '#2f6b4f'][k2 % 4]; g.fillRect(8 + q() * 80, 8 + q() * 56, 10 + q() * 36, 8 + q() * 30); } }
+    g.strokeStyle = 'rgba(0,0,0,.25)'; g.strokeRect(0.5, 0.5, 127, 95);
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; ART.push(new THREE.MeshStandardMaterial({ map: t, roughness: 0.85 }));
+  }
+  return ART[i % ART.length];
+}
+
 function kit(THREE) {
   const std = (color, roughness = 0.55, metalness = 0.25, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness, metalness, ...extra });
   const M = {
@@ -426,7 +441,7 @@ def('library', 'Library Cantilever Shelving', 'Double-faced cantilever shelving,
 const HD_KINDS = {
   shelving: { label: 'Storage: shelving', L: 108, d: 15, h: 84, N: 5, aisle: 48, cH: 5, panels: true },
   open: { label: 'Storage: open shelving', L: 144, d: 24, h: 96, N: 4, aisle: 48, cH: 6 },
-  flat: { label: 'Storage: flat files', L: 100, d: 38, h: 50, N: 3, aisle: 60, cH: 6, panels: true },
+  flat: { label: 'Storage: flat files', L: 100, d: 38, h: 50, N: 3, aisle: 60, cH: 6, panels: true, noElectric: true },
   athletic: { label: 'Storage: athletic gear', L: 108, d: 22, h: 84, N: 3, aisle: 48, cH: 6, panels: true, gear: 0 },
   golf: { label: 'Storage: golf bags', L: 108, d: 22, h: 84, N: 3, aisle: 48, cH: 6, panels: true, gear: 1 },
   instruments: { label: 'Storage: musical instruments', L: 108, d: 22, h: 84, N: 3, aisle: 48, cH: 6, panels: true, gear: 2 },
@@ -557,8 +572,8 @@ function hdMobile(id, name, dims, start, opts = {}) {
         const bz = dir > 0 ? z0 + 1 : z0 + 1.2;
         bx(dr, 48.6, dh - 0.35, 0.8, ff, x + 0.7, y, fz); bx(dr, 20, 0.45, 0.8, M.chrome, x + 15, y + dh - 1.4, dir > 0 ? fz + 0.8 : fz - 0.8);
         k.tray(dr, 47, dh - 0.8, C.d - 2.4, ffIn, x + 1.5, y + 0.1, bz, 0.12);
-        for (let s2 = 0; s2 < 3; s2++) bx(dr, 34 - s2 * 3, 0.05, 22 - s2 * 2, ffPaper, x + 6 + s2, y + 0.25 + s2 * 0.08, bz + 5 + s2);
-        const gap = bx(fg, 48.6, dh - 0.5, 0.05, ffGap, x + 0.7, y + 0.08, dir > 0 ? fz + 0.02 : fz + 0.73); fg.remove(gap); dr.userData.gap = gap;
+        for (let s2 = 0; s2 < 3; s2++) bx(dr, 34 - s2 * 3, 0.05, 22 - s2 * 2, artMat(THREE, u * 15 + i + s2 * 3), x + 6 + s2 * 2, y + 0.25 + s2 * 0.08, bz + 5 + s2 * 2);
+        const gap = bx(fg, 48.6, dh - 0.35, 1, ffGap, x + 0.7, y, dir > 0 ? fz + 0.82 : fz - 1.02); fg.remove(gap); dr.userData.gap = gap;
         fg.add(gap); open[key] = dr; tween(dr.position, 'z', out, 700, 'out'); wake();
         dr.userData.close = () => { if (open[key] !== dr) return; delete open[key]; openParts.delete(dr.userData.close); tween(dr.position, 'z', 0, 650, 'out').then(() => { fg.remove(gap); p.remove(dr); wake(); }); };
         openParts.add(dr.userData.close);
@@ -746,7 +761,7 @@ function hdMobile(id, name, dims, start, opts = {}) {
     };
     const make = () => {
       if (unit) root.remove(unit);
-      C = HD_KINDS[kind]; unit = group(root); unit.userData.dyn = true;
+      C = HD_KINDS[kind]; unit = group(root); unit.userData.dyn = true; if (C.noElectric) electric = false;
       if (C.electricOnly) electric = true;
       const { L, d, h, N, cH } = C, aisle = aisleW ?? C.aisle, deck = 1.5, r = rng(9);
       const depths = [C.df || d + 1, ...Array(N).fill(C.dm || 2 * d + (kind === 'pallet' ? 3 : 1)), C.df || d + 1];
@@ -892,16 +907,24 @@ function hdMobile(id, name, dims, start, opts = {}) {
     make();
     return {
       group: root, view: [1.45, 0.62, 0.62], tick,
+      prompt: 'Tap a carriage or its handle to open that aisle',
+      presets: [
+        ['Records room', { kind: 'shelving', electric: false, twoLevel: false }],
+        ['Museum collections', { kind: 'museum', electric: false, twoLevel: false }],
+        ['Art storage', { kind: 'bins', electric: false, twoLevel: false }],
+        ['Athletics', { kind: 'athletic', electric: false, twoLevel: false }],
+        ['Warehouse, electric', { kind: 'pallet', electric: true, twoLevel: false }],
+        ['Two stories on a mezzanine', { kind: 'shelving', electric: true, twoLevel: true }],
+      ].map(([label, p]) => ({ label, run: () => { kind = p.kind; electric = !!(p.electric || HD_KINDS[kind].electricOnly); twoLevel = p.twoLevel && kind !== 'pallet'; panelsOn = null; aisleW = null; openParts.clear(); open = 1; make(); refit?.(); } })),
       finishes: [{ name: 'Black', swatch: '#2c2f31', color: 0x2c2f31 }, { name: 'O\'Brien teal', swatch: '#0f7377', color: 0x0f7377 }, { name: 'Maple laminate', swatch: '#c79a66', color: 0xc79a66 }, { name: 'Light gray', swatch: '#c3c7ca', color: 0xbfc4c7 }, { name: 'Navy', swatch: '#2a3d5c', color: 0x2a3d5c }],
       setFinish: k.finisher(panel),
       actions: [
         { label: 'Storage', options: HD_ORDER.map(q => HD_KINDS[q].label.replace('Storage: ', '').replace(/^./, c => c.toUpperCase())), get: () => HD_ORDER.indexOf(kind), set: n => { const was = HD_KINDS[kind].electricOnly; kind = HD_ORDER[n]; panelsOn = null; aisleW = null; openParts.clear(); if (HD_KINDS[kind].electricOnly) electric = true; else if (was) electric = false; open = 1; make(); refit?.(); } },
         { label: 'Aisle', when: () => kind !== 'pallet', options: AISLE_STD.map(a => a[0]), get: () => nearest(AISLE_STD), set: n => { aisleW = AISLE_STD[n][1]; make(); refit?.(); } },
         { label: 'Forklift aisle', when: () => kind === 'pallet', options: AISLE_FORK.map(a => a[0]), get: () => nearest(AISLE_FORK), set: n => { aisleW = AISLE_FORK[n][1]; make(); refit?.(); } },
-        { label: 'Open next aisle', run: () => { open = (open + 1) % (C.N + 1); move(); } },
         { label: 'Two levels on a mezzanine', toggle: true, when: () => kind !== 'pallet', get: () => twoLevel, set: v => { twoLevel = v; open2 = open; make(); refit?.(); } },
         { label: 'Close all aisles', run: () => { open = C.N; move(); } },
-        { label: 'Electric drive', when: () => !C.electricOnly, run: () => { if (C.electricOnly) return 'Electric only'; electric = !electric; [...ranges, ...ranges2].forEach(g => { if (g.userData.fixed) return; g.userData.wheel.visible = !electric; g.userData.pad.visible = electric; }); arms.forEach(q => { q.g.visible = electric; }); tick(); return electric ? 'Mechanical assist' : 'Electric drive'; } },
+        { label: 'Electric', toggle: true, when: () => !C.electricOnly && !C.noElectric, get: () => electric, set: v => { electric = v; [...ranges, ...ranges2].forEach(g => { if (g.userData.fixed) return; g.userData.wheel.visible = !electric; g.userData.pad.visible = electric; }); arms.forEach(q => { q.g.visible = electric; }); tick(); wake(); } },
         { label: 'End panels', toggle: true, when: () => kind !== 'pallet', get: () => panelsOn ?? (kind !== 'art' && !!C.panels), set: v => { panelsOn = v; make(); } },
         { label: 'Roll-up doors', toggle: true, when: () => kind === 'bins', get: () => binDoors, set: v => { binDoors = v; make(); } },
         { label: 'Open the roll-up doors', when: () => kind === 'bins' && binDoors, run: () => { const o = !binDoorsList.every(d => d.open); binDoorsList.forEach(d => { if (d.open !== o) d.click(); }); return o ? 'Close the roll-up doors' : 'Open the roll-up doors'; } },
@@ -933,7 +956,7 @@ def('lockers', 'Steel Lockers', '72" H lockers: one to four tiers, single or dou
   const paint = k.std(0xb5babd, 0.45, 0.35), brass = k.std(0xc9a227, 0.3, 0.8), plateM = k.std(0xd7dbde, 0.3, 0.85);
   const lit = k.std(0x39d353, 0.3, 0, { emissive: 0x1f8a33, emissiveIntensity: 0.8 });
   const LOCKS = ['handle', 'padlock', 'combo', 'keypad'], LOCKNAME = { handle: 'Lock: lift handle', padlock: 'Lock: padlock hasp', combo: 'Lock: built-in combination', keypad: 'Lock: digital keypad' };
-  let tiers = 2, sloped = true, legs = false, double = false, lock = 'handle', numbers = false, interior = true, bank, doors = [];
+  let tiers = 2, sloped = true, legs = false, double = false, lock = 'handle', numbers = false, interior = true, benchOn = true, bank, doors = [];
   const numTex = {};
   const plate = (n) => {
     if (!numTex[n]) { const c = document.createElement('canvas'); c.width = 128; c.height = 64; const g = c.getContext('2d'); g.fillStyle = '#d7dbde'; g.fillRect(0, 0, 128, 64); g.fillStyle = '#1b1d1f'; g.font = 'bold 44px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(String(n), 64, 35); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; numTex[n] = new THREE.MeshStandardMaterial({ map: t, roughness: 0.35, metalness: 0.6 }); }
@@ -991,7 +1014,7 @@ def('lockers', 'Steel Lockers', '72" H lockers: one to four tiers, single or dou
         doors.push(pivot);
       }
     }
-    const bench = group(bank, 4, 0, 30);
+    const bench = group(bank, 4, 0, 30); bench.visible = benchOn;
     bx(bench, 40, 1.5, 9.5, k.std(0xc79a66, 0.65, 0), 0, 16, 0);
     for (const x of [3, 34]) bx(bench, 3, 16, 3, M.dark, x, 0, 3.2);
     bank.traverse(o => { if (o.isMesh) { o.castShadow = o.receiveShadow = true; } }); bank.userData.dyn = true; bake?.(bank); wake();
@@ -1008,6 +1031,7 @@ def('lockers', 'Steel Lockers', '72" H lockers: one to four tiers, single or dou
       { label: 'Base', options: ['Closed base', 'Legs'], get: () => (legs ? 1 : 0), set: n => { legs = n === 1; make(); } },
       { label: 'Number plates', toggle: true, get: () => numbers, set: v => { numbers = v; make(); } },
       { label: 'Hooks and shelf', toggle: true, get: () => interior, set: v => { interior = v; make(); } },
+      { label: 'Bench', toggle: true, get: () => benchOn, set: v => { benchOn = v; make(); } },
     ],
   };
 });
@@ -1090,7 +1114,7 @@ def('flat-files', 'Flat File Cabinets', 'Flat files from 50" x 38" to 72" x 54",
         bx(dr, iw, ih, 0.15, inner, 1.5, dy + 0.1, 1);
         bx(dr, iw, 0.1, 5, inner, 1.5, dy + ih, 1);
         const sheets = 2 + Math.floor(r() * 5), sw = W * 0.72, sd = D * 0.62;
-        for (let s = 0; s < sheets; s++) bx(dr, sw - r() * 6, 0.05, sd - r() * 4, paper[s % 3], 5 + r() * 2, dy + 0.25 + s * 0.09, 7 + r() * 2);
+        for (let s = 0; s < sheets; s++) bx(dr, sw - r() * 6, 0.05, sd - r() * 4, s === sheets - 1 ? artMat(THREE, u * 9 + i) : paper[s % 3], 5 + r() * 2, dy + 0.25 + s * 0.09, 7 + r() * 2);
         bx(dr, 22, 0.5, 0.9, M.chrome, W / 2 - 11, dy + pitch - 1.2, D);
         bx(dr, 3, Math.min(1.3, pitch - 1.8), 0.1, M.label, W / 2 - 1.5, dy + 0.4, D + 0.02);
         const out = D * 0.74;
@@ -1291,59 +1315,88 @@ def('art-screens', 'Sliding Art Screens', 'Two facing banks of 8 ft x 8 ft mesh 
 });
 
 /* ---------------- 11. pallet rack ---------------- */
-def('pallet-rack', 'Selective Pallet Rack', 'Two 96" bays, 42" deep frames, 16 ft uprights: wire decks, pallet supports, back stops, post protectors', ({ THREE, wake }) => {
+def('pallet-rack', 'Selective Pallet Rack', '96" bays, 42" frames, 16 ft uprights: single run, back to back or two runs with an aisle; wire, aluminum or perforated decks', ({ THREE, wake, bake, refit }) => {
   const k = kit(THREE), { M, bx, group, many } = k, root = new THREE.Group();
-  const up = k.std(0x1f4e8c, 0.45, 0.35), upP = k.postMat(up), beam = k.std(0xe3671c, 0.45, 0.35), bays = 2, bw = 96, D = 42, H = 192, r = rng(4);
-  const levels = [0, 60, 120], galv = k.std(0xb9c0c4, 0.4, 0.7);
-  for (let i = 0; i <= bays; i++) {
-    const x = i * (bw + 3);
-    for (const z of [0, D - 3]) bx(root, 3, H, 3, upP, x, 0, z);
-    const f = group(root, x + 1.5, 0, 0);
-    for (let y = 6, n = 0; y < H - 30; y += 36, n++) { const z1 = n % 2 ? 3 : D - 3, z2 = n % 2 ? D - 3 : 3; const b = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.4, Math.hypot(D - 6, 36)), up); b.position.set(0, y + 18, (z1 + z2) / 2); b.rotation.x = Math.atan2(z2 - z1, 36) * (n % 2 ? 1 : -1); f.add(b); }
-    for (let y = 6; y < H; y += 36) bx(f, 1.4, 1.4, D - 6, up, -0.7, y, 3);
-    bx(root, 7, 0.5, 7, M.steel, x - 2, 0, -2); bx(root, 7, 0.5, 7, M.steel, x - 2, 0, D - 5);
-  }
-  const decks = group(root), supports = group(root), stops = group(root), loads = [];
-  [decks, supports, stops].forEach(g => { g.userData.dyn = true; });
-  for (let b = 0; b < bays; b++) {
-    const x0 = b * (bw + 3) + 3;
-    for (const y of levels) {
-      if (y > 0) {
-        bx(root, bw, 4.5, 1.8, beam, x0, y, 0); bx(root, bw, 4.5, 1.8, beam, x0, y, D - 1.8);
-        const deck = new THREE.Mesh(new THREE.PlaneGeometry(bw, D - 2), k.meshMat(bw, D, 2.5, '#b9c0c4')); deck.rotation.x = -Math.PI / 2; deck.position.set(x0 + bw / 2, y + 4.6, D / 2); decks.add(deck);
-        // pallet support bars front to back, under each pallet's runners
-        for (const px of [x0 + 8, x0 + 38, x0 + 54, x0 + 84]) bx(supports, 3, 1.4, D - 2, galv, px, y + 3.2, 1);
-        // back stop: an upturned angle on the rear beam so pallets cannot push through
-        bx(stops, bw, 4, 1.2, beam, x0, y + 4.5, D - 1.8); bx(stops, bw, 0.4, 2.4, beam, x0, y + 4.5, D - 3);
-      } else {
-        // floor level: a stop bar between the rear uprights
-        bx(stops, bw, 3, 2, beam, x0, 8, D - 2.5);
-      }
-      for (let p = 0; p < 2; p++) {
-        const px = x0 + 3 + p * 46, py = y + (y ? 4.6 : 0);
-        for (let q = 0; q < 3; q++) loads.push({ x: px, y: py, z: 1 + q * 18.5, w: 40, h: 5, d: 3.5, color: '#b08658' });
-        loads.push({ x: px, y: py + 5, z: 1, w: 40, h: 0.8, d: 40, color: '#c49a6a' });
-        const stack = 1 + Math.floor(r() * 2);
-        for (let c = 0; c < stack; c++) for (let q = 0; q < 2; q++) if (r() > 0.1) loads.push({ x: px + 1 + q * 19.5, y: py + 5.8 + c * 20, z: 2, w: 18.5, h: 19, d: 36, color: KRAFT[Math.floor(r() * 4)] });
+  const up = k.std(0x1f4e8c, 0.45, 0.35), upP = k.postMat(up), beam = k.std(0xe3671c, 0.45, 0.35), galv = k.std(0xb9c0c4, 0.4, 0.7);
+  const alu = k.std(0xd3d7da, 0.35, 0.85);
+  const perfTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 32; const g = c.getContext('2d'); g.fillStyle = '#d3d7da'; g.fillRect(0, 0, 32, 32); g.fillStyle = '#6f777c'; for (const [x, y] of [[8, 8], [24, 8], [16, 20], [0, 20], [32, 20], [8, 32], [24, 32], [8, 0], [24, 0]]) { g.beginPath(); g.arc(x, y, 3, 0, Math.PI * 2); g.fill(); } const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8; return t; })();
+  const bays = 2, bw = 96, D = 42, H = 192, levels = [0, 60, 120];
+  const LAYOUTS = ['Single run', 'Back to back', 'Two runs, one aisle'], DECKS = ['Wire decks', 'Solid aluminum decks', 'Perforated aluminum, 3 pieces', 'Pallet supports', 'Open beams'];
+  let layout = 0, deckKind = 0, stopsOn = true, guardsOn = true, loadsOn = true, unit;
+  const row = (z0, front, seed) => {
+    const r = rng(seed), g = group(unit, 0, 0, z0), loads = [];
+    for (let i = 0; i <= bays; i++) {
+      const x = i * (bw + 3);
+      for (const z of [0, D - 3]) bx(g, 3, H, 3, upP, x, 0, z);
+      const f = group(g, x + 1.5, 0, 0);
+      for (let y = 6, n = 0; y < H - 30; y += 36, n++) { const z1 = n % 2 ? 3 : D - 3, z2 = n % 2 ? D - 3 : 3; const b = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.4, Math.hypot(D - 6, 36)), up); b.position.set(0, y + 18, (z1 + z2) / 2); b.rotation.x = Math.atan2(z2 - z1, 36) * (n % 2 ? 1 : -1); f.add(b); }
+      for (let y = 6; y < H; y += 36) bx(f, 1.4, 1.4, D - 6, up, -0.7, y, 3);
+      bx(g, 7, 0.5, 7, M.steel, x - 2, 0, -2); bx(g, 7, 0.5, 7, M.steel, x - 2, 0, D - 5);
+    }
+    const back = front > 0 ? D - 1.8 : 0;
+    for (let b = 0; b < bays; b++) {
+      const x0 = b * (bw + 3) + 3;
+      for (const y of levels) {
+        if (y > 0) {
+          bx(g, bw, 4.5, 1.8, beam, x0, y, 0); bx(g, bw, 4.5, 1.8, beam, x0, y, D - 1.8);
+          if (deckKind === 0) { const dk = new THREE.Mesh(new THREE.PlaneGeometry(bw, D - 2), k.meshMat(bw, D, 2.5, '#b9c0c4')); dk.rotation.x = -Math.PI / 2; dk.position.set(x0 + bw / 2, y + 4.6, D / 2); g.add(dk); }
+          else if (deckKind === 1) bx(g, bw, 0.25, D - 2, alu, x0, y + 4.5, 1);
+          else if (deckKind === 2) for (let q = 0; q < 3; q++) { const pw = bw / 3 - 0.4, t = perfTex.clone(); t.needsUpdate = true; t.repeat.set(pw / 2, (D - 2) / 2); bx(g, pw, 0.25, D - 2, new THREE.MeshStandardMaterial({ map: t, roughness: 0.35, metalness: 0.8 }), x0 + q * (bw / 3) + 0.2, y + 4.5, 1); }
+          else if (deckKind === 3) for (const px of [x0 + 8, x0 + 38, x0 + 54, x0 + 84]) bx(g, 3, 1.4, D - 2, galv, px, y + 3.2, 1);
+          if (stopsOn) { bx(g, bw, 4, 1.2, beam, x0, y + 4.5, back); }
+        } else if (stopsOn) bx(g, bw, 3, 2, beam, x0, 8, front > 0 ? D - 2.5 : 0.5);
+        for (let p = 0; p < 2; p++) {
+          const px = x0 + 3 + p * 46, py = y + (y ? 4.75 : 0);
+          for (let q = 0; q < 3; q++) loads.push({ x: px, y: py, z: 1 + q * 18.5, w: 40, h: 5, d: 3.5, color: '#b08658' });
+          loads.push({ x: px, y: py + 5, z: 1, w: 40, h: 0.8, d: 40, color: '#c49a6a' });
+          const stack = y >= 120 ? 1 : 1 + Math.floor(r() * 2);
+          for (let c = 0; c < stack; c++) for (let q = 0; q < 2; q++) if (r() > 0.1) loads.push({ x: px + 1 + q * 19.5, y: py + 5.8 + c * 20, z: 2, w: 18.5, h: 19, d: 36, color: KRAFT[Math.floor(r() * 4)] });
+        }
       }
     }
-  }
-  const lm = many(root, loads, M.kraft); if (lm) lm.userData.dyn = true;
-  const guard = group(root); guard.userData.dyn = true;
-  const yel = k.std(0xf2c230, 0.5, 0.2), blk = k.std(0x1a1a1a, 0.6, 0.1), endX = bays * (bw + 3) + 3;
-  for (let i = 0; i <= bays; i++) { const x = i * (bw + 3); bx(guard, 5, 18, 4.6, yel, x - 1, 0, D - 3.6); for (const y of [4, 11]) bx(guard, 5.2, 2.4, 4.8, blk, x - 1.1, y, D - 3.7); }
-  for (const x of [-9, endX + 5]) { for (const z of [-3, D - 1]) bx(guard, 4, 16, 4, yel, x, 0, z); bx(guard, 3, 6, D + 6, yel, x + 0.5, 8, -3); bx(guard, 3.1, 1.4, D + 6.1, blk, x + 0.45, 10, -3.05); }
-  supports.visible = false; stops.visible = true;
-  const deckKind = () => (decks.visible ? 0 : supports.visible ? 1 : 2);
+    if (loadsOn) many(g, loads, M.kraft);
+    if (guardsOn) {
+      const yel = k.std(0xf2c230, 0.5, 0.2), blk = k.std(0x1a1a1a, 0.6, 0.1), fz = front > 0 ? D - 3.6 : -1;
+      for (let i = 0; i <= bays; i++) { const x = i * (bw + 3); bx(g, 5, 18, 4.6, yel, x - 1, 0, fz); for (const y of [4, 11]) bx(g, 5.2, 2.4, 4.8, blk, x - 1.1, y, fz - 0.1); }
+    }
+    return g;
+  };
+  const make = () => {
+    if (unit) root.remove(unit);
+    unit = group(root); unit.userData.dyn = true;
+    row(0, 1, 4);
+    if (layout === 1) {
+      // back to back: a second row behind, tied with row spacers
+      const g2 = row(0, 1, 9); g2.rotation.y = Math.PI; g2.position.set(bays * (bw + 3) + 3, 0, -6);
+      for (let i = 0; i <= bays; i++) for (const y of [48, 108, 168]) bx(unit, 1.6, 1.6, 6, up, i * (bw + 3) + 0.7, y, -6);
+    } else if (layout === 2) {
+      // second run across a forklift aisle, facing it
+      const g2 = row(0, 1, 9); g2.rotation.y = Math.PI; g2.position.set(bays * (bw + 3) + 3, 0, 2 * D + 132);
+    }
+    if (guardsOn) {
+      // end-of-aisle guards
+      const yel = k.std(0xf2c230, 0.5, 0.2), endX = bays * (bw + 3) + 3, zA = layout === 1 ? -D - 9 : -3, zB = D - 1;
+      for (const x of [-9, endX + 5]) { for (const z of [zA, zB]) bx(unit, 4, 16, 4, yel, x, 0, z); bx(unit, 3, 6, zB - zA + 4, yel, x + 0.5, 8, zA); }
+    }
+    unit.traverse(o => { if (o.isMesh) { o.castShadow = o.receiveShadow = true; } });
+    bake?.(unit); wake();
+  };
+  make();
+  const re = () => { make(); refit?.(); };
   return {
     group: root,
-    finishes: [{ name: 'Blue and orange', swatch: 'linear-gradient(90deg,#1f4e8c 50%,#e3671c 50%)', up: 0x1f4e8c, beam: 0xe3671c }, { name: 'Green and orange', swatch: 'linear-gradient(90deg,#2f6b4f 50%,#e3671c 50%)', up: 0x2f6b4f, beam: 0xe3671c }, { name: 'Gray and yellow', swatch: 'linear-gradient(90deg,#6b7378 50%,#f2b705 50%)', up: 0x6b7378, beam: 0xf2b705 }, { name: 'All black', swatch: '#26292b', up: 0x26292b, beam: 0x26292b }],
+    finishes: [{ name: 'Blue and orange', swatch: 'linear-gradient(90deg,#1f4e8c 50%,#e3671c 50%)', up: 0x1f4e8c, beam: 0xe3671c }, { name: 'White and gray', swatch: 'linear-gradient(90deg,#f1f2f0 50%,#8f969a 50%)', up: 0xf1f2f0, beam: 0x8f969a }, { name: 'Green and orange', swatch: 'linear-gradient(90deg,#2f6b4f 50%,#e3671c 50%)', up: 0x2f6b4f, beam: 0xe3671c }, { name: 'Gray and yellow', swatch: 'linear-gradient(90deg,#6b7378 50%,#f2b705 50%)', up: 0x6b7378, beam: 0xf2b705 }, { name: 'All black', swatch: '#26292b', up: 0x26292b, beam: 0x26292b }, { name: 'All white', swatch: '#f1f2f0', up: 0xf1f2f0, beam: 0xf1f2f0 }],
     setFinish: f => { up.color.setHex(f.up); upP.color.setHex(f.up); beam.color.setHex(f.beam); },
+    presets: [
+      { label: 'Warehouse', run: () => { layout = 2; deckKind = 0; stopsOn = true; guardsOn = true; loadsOn = true; re(); } },
+      { label: 'Museum, white with perforated decks', run: () => { layout = 1; deckKind = 2; stopsOn = false; guardsOn = false; loadsOn = true; up.color.setHex(0xf1f2f0); upP.color.setHex(0xf1f2f0); beam.color.setHex(0xf1f2f0); re(); } },
+    ],
     actions: [
-      { label: 'Decking', options: ['Wire decks', 'Pallet supports', 'Open beams'], get: deckKind, set: n => { decks.visible = n === 0; supports.visible = n === 1; wake(); } },
-      { label: 'Pallet stops', toggle: true, get: () => stops.visible, set: v => { stops.visible = v; wake(); } },
-      { label: 'Post protectors', toggle: true, get: () => guard.visible, set: v => { guard.visible = v; wake(); } },
-      { label: 'Loads', toggle: true, get: () => !!lm?.visible, set: v => { if (lm) lm.visible = v; wake(); } },
+      { label: 'Layout', options: LAYOUTS, get: () => layout, set: n => { layout = n; re(); } },
+      { label: 'Decking', options: DECKS, get: () => deckKind, set: n => { deckKind = n; re(); } },
+      { label: 'Pallet stops', toggle: true, get: () => stopsOn, set: v => { stopsOn = v; re(); } },
+      { label: 'Post protectors', toggle: true, get: () => guardsOn, set: v => { guardsOn = v; re(); } },
+      { label: 'Loads', toggle: true, get: () => loadsOn, set: v => { loadsOn = v; re(); } },
     ],
   };
 });
@@ -1594,7 +1647,7 @@ def('vlm', 'Vertical Lift Module (VLM)', 'About 10 ft W x 9 ft D, 15 ft H with o
   make();
   const idle = () => !trays.some(t => t.userData.busy);
   return {
-    group: root, finishes: [{ name: 'White', swatch: '#f2f3f1', color: 0xf2f3f1 }, { name: 'Light gray', swatch: '#c9cdcf', color: 0xc9cdcf }, { name: 'Dark gray', swatch: '#4a5055', color: 0x4a5055 }], setFinish: k.finisher(shell), view: [1.25, 0.5, 0.95],
+    group: root, prompt: 'Tap any tray to call it, or the terminal to run a pick list', finishes: [{ name: 'White', swatch: '#f2f3f1', color: 0xf2f3f1 }, { name: 'Light gray', swatch: '#c9cdcf', color: 0xc9cdcf }, { name: 'Dark gray', swatch: '#4a5055', color: 0x4a5055 }], setFinish: k.finisher(shell), view: [1.25, 0.5, 0.95],
     actions: [
       { label: 'Open the operator console', run: () => { openConsole(); } },
       { label: 'Call a tray', run: () => { const free = trays.filter(t => !t.userData.at && !t.userData.busy); if (free.length) request(free[Math.floor(Math.random() * free.length)]); } },
@@ -2387,20 +2440,20 @@ def('bike-storage', 'Bike Room Storage', 'Apartment and campus bike rooms: two-t
     }
     if (walls) {
       // wire partition bike room around the racks, with a door
-      const X0 = -18, X1 = L + 18, Z1 = 118, WH = 96;
+      const X0 = -18, X1 = L + 18, Z1 = 118, WH = 120;
       const pnl = (w, x, z, rot) => { const g = group(unit, x, 0, z); g.rotation.y = rot; bx(g, w, 1.2, 1.2, cage, 0, 0, -0.6); bx(g, w, 1.2, 1.2, cage, 0, WH - 1.2, -0.6); const m = new THREE.Mesh(new THREE.PlaneGeometry(w - 1, WH - 2.4), k.meshMat(w, WH, 2)); m.position.set(w / 2, WH / 2, 0); g.add(m); };
       for (const [x, z] of [[X0, -4], [X1, -4], [X0, Z1], [X1, Z1]]) bx(unit, 2, WH, 2, cage, x - 1, 0, z - 1);
-      pnl(X1 - X0, X0, -4, 0); pnl(Z1 + 4, X0, -4, -Math.PI / 2); pnl(Z1 + 4, X1, -4, -Math.PI / 2); pnl(X1 - X0 - 44, X0, Z1, 0);
+      pnl(X1 - X0, X0, -4, 0); pnl(Z1 + 4, X0, -4, -Math.PI / 2); pnl(Z1 + 4, X1, -4, -Math.PI / 2); pnl(X1 - X0 - 44, X0, Z1, 0); bx(unit, 2, WH, 2, cage, X1 - 44, 0, Z1 - 1);
       const door = group(unit, X1 - 42, 0, Z1);
       const dm = group(door); bx(dm, 40, 1.2, 1.2, cage, 0, 0, -0.6); bx(dm, 40, 1.2, 1.2, cage, 0, WH - 1.2, -0.6); bx(dm, 1.2, WH, 1.2, cage, 38.8, 0, -0.6); const m = new THREE.Mesh(new THREE.PlaneGeometry(38, WH - 2.4), k.meshMat(40, WH, 2)); m.position.set(20, WH / 2, 0); dm.add(m); bx(dm, 3, 5, 1.8, M.chrome, 35, 42, 0);
-      door.userData.onClick = () => { door.userData.open = !door.userData.open; tween(door.rotation, 'y', door.userData.open ? 1.6 : 0, 700, 'out'); };
+      door.userData.onClick = () => { door.userData.open = !door.userData.open; tween(door.rotation, 'y', door.userData.open ? -1.6 : 0, 700, 'out'); };
     }
     unit.traverse(o => { if (o.isMesh) { o.castShadow = o.receiveShadow = true; } });
     bake?.(unit); wake();
   };
   make();
   return {
-    group: root, view: [0.7, 0.55, 1.3],
+    group: root, view: [0.7, 0.55, 1.3], prompt: 'Tap an upper tray to lower it, or the door to open the room',
     finishes: [{ name: 'Dark gray', swatch: '#3a3f44', color: 0x3a3f44 }, { name: 'Black', swatch: '#1c1d1f', color: 0x1c1d1f }, { name: 'Silver', swatch: '#c3c7ca', color: 0xbfc4c7 }, { name: 'Blue', swatch: '#2a4d7a', color: 0x2a4d7a }], setFinish: k.finisher(steel),
     actions: [
       { label: 'Lower an upper tray', when: () => style === 0, run: () => { const t = trays[1] || trays[0]; t?.userData.onClick(); return t?.userData.down ? 'Raise the tray' : 'Lower an upper tray'; } },
