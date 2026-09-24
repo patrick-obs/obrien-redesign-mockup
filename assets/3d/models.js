@@ -1271,14 +1271,14 @@ def('mezzanine', 'Structural Steel Mezzanine', '20 ft x 16 ft platform, 9 ft cle
 });
 
 /* ---------------- 13. vertical lift module ---------------- */
-def('vlm', 'Vertical Lift Module (VLM)', 'About 10 ft W x 9 ft D x 15 ft H, one bay or two stacked bays', ({ THREE, tween, wake, bake, panel }) => {
+def('vlm', 'Vertical Lift Module (VLM)', 'About 10 ft W x 9 ft D, 15 ft H with one bay or 20 ft H serving two floors', ({ THREE, tween, wake, bake, panel, refit }) => {
   const k = kit(THREE), { M, bx, cyl, group, many } = k, root = new THREE.Group();
   const shell = k.std(0xf2f3f1, 0.4, 0.2), trim = k.std(0xd9dcda, 0.45, 0.3), itemMat = k.std(0xffffff, 0.45, 0.05);
   const lightM = k.std(0xfff6d5, 0.3, 0, { emissive: 0xfff2c4, emissiveIntensity: 0.9 });
   const laserM = new THREE.MeshBasicMaterial({ color: 0xff2a2a, transparent: true, opacity: 0.85, toneMapped: false }), curtainBeam = new THREE.MeshBasicMaterial({ color: 0xff3b3b, transparent: true, opacity: 0.28, depthWrite: false, toneMapped: false });
   const curtainM = k.std(0xc92a2a, 0.3, 0, { emissive: 0xc92a2a, emissiveIntensity: 0.9 }), ledM = k.std(0x39d353, 0.3, 0, { emissive: 0x39d353, emissiveIntensity: 1.2 }), band = k.std(0x4a5055, 0.5, 0.3);
   const tabletM = k.std(0x2a6f97, 0.2, 0.1, { emissive: 0x1b4f70, emissiveIntensity: 0.8 });
-  const W = 118, D = 108, H = 180, TW = W - 18, TD = 30, bayH = 22, trayX = 9, r = rng(8);
+  const W = 118, D = 108, TW = W - 18, TD = 30, bayH = 22, trayX = 9, r = rng(8);
   const zRear = 4, zLift = zRear + TD + 4, zFront = zLift + TD + 4, zBay = D - TD - 1;
   const bins = ['#2f6fb3', '#c92a2a', '#e0a526', '#7a8288', '#2f9e44'];
   const fill = (list, x0, y, z, span) => { let x = x0 + 2; for (;;) { const bw = 6 + Math.floor(r() * 3) * 4; if (x + bw > x0 + span - 2) break; if (r() > 0.25) list.push({ x, y, z: z + 2, w: bw - 0.5, h: 2 + r() * 3.5, d: TD - 4, color: bins[Math.floor(r() * 5)] }); x += bw; } };
@@ -1293,7 +1293,7 @@ def('vlm', 'Vertical Lift Module (VLM)', 'About 10 ft W x 9 ft D x 15 ft H, one 
     cx.fillStyle = '#9fd3d5'; cx.font = '28px system-ui, sans-serif'; cx.fillText(line, 22, 222);
     tex.needsUpdate = true; wake(); ui?.();
   };
-  let nBays = 1, unit, lift, trays = [], bays = [], pulleys = [], chain = Promise.resolve(), ui = null;
+  let H = 180, FY = 0, nBays = 1, unit, lift, trays = [], bays = [], pulleys = [], chain = Promise.resolve(), ui = null;
   const spin = (dy, ms) => pulleys.forEach(p => tween(p.rotation, 'x', p.rotation.x - dy / 3.2, ms));
   const liftTo = (y) => { const dy = y - 2 - lift.position.y, ms = 450 + Math.abs(dy) * 9; spin(dy, ms); return tween(lift.position, 'y', y - 2, ms); };
   const carry = (t, y) => { const ms = 450 + Math.abs(t.position.y - y) * 9; spin(y - 2 - lift.position.y, ms); return Promise.all([tween(lift.position, 'y', y - 2, ms), tween(t.position, 'y', y, ms)]); };
@@ -1336,7 +1336,9 @@ def('vlm', 'Vertical Lift Module (VLM)', 'About 10 ft W x 9 ft D x 15 ft H, one 
   const make = () => {
     if (unit) root.remove(unit);
     unit = group(root); unit.userData.dyn = true; trays = []; chain = Promise.resolve();
-    const bayYs = nBays === 1 ? [34] : [30, 66], topOpen = bayYs[bayYs.length - 1] + bayH;
+    // a second bay serves the floor above: taller machine, a floor slab around it, its own work zone and terminal
+    H = nBays === 1 ? 180 : 240; FY = nBays === 1 ? 0 : 120;
+    const bayYs = nBays === 1 ? [34] : [34, FY + 34], topOpen = bayYs[bayYs.length - 1] + bayH;
     bays = bayYs.map(y => ({ y, tray: null }));
     // white cabinet, glass on the right side so the lift is visible
     bx(unit, W, 3, D, trim, 0, 0, 0);
@@ -1370,18 +1372,28 @@ def('vlm', 'Vertical Lift Module (VLM)', 'About 10 ft W x 9 ft D x 15 ft H, one 
     { const c = document.createElement('canvas'); c.width = 64; c.height = 16; const g2 = c.getContext('2d'); g2.fillStyle = '#f2c230'; g2.fillRect(0, 0, 64, 16); g2.fillStyle = '#1b1b1b'; for (let q = -16; q < 64; q += 16) { g2.beginPath(); g2.moveTo(q, 16); g2.lineTo(q + 8, 16); g2.lineTo(q + 16, 0); g2.lineTo(q + 8, 0); g2.closePath(); g2.fill(); }
       const tx = (len) => { const t2 = new THREE.CanvasTexture(c); t2.colorSpace = THREE.SRGBColorSpace; t2.wrapS = THREE.RepeatWrapping; t2.repeat.set(len / 12, 1); return new THREE.MeshStandardMaterial({ map: t2, roughness: 0.6 }); };
       const zx0 = -4, zx1 = W + 24, zz0 = D + 3, zz1 = D + 54, tw = 3;
-      const strip = (len, x, z, rot) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(len, tw), tx(len)); m.rotation.set(-Math.PI / 2, 0, rot); m.position.set(x, 0.03, z); m.userData.noShadow = true; unit.add(m); };
-      strip(zx1 - zx0, (zx0 + zx1) / 2, zz0 + tw / 2, 0); strip(zx1 - zx0, (zx0 + zx1) / 2, zz1 - tw / 2, 0);
-      strip(zz1 - zz0, zx0 + tw / 2, (zz0 + zz1) / 2, Math.PI / 2); strip(zz1 - zz0, zx1 - tw / 2, (zz0 + zz1) / 2, Math.PI / 2); }
+      for (const fy of nBays === 1 ? [0] : [0, FY]) {
+        const strip = (len, x, z, rot) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(len, tw), tx(len)); m.rotation.set(-Math.PI / 2, 0, rot); m.position.set(x, fy + 0.03, z); m.userData.noShadow = true; unit.add(m); };
+        strip(zx1 - zx0, (zx0 + zx1) / 2, zz0 + tw / 2, 0); strip(zx1 - zx0, (zx0 + zx1) / 2, zz1 - tw / 2, 0);
+        strip(zz1 - zz0, zx0 + tw / 2, (zz0 + zz1) / 2, Math.PI / 2); strip(zz1 - zz0, zx1 - tw / 2, (zz0 + zz1) / 2, Math.PI / 2);
+      }
+      if (nBays === 2) {
+        // upper floor slab with an opening the machine passes through, and a guard rail at the slab edge
+        const slab = k.std(0xb9bcbc, 0.9, 0), rail = k.std(0xe0a526, 0.45, 0.35), ex = 40, fz = 76;
+        bx(unit, W + 2 * ex, 6, fz, slab, -ex, FY - 6, D); bx(unit, ex, 6, D + 20, slab, -ex, FY - 6, -20); bx(unit, ex, 6, D + 20, slab, W, FY - 6, -20); bx(unit, W, 6, 20, slab, 0, FY - 6, -20);
+        for (let x = -ex + 1; x <= W + ex - 1; x += 32) bx(unit, 1.6, 42, 1.6, rail, x - 0.8, FY, D + fz - 1.6);
+        bx(unit, W + 2 * ex, 1.6, 1.6, rail, -ex, FY + 40.4, D + fz - 1.6); bx(unit, W + 2 * ex, 1.2, 1.2, rail, -ex, FY + 21, D + fz - 1.4);
+      } }
     bx(unit, W, 12, 1.2, band, 0, H - 14, D - 0.6); bx(unit, W, 3, 1.2, band, 0, 3, D - 0.6);
     // monitor centered over the top bay
-    bx(unit, 28, 15, 1.2, M.black, W / 2 - 14, topOpen + 8, D);
-    const scr = new THREE.Mesh(new THREE.PlaneGeometry(26, 13), screenM); scr.position.set(W / 2, topOpen + 15.5, D + 1.25); unit.add(scr);
+    for (const by of bayYs) { bx(unit, 28, 15, 1.2, M.black, W / 2 - 14, by + bayH + 8, D); const scr = new THREE.Mesh(new THREE.PlaneGeometry(26, 13), screenM); scr.position.set(W / 2, by + bayH + 15.5, D + 1.25); unit.add(scr); }
     // operator console on an arm off the right side of the bay
-    const arm = group(unit, W - 3, bayYs[0] + 14, D - 2);
-    bx(arm, 12, 1.6, 1.6, M.dark, 0, 0, 0); bx(arm, 1.6, 1.6, 8, M.dark, 10.4, 0, 0);
-    const tab = group(arm, 11.2, 1.6, 8); tab.rotation.x = -0.45; tab.userData.onClick = () => openConsole();
-    bx(tab, 14, 10, 1.2, M.black, -7, 0, -0.6); bx(tab, 12.4, 8.4, 0.2, tabletM, -6.2, 0.8, 0.62);
+    for (const by of bayYs) {
+      const arm = group(unit, W - 3, by + 14, D - 2);
+      bx(arm, 12, 1.6, 1.6, M.dark, 0, 0, 0); bx(arm, 1.6, 1.6, 8, M.dark, 10.4, 0, 0);
+      const tab = group(arm, 11.2, 1.6, 8); tab.rotation.x = -0.45; tab.userData.onClick = () => openConsole(); tab.userData.dyn = true;
+      bx(tab, 14, 10, 1.2, M.black, -7, 0, -0.6); bx(tab, 12.4, 8.4, 0.2, tabletM, -6.2, 0.8, 0.62);
+    }
     // tray columns: rear runs full height, front starts above the top bay; the lift rides between them
     const levels = []; for (let y = 10; y < H - 14; y += 8.5) levels.push(y);
     const mk = (y, z) => {
@@ -1392,7 +1404,7 @@ def('vlm', 'Vertical Lift Module (VLM)', 'About 10 ft W x 9 ft D x 15 ft H, one 
       t.userData.onClick = () => request(t);
       trays.push(t);
     };
-    for (const y of levels) { mk(y, zRear); if (y > topOpen + 12) mk(y, zFront); }
+    for (const y of levels) { mk(y, zRear); if (!bayYs.some(by => y > by - 12 && y < by + bayH + 12)) mk(y, zFront); }
     for (const z of [zRear, zRear + TD, zFront, zFront + TD]) for (const x of [trayX - 2, trayX + TW]) bx(unit, 2, H - 8, 1.5, trim, x, 3, z - 0.75);
     // lift drive: a toothed belt each side over top and bottom pulleys, a cross shaft and gear motor up top
     pulleys = [];
@@ -1472,7 +1484,7 @@ def('vlm', 'Vertical Lift Module (VLM)', 'About 10 ft W x 9 ft D x 15 ft H, one 
       { label: 'Open the operator console', run: () => { openConsole(); } },
       { label: 'Call a tray', run: () => { const free = trays.filter(t => !t.userData.at && !t.userData.busy); if (free.length) request(free[Math.floor(Math.random() * free.length)]); } },
       { label: 'Return all trays', run: () => { bays.forEach(b => b.tray && request(b.tray)); } },
-      { label: 'Two bays', run: () => { if (idle()) { nBays = 3 - nBays; make(); } return nBays === 2 ? 'Single bay' : 'Two bays'; } },
+      { label: 'Second bay on the floor above', toggle: true, get: () => nBays === 2, set: v => { if (idle()) { nBays = v ? 2 : 1; make(); refit?.(); } } },
     ],
   };
 });
