@@ -320,31 +320,29 @@ function photos(file, html) {
 /* ---------------- 3D product viewer ---------------- */
 // which interactive models appear on which page (ids live in assets/3d/models.js)
 const VIEW3D = {
-  'four-post-shelving': 'four-post', 'bin-storage': 'bin-shelving', 'wire-shelving': 'wire-shelving,wire-track,bike-storage', 'cantilever-shelving': 'library,hd-mobile-library',
-  'static-shelving': 'four-post,bin-shelving,wire-shelving,library,tire-rack', 'high-density-mobile-storage': 'hd-mobile,hd-mobile-mezz,wire-track', 'lockers': 'lockers,athletic,evidence-lockers,weapons', 'evidence-lockers': 'evidence-lockers',
-  'cabinets': 'flat-files,fireproof,rotary,museum-cabinet', 'rotary-cabinets': 'rotary', 'museum-cabinets': 'museum-cabinet,hd-mobile-museum,four-post-solander,textile-rack,hd-mobile-textile', 'art-screens': 'art-screens,wall-art,hd-mobile-art,painting-bins,hd-mobile-bins,pallet-museum',
-  'pallet-rack': 'pallet-rack', 'mezzanines': 'mezzanine,hd-mobile-mezz', 'lifts-carousels': 'vlm', 'modular-casework': 'casework,ss-table', 'wire-partitions': 'wire-cage,bike-storage',
-  'weapons-storage': 'weapons,hd-mobile', 'athletic-storage': 'athletic,hd-mobile-gear,lockers', 'athletics': 'athletic,hd-mobile-gear,hd-mobile-golf,lockers', 'mail-sorters': 'mail-sorter', 'fireproof-cabinets': 'fireproof', 'wardrobe-cabinets': 'hd-mobile-wardrobe',
-  'military': 'weapons,hd-mobile,pallet-rack', 'museums': 'four-post-solander,painting-bins,hd-mobile-bins,art-screens,wall-art,hd-mobile-art,pallet-museum,hd-mobile-artrack,museum-cabinet,hd-mobile-museum,textile-rack,hd-mobile-textile', 'libraries': 'library,hd-mobile-library', 'material-handling-warehouse': 'hd-mobile-open,hd-mobile-mezz,pallet-rack,mezzanine,vlm,workstation,wire-cage',
-  'vertical-farming': 'hd-mobile-grow,ss-table,wire-track', 'pharmaceutical-healthcare': 'casework,ss-table,wire-track,hd-mobile', 'education': 'lockers,bike-storage,athletic,hd-mobile-gear,hd-mobile-instruments,library,hd-mobile,mail-sorter', 'government-public-safety': 'evidence-lockers,weapons,hd-mobile,wire-cage',
+  'four-post-shelving': 'four-post', 'bin-storage': 'bin-shelving', 'wire-shelving': 'wire-shelving,wire-track', 'cantilever-shelving': 'library,hd-mobile-library',
+  'static-shelving': 'four-post,bin-shelving,wire-shelving,library,tire-rack', 'high-density-mobile-storage': 'hd-mobile,hd-mobile-museum,hd-mobile-flat,hd-mobile-artrack,hd-mobile-pallet,hd-mobile-mezz,wire-track', 'lockers': 'lockers,athletic,evidence-lockers,weapons', 'evidence-lockers': 'evidence-lockers',
+  'cabinets': 'flat-files,fireproof,rotary,museum-cabinet', 'rotary-cabinets': 'rotary', 'museum-cabinets': 'museum-cabinet,hd-mobile-museum,four-post-solander,textile-rack,hd-mobile-textile', 'art-screens': 'art-screens,wall-art,hd-mobile-art,painting-bins,hd-mobile-bins,wall-etrack',
+  'pallet-rack': 'pallet-rack,hd-mobile-pallet', 'mezzanines': 'mezzanine,hd-mobile-mezz', 'lifts-carousels': 'vlm', 'modular-casework': 'casework,ss-table', 'wire-partitions': 'wire-cage,bike-storage',
+  'weapons-storage': 'weapons,hd-mobile-weapons', 'athletic-storage': 'athletic,hd-mobile-gear,lockers', 'athletics': 'athletic,hd-mobile-gear,hd-mobile-golf,lockers', 'mail-sorters': 'mail-sorter', 'fireproof-cabinets': 'fireproof', 'wardrobe-cabinets': 'wardrobe,hd-mobile-wardrobe',
+  'military': 'weapons,hd-mobile-weapons,pallet-rack,hd-mobile-pallet', 'museums': 'four-post-solander,painting-bins,hd-mobile-bins,art-screens,wall-art,hd-mobile-art,hd-mobile-artrack,wall-etrack,museum-cabinet,hd-mobile-museum,textile-rack,hd-mobile-textile', 'libraries': 'library,hd-mobile-library', 'material-handling-warehouse': 'hd-mobile-open,hd-mobile-pallet,hd-mobile-mezz,pallet-rack,mezzanine,vlm,bin-shelving,workstation,wire-cage,wall-etrack',
+  'vertical-farming': 'hd-mobile-grow,ss-table,wire-track', 'pharmaceutical-healthcare': 'casework,ss-table,wire-track,hd-mobile', 'education': 'lockers,bike-storage,athletic,hd-mobile-gear,hd-mobile-instruments,library,hd-mobile,mail-sorter', 'government-public-safety': 'evidence-lockers,weapons,hd-mobile-weapons,hd-mobile,wire-cage',
   'corporate-legal': 'hd-mobile,rotary,fireproof,hd-mobile-flat,mail-sorter', 'automotive': 'tire-rack,hd-mobile-tire,bin-shelving,workstation,pallet-rack,vlm', 'retail': 'hd-mobile,four-post,bin-shelving,wire-track',
   'general-contractors': 'install,hd-mobile,mezzanine', 'design-specify': 'install,hd-mobile',
 };
-const ALL3D = 'hd-mobile,wire-track,vlm,rotary,four-post,bin-shelving,wire-shelving,library,tire-rack,lockers,athletic,evidence-lockers,weapons,flat-files,fireproof,museum-cabinet,art-screens,wall-art,textile-rack,painting-bins,casework,workstation,ss-table,mail-sorter,pallet-rack,pallet-museum,mezzanine,wire-cage,install,bike-storage';
-// industry pages show the systems ready-made: fewer knobs, no presets
-const LITE = new Set(['museums', 'libraries', 'material-handling-warehouse', 'pharmaceutical-healthcare', 'education', 'government-public-safety', 'corporate-legal', 'automotive', 'retail', 'athletics', 'military', 'vertical-farming', 'general-contractors']);
+const ALL3D = 'hd-mobile,wire-track,vlm,rotary,four-post,bin-shelving,wire-shelving,library,tire-rack,lockers,athletic,evidence-lockers,weapons,flat-files,fireproof,museum-cabinet,wardrobe,art-screens,wall-art,textile-rack,painting-bins,wall-etrack,casework,workstation,ss-table,mail-sorter,pallet-rack,pallet-museum,mezzanine,wire-cage,install,bike-storage';
 const viewer3d = (slug, name) => VIEW3D[slug] ? `
 <section class="v3d-sec">
   <div class="wrap">
     <div class="v3d-head"><div><span class="eyebrow">Explore in 3D</span><h2>${VIEW3D[slug].includes(',') ? 'Explore the systems in 3D' : `See ${name.replace(/\s*\(VLM\)/, '')} from every side`}</h2></div><a class="v3d-all" href="showroom.html">Open the 3D showroom &rarr;</a></div>
-    <div class="v3d" data-models="${VIEW3D[slug]}"${LITE.has(slug) ? ' data-lite="1"' : ''}></div>
+    <div class="v3d" data-models="${VIEW3D[slug]}" data-lite="1"></div>
   </div>
 </section>` : '';
 const home3d = () => `
 <section class="v3d-sec v3d-home">
   <div class="wrap">
-    <div class="v3d-head"><div><span class="eyebrow">3D showroom</span><h2>Spin it, open it, see how it works</h2><p>Drag to look at every side. Tap a carriage to open an aisle, pull a drawer, swing a door.</p></div><a class="v3d-all" href="showroom.html">All 30 models &rarr;</a></div>
-    <div class="v3d" data-models="hd-mobile,four-post,lockers,flat-files,vlm"></div>
+    <div class="v3d-head"><div><span class="eyebrow">3D showroom</span><h2>Spin it, open it, see how it works</h2><p>Drag to look at every side. Tap a carriage to open an aisle, pull a drawer, swing a door.</p></div><a class="v3d-all" href="showroom.html">All ${ALL3D.split(',').length} models &rarr;</a></div>
+    <div class="v3d" data-models="hd-mobile,four-post,lockers,flat-files,vlm" data-lite="1"></div>
   </div>
 </section>`;
 function showroomPage(shell, heroImg) {
@@ -354,7 +352,7 @@ function showroomPage(shell, heroImg) {
   <div class="wrap">
     <span class="eyebrow">3D showroom</span>
     <h1>Walk around the products</h1>
-    <p>Thirty of the systems we plan and install, as interactive models. Drag to see every side, zoom in on the details, and try how they move.</p>
+    <p>${ALL3D.split(',').length} of the systems we plan and install, as interactive models. Drag to see every side, zoom in on the details, and try how they move.</p>
   </div>
 </div>
 <section class="v3d-sec v3d-room"><div class="wrap">
@@ -396,11 +394,15 @@ const CSS3D = `.v3d-ov{position:absolute;right:12px;top:12px;z-index:6;width:min
 .v3d-side{border-right:1px solid var(--line);padding:16px 10px;background:#fbfcfc;overflow-y:auto;scrollbar-width:thin;contain:size}
 .v3d-side{position:relative}
 .v3d-find{width:100%;box-sizing:border-box;margin:0 0 12px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;font:inherit;font-size:.9rem;background:#fff}
-.v3d-g{margin-bottom:6px}
-.v3d-g>summary{list-style:none;display:flex;justify-content:space-between;align-items:center;cursor:pointer;font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:6px 10px;border-radius:8px}
-.v3d-g>summary::-webkit-details-marker{display:none}.v3d-g>summary:hover{background:#eef4f4}
+.v3d-g{margin-bottom:4px}
+.v3d-g>summary{list-style:none;display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.74rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#1d2a2b;background:#eef3f3;padding:9px 10px;border-radius:9px}
+.v3d-g>summary::before{content:'';width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s;flex:none;margin-right:2px}
+.v3d-g[open]>summary::before{transform:rotate(45deg) translate(-2px,-1px)}
+.v3d-g>summary em{margin-left:auto}
+.v3d-g>summary::-webkit-details-marker{display:none}.v3d-g>summary:hover{background:#e2ecec}
 .v3d-g>summary em{font-style:normal;font-weight:600;letter-spacing:0;color:#9aa6a6}
-.v3d-g[open]>summary{color:var(--teal-dark)}
+.v3d-g[open]>summary{background:var(--teal-dark,#023c3f);color:#fff}.v3d-g[open]>summary em{color:rgba(255,255,255,.7)}
+.v3d-g[open]{padding-bottom:6px}.v3d-g[open]>button{margin-left:12px;width:calc(100% - 12px);border-left:2px solid #dfe8e8;border-radius:0 9px 9px 0}
 .v3d-g button{display:block;width:100%;text-align:left;border:0;background:none;padding:6px 10px;border-radius:9px;font:inherit;font-size:.9rem;line-height:1.3;color:var(--ink);cursor:pointer;transition:background .15s,color .15s}
 .v3d-g button:hover{background:#eef4f4}
 .v3d-g button[aria-selected=true]{background:var(--teal);color:#fff;font-weight:600}
@@ -435,6 +437,15 @@ const CSS3D = `.v3d-ov{position:absolute;right:12px;top:12px;z-index:6;width:min
 .v3d-prompt{position:absolute;left:50%;top:14px;transform:translateX(-50%);background:var(--teal);color:#fff;padding:8px 16px 8px 34px;border-radius:999px;font-size:.88rem;font-weight:600;pointer-events:none;box-shadow:0 6px 18px rgba(2,60,63,.25);transition:opacity .5s;white-space:nowrap;max-width:calc(100% - 24px);overflow:hidden;text-overflow:ellipsis}
 .v3d-prompt::before{content:'';position:absolute;left:13px;top:50%;width:10px;height:10px;margin-top:-5px;border-radius:50%;background:#fff;animation:v3dPing 1.4s ease-out infinite}
 .v3d-prompt.gone{opacity:0}
+.v3d-peg{position:absolute;right:12px;bottom:12px;display:flex;align-items:center;gap:6px;border:0;border-radius:999px;padding:7px 14px 7px 8px;background:#fff;color:var(--teal);font-weight:700;font-size:.85rem;box-shadow:0 6px 18px rgba(0,0,0,.18);cursor:pointer;z-index:4}
+.v3d-peg svg{width:26px;height:26px;padding:3px;border-radius:50%;background:#f2b705;fill:#fff;stroke:#fff;stroke-width:1.2}
+.v3d-peg:hover svg{background:#e0a300}
+.v3d-walkbar{position:absolute;left:12px;right:12px;bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 8px 7px 14px;border-radius:12px;background:rgba(2,30,32,.78);color:#fff;font-size:.84rem;z-index:4}
+.v3d-walkbar button{border:0;border-radius:8px;padding:6px 12px;background:#fff;color:#0b1b1c;font-weight:700;cursor:pointer;white-space:nowrap}.v3d-walkbar kbd{font:inherit;font-size:.72rem;opacity:.6;margin-left:4px}
+@media (hover:none){.v3d-walkbar span{font-size:0}.v3d-walkbar span::after{content:'Drag to look, tap a circle to move';font-size:.84rem}.v3d-walkbar kbd{display:none}}
+.v3d-fsask{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(300px,calc(100% - 32px));padding:16px;border-radius:14px;background:#fff;box-shadow:0 14px 40px rgba(0,0,0,.28);text-align:center;z-index:6}.v3d-fsask b{display:block;font-size:1.02rem}.v3d-fsask span{display:block;margin:4px 0 12px;color:#5b6b6c;font-size:.88rem}.v3d-fsask div{display:flex;gap:8px;justify-content:center}.v3d-fsask button{border:0;border-radius:9px;padding:9px 14px;font-weight:700;cursor:pointer;background:#e7eeee;color:#0b1b1c}.v3d-fsask button[data-fs='1']{background:var(--teal);color:#fff}
+.v3d-peg[hidden],.v3d-walkbar[hidden],.v3d-fsask[hidden],.v3d-toast[hidden]{display:none}
+.v3d-toast{position:absolute;left:50%;top:56px;transform:translateX(-50%);max-width:calc(100% - 24px);padding:9px 14px;border-radius:10px;background:#1b1c1e;color:#fff;font-size:.85rem;z-index:5;text-align:center}
 @keyframes v3dPing{0%{box-shadow:0 0 0 0 rgba(255,255,255,.8)}100%{box-shadow:0 0 0 10px rgba(255,255,255,0)}}
 .v3d-bar .v3d-fin{order:1}
 .v3d-btns{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
@@ -471,3 +482,87 @@ const CSS3D = `.v3d-ov{position:absolute;right:12px;top:12px;z-index:6;width:min
 `;
 
 module.exports = { viewer3d, home3d, showroomPage, with3d, CSS3D, photos, specPanel, designSpecifyPage, servicePage, notFound, enrich, sitemap, ROBOTS, CSS };
+
+/* customer presentations: a clean page for one customer, and the builder that makes its link or a single-file download */
+const PRESENT_GROUPS = [
+  ['Mobile systems', ['hd-mobile', 'hd-mobile-open', 'hd-mobile-library', 'hd-mobile-flat', 'hd-mobile-museum', 'hd-mobile-bins', 'hd-mobile-art', 'hd-mobile-artrack', 'hd-mobile-textile', 'hd-mobile-wardrobe', 'hd-mobile-gear', 'hd-mobile-golf', 'hd-mobile-instruments', 'hd-mobile-weapons', 'hd-mobile-tire', 'hd-mobile-grow', 'hd-mobile-pallet', 'hd-mobile-mezz', 'wire-track']],
+  ['Automated', ['vlm', 'rotary']],
+  ['Shelving & racks', ['four-post', 'four-post-solander', 'bin-shelving', 'wire-shelving', 'library', 'tire-rack', 'pallet-rack', 'pallet-museum']],
+  ['Lockers & security', ['lockers', 'athletic', 'evidence-lockers', 'weapons']],
+  ['Cabinets', ['flat-files', 'fireproof', 'museum-cabinet', 'wardrobe']],
+  ['Museum & art', ['art-screens', 'wall-art', 'painting-bins', 'textile-rack', 'wall-etrack']],
+  ['Workspace', ['casework', 'workstation', 'ss-table', 'mail-sorter']],
+  ['Buildings', ['mezzanine', 'wire-cage', 'bike-storage', 'install']],
+];
+function presentPages(VER, logo, names) {
+  const head = (title) => `<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="robots" content="noindex, nofollow">
+<title>${title}</title><link rel="stylesheet" href="assets/style.css?v=${VER}"><style id="pz-css"></style></head><body>`;
+  const present = `${head(`Storage solutions from O'Brien Systems`)}
+<div id="pz"></div>
+<script type="module">
+import { mountPresent, PRESENT_CSS } from './assets/present.js?v=${VER}';
+document.getElementById('pz-css').textContent = PRESENT_CSS;
+mountPresent(${JSON.stringify(logo)});
+</script></body></html>`;
+  const industries = Object.entries(VIEW3D).filter(([s]) => names[s]).map(([s, m]) => ({ s, n: names[s], m: m.split(',') }));
+  const builder = `${head('Presentation builder | O\'Brien Systems')}
+<style>
+.pb{max-width:1100px;margin:0 auto;padding:32px 16px 60px}.pb h1{margin:.2em 0}.pb .lead{color:#5b6b6c;max-width:720px}
+.pb-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:28px;margin-top:22px}@media (max-width:860px){.pb-grid{grid-template-columns:1fr}}
+.pb label{display:block;font-weight:700;font-size:.85rem;margin:14px 0 5px}.pb input[type=text],.pb input[type=email],.pb textarea,.pb select{width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid #cfdada;border-radius:10px;font:inherit}
+.pb textarea{min-height:90px}.pb fieldset{border:1px solid #dfe8e8;border-radius:12px;padding:10px 14px;margin:0 0 12px}.pb legend{font-weight:800;font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;color:#1d2a2b;padding:0 6px}
+.pb .chk{display:flex;gap:8px;align-items:flex-start;font-weight:500;font-size:.9rem;margin:5px 0}.pb .chk input{margin-top:3px}
+.pb-models{max-height:640px;overflow:auto;padding-right:6px}.pb-bar{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}.pb-bar .btn{cursor:pointer}
+.pb-out{margin-top:14px;padding:12px;border-radius:10px;background:#f2f6f6;word-break:break-all;font-size:.85rem;display:none}.pb-count{color:#5b6b6c;font-size:.85rem;margin-left:6px}
+</style>
+<div class="pb">
+  <span class="eyebrow">Internal tool</span><h1>Customer presentation builder</h1>
+  <p class="lead">Pick what a customer should see. You get a link to send, or a single HTML file you can email or open offline. The 3D models run right in it: turn them, open doors and drawers, walk the aisles.</p>
+  <div class="pb-grid">
+    <div>
+      <label for="pb-n">Customer</label><input id="pb-n" type="text" placeholder="Customer or project name">
+      <label for="pb-t">Headline</label><input id="pb-t" type="text" placeholder="Storage built around how you work">
+      <label for="pb-p">Message</label><textarea id="pb-p" placeholder="A few lines about their project, in your words."></textarea>
+      <label for="pb-by">Prepared by</label><input id="pb-by" type="text" placeholder="Your name">
+      <label for="pb-em">Email</label><input id="pb-em" type="email" placeholder="sales@obriensys.com">
+      <label for="pb-ph">Phone</label><input id="pb-ph" type="text" placeholder="610.825.3405">
+      <label for="pb-ind">Start from an industry or product</label><select id="pb-ind"><option value="">Choose to fill in the models</option>${industries.map(i => `<option value="${i.s}">${i.n}</option>`).join('')}</select>
+      <label class="chk"><input id="pb-full" type="checkbox"> Let them change every option (otherwise they see each system as set up)</label>
+      <div class="pb-bar"><button class="btn btn-solid" id="pb-open" type="button">Preview</button><button class="btn" id="pb-copy" type="button">Copy link</button><button class="btn" id="pb-dl" type="button">Download HTML file</button></div>
+      <div class="pb-out" id="pb-out"></div>
+    </div>
+    <div><label>Models to show <span class="pb-count" id="pb-count"></span></label><div class="pb-models" id="pb-models"></div></div>
+  </div>
+</div>
+<script type="module">
+import { enc, standalone } from './assets/present.js?v=${VER}';
+const { MODELS } = await import('./assets/3d/models.js?v=${VER}');
+const GROUPS = ${JSON.stringify(PRESENT_GROUPS)}, IND = ${JSON.stringify(industries)}, LOGO = ${JSON.stringify(logo)};
+const $ = id => document.getElementById(id), box = $('pb-models');
+box.innerHTML = GROUPS.map(([g, ids]) => '<fieldset><legend>' + g + '</legend>' + ids.filter(id => MODELS[id]).map(id => '<label class="chk"><input type="checkbox" value="' + id + '"> ' + MODELS[id].name + '</label>').join('') + '</fieldset>').join('');
+const boxes = () => [...box.querySelectorAll('input')];
+const count = () => { const n = boxes().filter(b => b.checked).length; $('pb-count').textContent = n ? n + ' selected' : ''; };
+let order = [];
+box.addEventListener('change', count);
+$('pb-ind').addEventListener('change', e => { const i = IND.find(x => x.s === e.target.value); if (!i) return; boxes().forEach(b => { b.checked = i.m.includes(b.value); }); order = i.m.slice(); count(); });
+const cfg = () => { const chosen = boxes().filter(b => b.checked).map(b => b.value), m = [...order.filter(id => chosen.includes(id)), ...chosen.filter(id => !order.includes(id))];
+  return { n: $('pb-n').value.trim(), t: $('pb-t').value.trim(), p: $('pb-p').value.trim(), m, full: $('pb-full').checked, by: $('pb-by').value.trim(), em: $('pb-em').value.trim(), ph: $('pb-ph').value.trim() }; };
+const link = () => new URL('present.html?c=' + enc(cfg()), location.href).href;
+const say = t => { const o = $('pb-out'); o.style.display = 'block'; o.textContent = t; };
+const need = () => { if (!cfg().m.length) { say('Pick at least one model.'); return false; } return true; };
+$('pb-open').addEventListener('click', () => { if (need()) open(link(), '_blank'); });
+$('pb-copy').addEventListener('click', async () => { if (!need()) return; const l = link(); try { await navigator.clipboard.writeText(l); say('Link copied: ' + l); } catch { say(l); } });
+$('pb-dl').addEventListener('click', async () => {
+  if (!need()) return; say('Building the file...');
+  try {
+    const c = cfg(), html = await standalone({ ...c, logoPath: LOGO.replace(/^\\//, '') });
+    const slug = (c.n || 'presentation').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'presentation', name = 'obrien-' + slug + '.html';
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' })); a.download = name; a.click();
+    say('Downloaded ' + name + ' (' + (html.length / 1048576).toFixed(1) + ' MB). It opens in any modern browser, online or off.');
+  } catch (err) { say('Could not build the file: ' + err.message); }
+});
+</script></body></html>`;
+  return { 'present.html': present, 'present-builder.html': builder };
+}
+module.exports.presentPages = presentPages;

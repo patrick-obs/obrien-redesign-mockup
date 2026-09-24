@@ -41,6 +41,12 @@ const IMGS = {
   hd1: img('e84d4-high-density-mobile-storage-1.jpg'),
   hd2: img('d94ec-high-density-mobile-storage-2.jpg'),
   hdNemours: img('9809b-obs__unknown__mobile_shelving__nemours_38__20220805__0c720768-scaled-e1776878234847.jpg'),
+  // Sept 2026 HD refresh: full-res, bright, no visible manufacturer marks
+  hdLibrary: '/assets/media/mfr/high-density-mobile-storage--1.jpg',
+  hdArchive: '/assets/media/mfr/corporate-legal--1.jpg',
+  hdNemoursAisle: img('ee464-nemours5.jpg'),
+  hdNemoursWide: '/assets/media/2023/04/nemours1.jpg',
+  hdGearRoom: '/assets/media/ext/florida-atlantic-university-3.jpg',
   liftsCard: img('53512-lifts-1.jpg'),
   lifts2: img('7ec0c-lifts.jpg'),
   liftSide: img('83b11-lift-side-view.jpg'),
@@ -528,7 +534,7 @@ footer .legal a{display:inline;padding:0 10px}
 
 /* ---------------- site data ---------------- */
 const SOLUTIONS = [
-  { slug:'high-density-mobile-storage', name:'High-Density Mobile Storage', short:'Compact aisles, double your capacity in the same footprint', img:IMGS.hdNemours, banner:IMGS.banMobile },
+  { slug:'high-density-mobile-storage', name:'High-Density Mobile Storage', short:'Compact aisles, double your capacity in the same footprint', img:IMGS.hdLibrary, banner:IMGS.banMobile },
   { slug:'lifts-carousels', name:'Lifts & Carousels (VLM)', short:'Automated vertical storage and retrieval, goods to person', img:IMGS.liftsCard, banner:IMGS.banLifts },
   { slug:'lockers', name:'Lockers', short:'Smart, evidence, athletic and personal storage lockers', img:IMGS.lockersCard, banner:IMGS.banLockers },
   { slug:'static-shelving', name:'Static Shelving', short:'4-post, pallet rack, cantilever and industrial shelving', img:IMGS.shelvCard, banner:IMGS.banShelving },
@@ -758,7 +764,7 @@ const SOLUTION_PAGES = {
   'high-density-mobile-storage': {
     eyebrow:'Solutions', h1:'High-Density Mobile Storage',
     lead:'Shelving on rails compacts together and opens an aisle only where you need one. The same floor holds up to twice the storage, or the same storage in half the space.',
-    sideImg: IMGS.compact,
+    sideImg: IMGS.hdArchive,
     paras:[
       `Fixed shelving wastes floor. Every row needs its own aisle, so in most storage rooms more than half the square footage is air. High-density mobile systems mount your shelving on carriages and rails, letting rows compact together and share a single moving aisle.`,
       `We plan, supply, and install mechanical-assist, powered electrical, and manual systems from several leading manufacturers. Drive choice depends on load, duty cycle, and who uses the space. Powered systems add safety sweeps and access control where the application calls for it.`,
@@ -770,7 +776,7 @@ const SOLUTION_PAGES = {
       ['Manual and low-profile', 'Simple, economical systems for smaller rooms and closets'],
       ['Reuse your shelving', 'Existing 4-post shelving can often be mounted on new carriages'],
     ],
-    gallery:[IMGS.hdCard, IMGS.electricHD, IMGS.hd2],
+    gallery:[IMGS.hdNemoursAisle, IMGS.hdNemoursWide, IMGS.hdGearRoom],
     faqs:[
       ['Can my existing shelving be converted to mobile?', 'Often, yes. Many 4-post shelving systems can be mounted on new carriages, which lets you buy shelving now and compact it when space runs out. Compatibility depends on the shelving line and condition, which we confirm during an assessment.'],
       ['Will my floor support a mobile system?', 'Mobile systems concentrate weight, so floor capacity matters. We provide complete equipment loading data and assist your facilities team and structural engineer in evaluating it. The structural determination always rests with your engineer of record.'],
@@ -2055,6 +2061,9 @@ for (const [file, html] of Object.entries(pages)) {
   fs.writeFileSync(path.join(OUT, file), X.enrich(file, X.with3d(X.photos(file, html), VER)));
   n++;
 }
+// customer presentations: unlisted, never in the sitemap
+{ const names = Object.fromEntries([...SOLUTIONS, ...PRODUCTS, ...INDUSTRIES].map(p => [p.slug, p.name]));
+  for (const [file, html] of Object.entries(X.presentPages(VER, IMGS.logo, names))) fs.writeFileSync(path.join(OUT, file), html); }
 // pages retired from the site: clear any stale copies so nothing links or serves them
 for (const f of ['projects.html', 'partners.html']) fs.rmSync(path.join(OUT, f), { force: true });
 fs.writeFileSync(path.join(OUT, 'sitemap.xml'), X.sitemap(Object.keys(pages)));
