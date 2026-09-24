@@ -194,23 +194,26 @@ function wireModel(id, name, dims0, start) {
     const LAYOUTS = { pair: 'Layout: pair', wall: 'Layout: wall run', L: 'Layout: L-shaped room', U: 'Layout: walk-in (U)', track: 'Layout: top-track mobile' };
     const ORDER = ['pair', 'wall', 'L', 'U', 'track'];
     const cols = ['#c49a64', '#ece8de', '#e9eef2', '#2f6fb3', '#b58a55', '#f3f1ea'];
-    let layout = start, casters = false, dims = false, unit, movers = [], gap = 3;
-    const unitAt = (p, x, z, rot, wheels, seed) => {
+    let layout = start, casters = false, dims = false, unit, movers = [], X1 = 0;
+    const SLOTS = 4, mw = 36, mp = mw + 1, gaps = { f: 3, b: 0 };
+    const unitAt = (p, x, z, rot, wheels, seed, uw = w, ud = d, tall = 0) => {
       const g = group(p, x, 0, z); g.rotation.y = rot;
-      const r = rng(seed), wires = [], items = [], lf = wheels ? lift : 1.2;
-      for (const [px, pz] of [[0, 0], [w, 0], [0, d], [w, d]]) {
-        cyl(g, 0.5, h, M.chrome, px, lf + h / 2, pz, 14);
+      const r = rng(seed), wires = [], items = [], lf = wheels ? lift : 1.2, ph = h + tall;
+      for (const [px, pz] of [[0, 0], [uw, 0], [0, ud], [uw, ud]]) {
+        cyl(g, 0.5, ph, M.chrome, px, lf + ph / 2, pz, 14);
+        // swivel casters: the wheel rolls along the run, so it faces front
         if (wheels) { cyl(g, 2.3, 1.5, k.std(0x8f969a, 0.4, 0.3), px, 2.4, pz, 18, 'z'); bx(g, 1.8, 1.6, 2, M.chrome, px - 0.9, 3.9, pz - 1); cyl(g, 1.6, 0.5, navy, px, 5.6, pz, 18); }
         else cyl(g, 0.9, lf, M.chrome, px, lf / 2, pz, 12);
       }
-      const ys = []; for (let s = 0; s < 5; s++) ys.push(lf + 2 + s * ((h - 4) / 4));
-      ys.forEach((y, s) => {
-        for (const zz of [0, d]) cyl(g, 0.28, w, M.chrome, w / 2, y, zz, 8, 'x');
-        for (const xx of [0, w]) cyl(g, 0.28, d, M.chrome, xx, y, d / 2, 8, 'z');
-        for (let xx = 1; xx < w; xx += 1.4) wires.push({ x: xx - 0.09, y: y - 0.09, z: 0, w: 0.18, h: 0.18, d, color: '#e3e7ea' });
-        if (s === 4) return;
+      if (tall) { for (const zz of [0, ud]) cyl(g, 0.4, uw, M.chrome, uw / 2, lf + ph - 1, zz, 8, 'x'); for (const xx of [0, uw]) cyl(g, 0.4, ud, M.chrome, xx, lf + ph - 1, ud / 2, 8, 'z'); }
+      const ys = []; for (let q = 0; q < 5; q++) ys.push(lf + 2 + q * ((h - 4) / 4));
+      ys.forEach((y, q) => {
+        for (const zz of [0, ud]) cyl(g, 0.28, uw, M.chrome, uw / 2, y, zz, 8, 'x');
+        for (const xx of [0, uw]) cyl(g, 0.28, ud, M.chrome, xx, y, ud / 2, 8, 'z');
+        for (let xx = 1; xx < uw; xx += 1.4) wires.push({ x: xx - 0.09, y: y - 0.09, z: 0, w: 0.18, h: 0.18, d: ud, color: '#e3e7ea' });
+        if (q === 4) return;
         let xx = 1;
-        while (xx < w - 8) { const bw = 7 + Math.floor(r() * 3) * 3; if (r() > 0.25) items.push({ x: xx, y: y + 0.2, z: 1.5, w: bw - 0.6, h: 6 + r() * 7, d: d - 3, color: cols[Math.floor(r() * cols.length)] }); xx += bw; }
+        while (xx < uw - 8) { const bw = 7 + Math.floor(r() * 3) * 3; if (r() > 0.25) items.push({ x: xx, y: y + 0.2, z: 1.5, w: bw - 0.6, h: 6 + r() * 7, d: ud - 3, color: cols[Math.floor(r() * cols.length)] }); xx += bw; }
       });
       many(g, wires, M.chrome); many(g, items, k.std(0xffffff, 0.7, 0));
       g.userData.ys = ys; g.userData.lf = lf;
@@ -230,20 +233,22 @@ function wireModel(id, name, dims0, start) {
         for (let i = 0; i < sideN; i++) unitAt(unit, 0, d + 1 + (i + 1) * pitch, Math.PI / 2, casters, seed++);
         if (layout === 'U') for (let i = 0; i < sideN; i++) unitAt(unit, X + d, d + 1 + i * pitch, -Math.PI / 2, casters, seed++);
       } else {
-        // back row along the wall, front row on casters sliding under an overhead track
-        const n = 5, zf = d + 2;
-        for (let i = 0; i < n; i++) { const u = unitAt(unit, i * pitch, 0, 0, false, seed++); first = first || u; }
-        unitAt(unit, 0, zf, 0, false, seed++); unitAt(unit, (n - 1) * pitch, zf, 0, false, seed++);
-        const slots = [1, 2, 3].filter(s => s !== gap);
-        for (const s of slots) {
-          const u = unitAt(unit, s * pitch, zf, 0, true, seed++); u.userData.slot = s;
-          cyl(u, 1.8, 0.9, navy, w / 2, lift + h + 1.6, d / 2, 20); bx(u, 1, 2, 1, M.chrome, w / 2 - 0.5, lift + h - 0.2, d / 2 - 0.5);
-          u.userData.onClick = () => { if (Math.abs(u.userData.slot - gap) === 1) slide(u); };
-          movers.push(u);
+        // tall fixed end units span both rows and carry two tracks; front and back rows of mobile units roll sideways underneath
+        const ew = 36, D2 = 2 * d + 2, tall = 14, ty = lift + h + 3, trackM = k.std(0xc9ced2, 0.3, 0.8);
+        X1 = ew + 1; const X2 = X1 + SLOTS * mp;
+        for (const ex of [0, X2]) { const u = unitAt(unit, ex, 0, 0, false, seed++, ew, D2, tall); first = first || u; }
+        for (const [row, zr] of [['b', 0], ['f', d + 2]]) {
+          const gp = gaps[row];
+          for (let q = 0; q < SLOTS; q++) {
+            if (q === gp) continue;
+            const u = unitAt(unit, X1 + q * mp, zr, 0, true, seed++, mw); u.userData.slot = q; u.userData.row = row;
+            bx(u, 1, ty - (lift + h), 1, M.chrome, mw / 2 - 0.5, lift + h, d / 2 - 0.5); cyl(u, 1.8, 0.9, navy, mw / 2, ty - 0.2, d / 2, 20);
+            u.userData.onClick = () => slide(u);
+            movers.push(u);
+          }
+          bx(unit, X2 - X1 + 1, 3, 2.6, trackM, X1 - 0.5, ty, zr + d / 2 - 1.3);
         }
-        const ty = lift + h + 2.2, len = n * pitch - 1;
-        bx(unit, len - 2, 3, 2.6, k.std(0xc9ced2, 0.3, 0.8), 1, ty, zf + d / 2 - 1.3);
-        for (const x of [0, (n - 1) * pitch + w]) { cyl(unit, 0.5, 6, M.chrome, x, lift + h + 2, zf + d / 2, 12); cyl(unit, 1.9, 0.9, navy, x, ty - 0.5, zf + d / 2, 20); }
+        for (const x of [ew, X2]) cyl(unit, 0.5, D2, M.chrome, x, ty + 1.5, D2 / 2, 10, 'z');
       }
       if (dims && first) {
         const dg = group(unit); dg.userData.dyn = true; const ys = first.userData.ys, x0 = first.position.x, z0 = first.position.z;
@@ -255,13 +260,15 @@ function wireModel(id, name, dims0, start) {
       unit.traverse(q => { if (q.isMesh && !q.userData.noShadow) { q.castShadow = q.receiveShadow = true; } });
       bake?.(unit); wake();
     };
-    const slide = (u) => { const to = gap; gap = u.userData.slot; u.userData.slot = to; tween(u.position, 'x', to * pitch, 900); };
+    const slide = (u) => { const r = u.userData.row, to = gaps[r]; if (Math.abs(u.userData.slot - to) !== 1) return; gaps[r] = u.userData.slot; u.userData.slot = to; tween(u.position, 'x', X1 + to * mp, 900); };
+    const slideRow = (r) => { const u = movers.find(m => m.userData.row === r && Math.abs(m.userData.slot - gaps[r]) === 1); if (u) slide(u); };
     make();
     return {
       group: root, view: layout === 'track' ? [0.9, 0.55, 1.3] : [0.9, 0.55, 1.25],
       actions: [
         { label: LAYOUTS[start], run: () => { layout = ORDER[(ORDER.indexOf(layout) + 1) % ORDER.length]; make(); refit?.(); return LAYOUTS[layout]; } },
-        { label: 'Slide the front row', run: () => { if (layout !== 'track') { layout = 'track'; make(); refit?.(); return 'Slide the front row'; } const u = movers.find(m => Math.abs(m.userData.slot - gap) === 1); if (u) slide(u); } },
+        { label: 'Slide the front row', run: () => { if (layout !== 'track') { layout = 'track'; make(); refit?.(); return 'Slide the front row'; } slideRow('f'); } },
+        { label: 'Slide the back row', run: () => { if (layout !== 'track') { layout = 'track'; make(); refit?.(); return 'Slide the back row'; } slideRow('b'); } },
         { label: 'Add casters', run: () => { casters = !casters; make(); return casters ? 'Remove casters' : 'Add casters'; } },
         { label: 'Show dimensions', run: () => { dims = !dims; make(); return dims ? 'Hide dimensions' : 'Show dimensions'; } },
       ],
@@ -350,12 +357,30 @@ const HD_KINDS = {
   pallet: { label: 'Storage: pallet rack', L: 198, d: 42, h: 144, N: 3, aisle: 120, cH: 8, electricOnly: true },
 };
 const HD_ORDER = ['shelving', 'open', 'flat', 'tire', 'grow', 'pallet'];
-// tires stand on two bars, tread facing the aisle
-function tireMesh(THREE, parent, list, mat) {
+// tires: a lathed cross-section (sidewalls, flat tread, bead) with a block tread texture; labels on the tread
+let TIRE = null;
+function tireParts(THREE) {
+  if (TIRE) return TIRE;
+  const pts = [[8.6, -3.3], [10.5, -4], [12.6, -3.9], [13.4, -3.2], [13.6, -2], [13.6, 2], [13.4, 3.2], [12.6, 3.9], [10.5, 4], [8.6, 3.3]].map(([a, b]) => new THREE.Vector2(a, b));
+  const geo = new THREE.LatheGeometry(pts, 44);
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 128; const g = c.getContext('2d');
+  g.fillStyle = '#222325'; g.fillRect(0, 0, 1024, 128);
+  g.fillStyle = '#131415';
+  for (let i = 0; i < 128; i++) { const x = i * 8; g.fillRect(x, 50 + (i % 2) * 6, 3, 22); g.fillRect(x + 4, 44, 1.5, 40); }
+  g.fillRect(0, 62, 1024, 3);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  TIRE = { geo, mat: new THREE.MeshStandardMaterial({ map: t, roughness: 0.88, metalness: 0.04 }), label: new THREE.MeshStandardMaterial({ color: 0xf4f4f0, roughness: 0.7 }) };
+  return TIRE;
+}
+function tireMesh(THREE, parent, list) {
   if (!list.length) return;
-  const geo = new THREE.TorusGeometry(9.6, 3.2, 12, 28), im = new THREE.InstancedMesh(geo, mat, list.length), o = new THREE.Object3D();
-  list.forEach((t, i) => { o.position.set(t.x, t.y, t.z); o.rotation.set(0, Math.PI / 2, 0); o.scale.set(1, 1, 1.05); o.updateMatrix(); im.setMatrixAt(i, o.matrix); });
+  const { geo, mat, label } = tireParts(THREE), im = new THREE.InstancedMesh(geo, mat, list.length), o = new THREE.Object3D();
+  list.forEach((t, i) => { o.position.set(t.x, t.y, t.z); o.rotation.set(t.spin || 0, 0, Math.PI / 2); o.scale.set(1, 1, 1); o.updateMatrix(); im.setMatrixAt(i, o.matrix); });
   im.instanceMatrix.needsUpdate = true; parent.add(im);
+  const tagged = list.filter(t => t.label); if (!tagged.length) return;
+  const lm = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), label, tagged.length);
+  tagged.forEach((t, i) => { o.position.set(t.x, t.y, t.z + 13.62); o.rotation.set(0, 0, 0); o.scale.set(3.4, 5.6, 0.08); o.updateMatrix(); lm.setMatrixAt(i, o.matrix); });
+  lm.instanceMatrix.needsUpdate = true; parent.add(lm);
 }
 function hdMobile(id, name, dims, start) {
   def(id, name, dims, ({ THREE, tween, wake, bake, refit }) => {
@@ -364,7 +389,7 @@ function hdMobile(id, name, dims, start) {
     const up = k.std(0x1f4e8c, 0.45, 0.35), beam = k.std(0xe3671c, 0.45, 0.35);
     const oUp = k.std(0x2c3e3f, 0.5, 0.4), oUpP = k.postMat(oUp), oBeam = k.std(0xf2b705, 0.45, 0.3), deckM = k.std(0xa7adb1, 0.55, 0.4);
     const gWhite = k.std(0xf1f2f0, 0.4, 0.25), wire = k.meshMat(144, 26, 1.5, '#e9ecee', 0.6), trayM = k.std(0x1c1d1f, 0.7, 0.05), leaf = k.std(0xffffff, 0.7, 0), led = k.std(0xffffff, 0.3, 0, { emissive: 0xfff8e8, emissiveIntensity: 1.1 });
-    const rubber = k.std(0x1b1c1e, 0.85, 0.05), barM = k.std(0x9aa1a6, 0.35, 0.8);
+    const tBlue = k.std(0x1f5fb0, 0.45, 0.35), tBlueP = k.postMat(tBlue);
     const black = k.std(0x1c1e20, 0.45, 0.15), red = k.std(0xc4241c, 0.4, 0.1), go = k.std(0x39d353, 0.3, 0, { emissive: 0x1f8a33, emissiveIntensity: 0.9 }), stop = k.std(0xc92a2a, 0.35, 0.1, { emissive: 0x5a1414, emissiveIntensity: 0.5 });
     let kind = start, electric = false, open = 2, unit, ranges = [], C;
 
@@ -393,7 +418,7 @@ function hdMobile(id, name, dims, start) {
     };
     // open-frame bays on 48" centers: open shelving (pick bins), tire racks, grow racks
     const frameFace = (p, y0, z0, dir, list, r) => {
-      const D = C.d, bays = C.L / 48, upM = kind === 'grow' ? gWhite : oUpP, bmM = kind === 'grow' ? gWhite : oBeam;
+      const D = C.d, bays = C.L / 48, upM = kind === 'grow' ? gWhite : kind === 'tire' ? tBlueP : oUpP, bmM = kind === 'grow' ? gWhite : kind === 'tire' ? tBlue : oBeam;
       for (let i = 0; i <= bays; i++) {
         const x = Math.min(i * 48, C.L - 2);
         for (const z of [z0, z0 + D - 2]) bx(p, 2, C.h, 2, upM, x, y0, z);
@@ -411,9 +436,8 @@ function hdMobile(id, name, dims, start) {
       } else if (kind === 'tire') {
         for (const lv of [4, 34, 64]) for (let b = 0; b < bays; b++) {
           const x0 = b * 48 + 2;
-          for (const dz of [-5.5, 5.5]) cyl(p, 0.9, 46, barM, x0 + 23, y0 + lv, z0 + D / 2 + dz, 12, 'x');
-          bx(p, 46, 2.4, 1.4, oBeam, x0, y0 + lv - 2.8, z0); bx(p, 46, 2.4, 1.4, oBeam, x0, y0 + lv - 2.8, z0 + D - 1.4);
-          for (let x = x0 + 4.5; x < x0 + 44; x += 7.6) if (r() > 0.12) list.push({ x, y: y0 + lv + 12.5, z: z0 + D / 2 });
+          for (const bz of [z0 + D / 2 - 11.5, z0 + D / 2 + 10]) bx(p, 46, 3, 1.5, bmM, x0, y0 + lv, bz);
+          for (let x = x0 + 4.4; x < x0 + 43; x += 8.2) if (r() > 0.1) list.push({ x, y: y0 + lv + 12.1, z: z0 + D / 2, label: r() > 0.45, spin: r() * 6 });
         }
       } else {
         for (const lv of [6, 38, 70]) for (let b = 0; b < bays; b++) {
@@ -458,7 +482,7 @@ function hdMobile(id, name, dims, start) {
           const loads = []; palletFace(g, cH, 0.5, loads, r); if (!fixed) palletFace(g, cH, d + 2.5, loads, r); many(g, loads, M.kraft);
         } else {
           const list = []; for (const [z, dir] of faces) frameFace(g, cH, z, dir, list, r);
-          if (kind === 'open') many(g, list, M.kraft); else if (kind === 'tire') tireMesh(THREE, g, list, rubber); else plants(g, list);
+          if (kind === 'open') many(g, list, M.kraft); else if (kind === 'tire') tireMesh(THREE, g, list); else plants(g, list);
         }
         if (C.panels) {
           bx(g, 1.6, h + cH + 1, dd - 0.3, panel, L, 0, 0.15); bx(g, 1.6, h + cH + 1, dd - 0.3, panel, -1.6, 0, 0.15);
@@ -1534,29 +1558,28 @@ def('textile-rack', 'Rolled Textile Storage', '12 ft double-sided cantilever rac
 });
 
 /* ---------------- 24. tire rack ---------------- */
-def('tire-rack', 'Tire Storage Rack', 'Two 48" bays, three levels: tires stand on twin bars, tread out', ({ THREE, wake }) => {
+def('tire-rack', 'Tire Storage Rack', 'Two 48" bays, three levels: tires cradled between front and back beams, tread out', ({ THREE, wake }) => {
   const k = kit(THREE), { M, bx, cyl, group } = k, root = new THREE.Group();
-  const up = k.std(0x2c3e3f, 0.5, 0.4), upP = k.postMat(up), beamM = k.std(0xf2b705, 0.45, 0.3), barM = k.std(0x9aa1a6, 0.35, 0.8);
-  const rubber = k.std(0x1b1c1e, 0.85, 0.05), rimM = k.std(0xc9ced2, 0.25, 0.9), r = rng(40);
-  const bays = 2, D = 28, H = 94, levels = [4, 34, 64], tires = [];
+  const blue = k.std(0x1f5fb0, 0.45, 0.35), up = k.postMat(blue), rimM = k.std(0xc9ced2, 0.25, 0.9), r = rng(40);
+  const bays = 2, D = 24, H = 94, W = bays * 48, levels = [3, 33, 63], tires = [];
   for (let i = 0; i <= bays; i++) {
-    const x = Math.min(i * 48, bays * 48 - 2);
-    for (const z of [0, D - 2]) { bx(root, 2, H, 2, upP, x, 0, z); bx(root, 5, 0.4, 5, M.steel, x - 1.5, 0, z - 1.5); }
-    for (let y = 10; y < H - 6; y += 30) bx(root, 1.2, 1.2, D - 4, up, x + 0.4, y, 2);
+    const x = Math.min(i * 48, W - 2);
+    for (const z of [0, D - 2]) { bx(root, 2, H, 2, up, x, 0, z); bx(root, 5, 0.4, 5, M.steel, x - 1.5, 0, z - 1.5); }
+    for (let y = 12; y < H - 6; y += 30) bx(root, 1.2, 1.2, D - 4, blue, x + 0.4, y, 2);
   }
   for (const lv of levels) for (let b = 0; b < bays; b++) {
     const x0 = b * 48 + 2;
-    for (const dz of [-5.5, 5.5]) cyl(root, 0.9, 46, barM, x0 + 23, lv, D / 2 + dz, 12, 'x');
-    bx(root, 46, 2.4, 1.4, beamM, x0, lv - 2.8, 0); bx(root, 46, 2.4, 1.4, beamM, x0, lv - 2.8, D - 1.4);
-    for (let x = x0 + 4.5; x < x0 + 44; x += 7.6) if (r() > 0.1) tires.push({ x, y: lv + 12.5, z: D / 2 });
+    for (const bz of [0.5, D - 2]) bx(root, 46, 3, 1.5, blue, x0, lv, bz);
+    for (let x = x0 + 4.4; x < x0 + 43; x += 8.2) if (r() > 0.08) tires.push({ x, y: lv + 3 + 9, z: D / 2, label: r() > 0.4, spin: r() * 6 });
   }
-  tireMesh(THREE, root, tires, rubber);
+  tireMesh(THREE, root, tires);
   const rims = group(root); rims.userData.dyn = true; rims.visible = false;
-  const rg = new THREE.CylinderGeometry(7.6, 7.6, 5.4, 24), im = new THREE.InstancedMesh(rg, rimM, tires.length), o = new THREE.Object3D();
+  const im = new THREE.InstancedMesh(new THREE.CylinderGeometry(8.7, 8.7, 6, 28), rimM, tires.length), o = new THREE.Object3D();
   tires.forEach((t, i) => { o.position.set(t.x, t.y, t.z); o.rotation.set(0, 0, Math.PI / 2); o.updateMatrix(); im.setMatrixAt(i, o.matrix); });
   im.instanceMatrix.needsUpdate = true; rims.add(im);
   return {
-    group: root, view: [0.7, 0.4, 1.3],
+    group: root, view: [0.6, 0.35, 1.3],
+    finishes: [{ name: 'Blue', swatch: '#1f5fb0', color: 0x1f5fb0 }, { name: 'Safety orange', swatch: '#e3671c', color: 0xe3671c }, { name: 'Gray', swatch: '#8f969a', color: 0x8f969a }, { name: 'Black', swatch: '#2c2f31', color: 0x2c2f31 }], setFinish: k.finisher(blue, up),
     actions: [{ label: 'Wheel and tire sets', run: () => { rims.visible = !rims.visible; wake(); return rims.visible ? 'Tires only' : 'Wheel and tire sets'; } }],
   };
 });
