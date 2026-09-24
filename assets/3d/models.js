@@ -9,6 +9,20 @@ const def = (id, name, dims, build) => { MODELS[id] = { name, dims, build }; };
 /* ---------------- shared kit ---------------- */
 function rng(seed) { return () => { seed |= 0; seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 
+// football helmet: shell with a raised back, ear hole, a gray face mask and a center stripe; faces +z
+function footballHelmet(THREE, shellM, x, y, z, rotY = 0, s = 1) {
+  const g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = rotY; g.scale.setScalar(s);
+  const shell = new THREE.Mesh(new THREE.SphereGeometry(5, 22, 16, 0, Math.PI * 2, 0, Math.PI * 0.6), shellM); shell.scale.set(0.92, 1, 1.12); shell.position.y = 1.2; g.add(shell);
+  const cheek = new THREE.Mesh(new THREE.SphereGeometry(4.2, 16, 10, 0, Math.PI * 2, Math.PI * 0.5, Math.PI * 0.25), shellM); cheek.scale.set(1, 0.9, 1.1); cheek.position.y = 1.4; g.add(cheek);
+  const mask = FB_MASK || (FB_MASK = new THREE.MeshStandardMaterial({ color: 0x9aa1a6, roughness: 0.35, metalness: 0.6 })), white = FB_WHITE || (FB_WHITE = new THREE.MeshStandardMaterial({ color: 0xf4f4f0, roughness: 0.5 })), dark = FB_DARK || (FB_DARK = new THREE.MeshStandardMaterial({ color: 0x151617, roughness: 0.8 }));
+  for (const [yy, rr] of [[-0.6, 4.6], [1.2, 4.9], [-2.4, 4.1]]) { const bar = new THREE.Mesh(new THREE.TorusGeometry(rr, 0.28, 6, 18, Math.PI * 0.9), mask); bar.rotation.set(Math.PI / 2, 0, Math.PI * 0.05); bar.position.set(0, yy, 1.4); g.add(bar); }
+  const post = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 4.4, 6), mask); post.position.set(0, -0.6, 6.1); g.add(post);
+  const stripe = new THREE.Mesh(new THREE.SphereGeometry(5.05, 8, 12, -0.12, 0.24, 0.05, Math.PI * 0.52), white); stripe.scale.set(0.92, 1, 1.12); stripe.position.y = 1.2; stripe.rotation.y = Math.PI / 2; g.add(stripe);
+  for (const sx of [-1, 1]) { const ear = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.3, 12), dark); ear.rotation.z = Math.PI / 2; ear.position.set(sx * 4.6, 0.6, 0.6); g.add(ear); }
+  return g;
+}
+let FB_MASK = null, FB_WHITE = null, FB_DARK = null;
+
 function kit(THREE) {
   const std = (color, roughness = 0.55, metalness = 0.25, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness, metalness, ...extra });
   const M = {
@@ -410,22 +424,25 @@ def('library', 'Library Cantilever Shelving', 'Double-faced cantilever shelving,
 /* ---------------- 5. high-density mobile ---------------- */
 // one model, six things it can carry; product and industry pages start it on the right one
 const HD_KINDS = {
-  shelving: { label: 'Storage: shelving', L: 108, d: 15, h: 84, N: 5, aisle: 36, cH: 5, panels: true },
-  open: { label: 'Storage: open shelving', L: 144, d: 24, h: 96, N: 4, aisle: 42, cH: 6 },
+  shelving: { label: 'Storage: shelving', L: 108, d: 15, h: 84, N: 5, aisle: 48, cH: 5, panels: true },
+  open: { label: 'Storage: open shelving', L: 144, d: 24, h: 96, N: 4, aisle: 48, cH: 6 },
   flat: { label: 'Storage: flat files', L: 100, d: 38, h: 50, N: 3, aisle: 60, cH: 6, panels: true },
-  gear: { label: 'Storage: gear and equipment', L: 108, d: 22, h: 84, N: 3, aisle: 42, cH: 6, panels: true },
-  wardrobe: { label: 'Storage: wardrobe cabinets', L: 108, d: 24, h: 78, N: 3, aisle: 48, cH: 6, panels: true },
+  athletic: { label: 'Storage: athletic gear', L: 108, d: 22, h: 84, N: 3, aisle: 48, cH: 6, panels: true, gear: 0 },
+  golf: { label: 'Storage: golf bags', L: 108, d: 22, h: 84, N: 3, aisle: 48, cH: 6, panels: true, gear: 1 },
+  instruments: { label: 'Storage: musical instruments', L: 108, d: 22, h: 84, N: 3, aisle: 48, cH: 6, panels: true, gear: 2 },
+  bins: { label: 'Storage: painting bins', L: 144, d: 44, h: 96, N: 3, aisle: 60, cH: 6, panels: true },
+  wardrobe: { label: 'Storage: wardrobe cabinets', L: 108, d: 24, h: 78, N: 3, aisle: 60, cH: 6, panels: true },
   museum: { label: 'Storage: museum cabinets', L: 147, d: 31, h: 76, N: 3, aisle: 60, cH: 6, panels: true },
-  tire: { label: 'Storage: tire racks', L: 144, d: 28, h: 94, N: 3, aisle: 40, cH: 6 },
-  grow: { label: 'Storage: grow racks', L: 144, d: 26, h: 96, N: 3, aisle: 36, cH: 6 },
-  library: { label: 'Storage: library shelving', L: 108, d: 11.5, h: 84, N: 4, aisle: 36, cH: 5, panels: true },
-  textile: { label: 'Storage: rolled textiles', L: 144, d: 30, h: 96, N: 3, aisle: 40, cH: 6 },
-  art: { label: 'Storage: art screens', L: 120, d: 5, h: 96, N: 6, aisle: 40, cH: 4, dm: 12, df: 12 },
+  tire: { label: 'Storage: tire racks', L: 144, d: 28, h: 94, N: 3, aisle: 48, cH: 6 },
+  grow: { label: 'Storage: grow racks', L: 144, d: 26, h: 96, N: 3, aisle: 48, cH: 6 },
+  library: { label: 'Storage: library shelving', L: 108, d: 11.5, h: 84, N: 4, aisle: 48, cH: 5, panels: true },
+  textile: { label: 'Storage: rolled textiles', L: 144, d: 30, h: 96, N: 3, aisle: 48, cH: 6 },
+  art: { label: 'Storage: art screens', L: 120, d: 5, h: 96, N: 6, aisle: 48, cH: 4, dm: 12, df: 12 },
   pallet: { label: 'Storage: pallet rack', L: 198, d: 42, h: 144, N: 3, aisle: 120, cH: 8, electricOnly: true },
 };
 const UNIT_COLORS = [['Standard', 0], ['Light gray', 0xbfc4c7], ['Putty', 0xd6ccb9], ['White', 0xeeefed], ['Black', 0x2c2f31], ['Blue', 0x2a4d7a]];
 const AISLE_STD = [['36 in (ADA minimum)', 36], ['42 in', 42], ['48 in', 48], ['60 in (carts, pallet jack)', 60], ['72 in', 72]], AISLE_FORK = [['8 ft (reach truck)', 96], ['10 ft', 120], ['12 ft (forklift)', 144]];
-const HD_ORDER = ['shelving', 'open', 'gear', 'library', 'flat', 'museum', 'wardrobe', 'textile', 'art', 'tire', 'grow', 'pallet'];
+const HD_ORDER = ['shelving', 'open', 'library', 'flat', 'museum', 'wardrobe', 'bins', 'art', 'textile', 'athletic', 'golf', 'instruments', 'tire', 'grow', 'pallet'];
 // tires: a lathed cross-section (sidewalls, flat tread, bead) with a block tread texture; labels on the tread
 let TIRE = null;
 function tireParts(THREE) {
@@ -460,7 +477,7 @@ function hdMobile(id, name, dims, start, opts = {}) {
     const gWhite = k.std(0xf1f2f0, 0.4, 0.25), wire = k.meshMat(144, 26, 1.5, '#e9ecee', 0.6), trayM = k.std(0x1c1d1f, 0.7, 0.05), leaf = k.std(0xffffff, 0.7, 0), led = k.std(0xffffff, 0.3, 0, { emissive: 0xfff8e8, emissiveIntensity: 1.1 });
     const tBlue = k.std(0x1f5fb0, 0.45, 0.35), tBlueP = k.postMat(tBlue), bumperM = k.std(0x111213, 0.9, 0);
     const black = k.std(0x1c1e20, 0.45, 0.15), red = k.std(0xc4241c, 0.4, 0.1), go = k.std(0x39d353, 0.3, 0, { emissive: 0x1f8a33, emissiveIntensity: 0.9 }), stop = k.std(0xc92a2a, 0.35, 0.1, { emissive: 0x5a1414, emissiveIntensity: 0.5 });
-    let kind = start, electric = !!opts.electric, open = 2, unit, ranges = [], C, panelsOn = null, closedShelf = true, gearKind = opts.gear || 0, loadColor = {}, openParts = new Set(), aisleW = null, twoLevel = !!opts.twoLevel, open2 = 1, ranges2 = [], arms = [];
+    let kind = start, electric = !!opts.electric, open = 2, unit, ranges = [], C, panelsOn = null, closedShelf = true, binDoors = true, binDoorsList = [], loadColor = {}, openParts = new Set(), aisleW = null, twoLevel = !!opts.twoLevel, open2 = 1, ranges2 = [], arms = [];
     const armM = k.std(0x3a3f44, 0.5, 0.5), mzDeck = k.std(0x5d6468, 0.75, 0.4), railY = k.std(0xe0a526, 0.45, 0.35), steelM = k.std(0x4b5a63, 0.5, 0.5);
     const lPost = k.postMat(paint), tFrame = k.std(0x3a3f44, 0.45, 0.35), tTube = k.std(0xf6f7f5, 0.35, 0.1), aWhite = k.std(0xf3f4f2, 0.45, 0.25), gilt = k.std(0xa6832f, 0.35, 0.7);
     const tWraps = [k.std(0xe3e7ea, 0.3, 0.35), k.std(0xeceeee, 0.55, 0.1)], tBare = [k.std(0x9b2226, 0.85, 0), k.std(0x7a5230, 0.9, 0), k.std(0x3d5a7a, 0.85, 0), k.std(0x5e4a7a, 0.85, 0)];
@@ -596,16 +613,16 @@ function hdMobile(id, name, dims, start, opts = {}) {
       bx(p, C.L, H, 0.1, paint, 0, y0, dir > 0 ? z0 : z0 + D - 0.1); bx(p, C.L, 0.6, D, paint, 0, y0 + H - 0.6, z0);
       for (let b = 0; b < 3; b++) {
         const x0 = b * bw + 1.25, w = bw - 1.25;
-        if (gearKind === 0) {
+        if (C.gear === 0) {
           // helmet shelf up top, shoulder pads and jerseys on hangers, ball cradle rack at the bottom
           bx(p, w, 0.6, D - 1, paint, x0, y0 + 60, z0 + 0.5);
-          for (let q = 0; q < 3; q++) { const hm = new THREE.Mesh(new THREE.SphereGeometry(5, 18, 12, 0, Math.PI * 2, 0, Math.PI * 0.62), team); hm.position.set(x0 + 6 + q * 11.5, y0 + 62.2, z0 + D / 2); p.add(hm); bx(p, 5, 0.5, 0.5, M.white, x0 + 3.5 + q * 11.5, y0 + 63.4, dir > 0 ? front - 5.4 : front + 4.9); }
+          for (let q = 0; q < 3; q++) p.add(footballHelmet(THREE, team, x0 + 6 + q * 11.5, y0 + 63.6, z0 + D / 2, dir > 0 ? 0 : Math.PI));
           cyl(p, 0.5, w, M.chrome, x0 + w / 2, y0 + 56, z0 + D / 2, 12, 'x');
           for (let q = 0; q < 3; q++) { bx(p, 1, 24, 14, jerseyM, x0 + 5 + q * 11, y0 + 30, z0 + D / 2 - 7); bx(p, 9, 6, 11, padM, x0 + 1 + q * 11, y0 + 48, z0 + D / 2 - 5.5); }
           bx(p, w, 0.6, D - 1, paint, x0, y0 + 14, z0 + 0.5);
           for (const zz of [dir > 0 ? front - 2 : front + 1.2]) cyl(p, 0.4, w, rackM, x0 + w / 2, y0 + 3, zz, 8, 'x');
           for (let q = 0; q < 3; q++) for (const zz of [0.3, 0.7]) { const bl = new THREE.Mesh(new THREE.SphereGeometry(4.7, 18, 12), ballM); bl.position.set(x0 + 6 + q * 11.5, y0 + 5.5, z0 + D * zz); p.add(bl); }
-        } else if (gearKind === 1) {
+        } else if (C.gear === 1) {
           // golf bag bays: a divider every 12", a strap bar across the front, bags standing with clubs showing
           for (let q = 1; q < 3; q++) bx(p, 0.12, 44, D - 2, paint, x0 + q * 12, y0, z0 + 1);
           bx(p, w, 0.6, D - 1, paint, x0, y0 + 46, z0 + 0.5);
@@ -633,6 +650,29 @@ function hdMobile(id, name, dims, start, opts = {}) {
             }
           }
         }
+      }
+    };
+    const binSlat = (() => { const c = document.createElement('canvas'); c.width = 16; c.height = 32; const g = c.getContext('2d'); g.fillStyle = '#f4f5f3'; g.fillRect(0, 0, 16, 32); g.fillStyle = '#d6d9d8'; g.fillRect(0, 26, 16, 3); g.fillStyle = '#ffffff'; g.fillRect(0, 2, 16, 4); return c; })();
+    const hoodM = k.std(0xf1f2f0, 0.35, 0.3), guideM = k.std(0xdfe2e4, 0.35, 0.5), frameMs = [0xa6832f, 0x6b4428, 0x2b2d2f, 0xc9b79a].map(c => k.std(c, 0.55, 0.2));
+    const binsFace = (p, y0, z0, dir, r) => {
+      const D = C.d, H = C.h, sec = 48, fz = dir > 0 ? z0 + D : z0;
+      bx(p, C.L, 0.6, D, paint, 0, y0 + 2, z0); bx(p, C.L, 0.6, D, paint, 0, y0 + H - 0.6, z0); bx(p, C.L, H, 0.1, paint, 0, y0, dir > 0 ? z0 : z0 + D - 0.1);
+      for (let s2 = 0; s2 < C.L / sec; s2++) {
+        const x0 = s2 * sec;
+        for (const xx of [x0, x0 + sec - 1.25]) for (const zz of [z0, z0 + D - 1.25]) { bx(p, 1.25, H, 1.25, paint, xx, y0, zz); k.slots(p, lPost, xx === x0 ? xx + 1.25 : xx, y0, zz, 1.25, H, xx === x0 ? 1 : -1); }
+        for (let dx = 12; dx < sec - 1; dx += 12) bx(p, 0.12, H - 3.2, D - 3, paint, x0 + dx, y0 + 2.6, z0 + 1.5);
+        for (let slot = 0; slot < 4; slot++) { let x = x0 + slot * 12 + 1.4; const n = 1 + Math.floor(r() * 3); for (let q = 0; q < n && x < x0 + slot * 12 + 10.5; q++) { const t2 = 1.8 + r() * 1.4, ph = 20 + r() * 50, pd = 16 + r() * (D - 22); bx(p, t2, ph, pd, frameMs[Math.floor(r() * 4)], x, y0 + 2.6, dir > 0 ? z0 + D - 3 - pd : z0 + 3); x += t2 + 0.6; } }
+        if (!binDoors) continue;
+        for (const gx of [x0 + 0.1, x0 + sec - 1.6]) bx(p, 1.5, H - 1, 1.6, guideM, gx, y0, dir > 0 ? fz - 1.7 : fz + 0.1);
+        const tex = new THREE.CanvasTexture(binSlat); tex.colorSpace = THREE.SRGBColorSpace; tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(1, (H - 1) / 3);
+        const geo = new THREE.PlaneGeometry(sec - 3, H - 1); geo.translate(0, -(H - 1) / 2, 0);
+        const cur = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: tex, roughness: 0.4, metalness: 0.3, side: THREE.DoubleSide })); cur.position.set(x0 + sec / 2, y0 + H - 0.5, dir > 0 ? fz - 0.9 : fz + 0.9); cur.userData.dyn = true; p.add(cur);
+        bx(p, sec + 0.4, 10, 11, hoodM, x0 - 0.2, y0 + H, dir > 0 ? fz - 11 : fz);
+        const d = { cur, tex, open: false, h0: H - 1, click: null };
+        d.click = () => { d.open = !d.open; tween(cur.scale, 'y', d.open ? 0.04 : 1, 1400); if (d.open) openParts.add(d.shut); else openParts.delete(d.shut); };
+        d.shut = () => { if (d.open) { d.open = false; tween(cur.scale, 'y', 1, 1000); } openParts.delete(d.shut); };
+        cur.userData.onClick = d.click;
+        binDoorsList.push(d);
       }
     };
     // wardrobe cabinets: steel cases, solid double doors, hat shelf and hanging rod inside
@@ -717,7 +757,7 @@ function hdMobile(id, name, dims, start, opts = {}) {
       open = Math.min(open, N);
       const handleM = kind === 'grow' ? red : black;
       if (kind === 'pallet') twoLevel = false;
-      const MZ = h + cH + deck + 16;
+      const MZ = h + cH + deck + 16; binDoorsList = [];
       const buildRanges = (yb, up) => depths.map((dd, j) => {
         const g = group(unit, 0, yb + deck + 0.35, 0), fixed = j === 0 || j === depths.length - 1, last = j === depths.length - 1;
         g.userData.dd = dd;
@@ -732,8 +772,10 @@ function hdMobile(id, name, dims, start, opts = {}) {
           for (const [z, dir] of faces) flatFace(g, cH, z, dir);
         } else if (kind === 'museum') {
           for (const [z, dir] of faces) museumFace(g, cH, z, dir);
-        } else if (kind === 'gear') {
+        } else if (C.gear != null) {
           for (const [z, dir] of faces) gearFace(g, cH, z, dir, r);
+        } else if (kind === 'bins') {
+          for (const [z, dir] of faces) binsFace(g, cH, z, dir, r);
         } else if (kind === 'wardrobe') {
           for (const [z, dir] of faces) wardrobeFace(g, cH, z, dir);
         } else if (kind === 'library') {
@@ -837,6 +879,7 @@ function hdMobile(id, name, dims, start, opts = {}) {
     };
     // each frame, fold or stretch the cable arms to the gap between their two carriages
     const tick = () => {
+      binDoorsList.forEach(d => { d.tex.repeat.y = Math.max(0.2, (d.h0 * d.cur.scale.y) / 3); });
       for (const q of arms) {
         if (!q.g.visible) continue;
         const zA = q.a.position.z + q.a.userData.dd / 2, zB = q.b.position.z + q.b.userData.dd / 2, half = (zB - zA) / 2, dx = Math.sqrt(Math.max(q.len * q.len - half * half, 0.25)), zm = (zA + zB) / 2;
@@ -860,7 +903,8 @@ function hdMobile(id, name, dims, start, opts = {}) {
         { label: 'Close all aisles', run: () => { open = C.N; move(); } },
         { label: 'Electric drive', when: () => !C.electricOnly, run: () => { if (C.electricOnly) return 'Electric only'; electric = !electric; [...ranges, ...ranges2].forEach(g => { if (g.userData.fixed) return; g.userData.wheel.visible = !electric; g.userData.pad.visible = electric; }); arms.forEach(q => { q.g.visible = electric; }); tick(); return electric ? 'Mechanical assist' : 'Electric drive'; } },
         { label: 'End panels', toggle: true, when: () => kind !== 'pallet', get: () => panelsOn ?? (kind !== 'art' && !!C.panels), set: v => { panelsOn = v; make(); } },
-        { label: 'Holds', when: () => kind === 'gear', options: GEAR, get: () => gearKind, set: n => { gearKind = n; make(); } },
+        { label: 'Roll-up doors', toggle: true, when: () => kind === 'bins', get: () => binDoors, set: v => { binDoors = v; make(); } },
+        { label: 'Open the roll-up doors', when: () => kind === 'bins' && binDoors, run: () => { const o = !binDoorsList.every(d => d.open); binDoorsList.forEach(d => { if (d.open !== o) d.click(); }); return o ? 'Close the roll-up doors' : 'Open the roll-up doors'; } },
         { label: 'Closed shelving', toggle: true, when: () => kind === 'shelving', get: () => closedShelf, set: v => { closedShelf = v; make(); } },
         { label: 'Unit color', options: UNIT_COLORS.map(c => c[0]), get: () => loadColor[kind] || 0, set: n => { loadColor[kind] = n; paintLoad(); } },
       ],
@@ -876,7 +920,10 @@ hdMobile('hd-mobile-museum', 'Mobile Museum Cabinets', 'Museum storage cabinets 
 hdMobile('hd-mobile-library', 'Mobile Library Shelving', 'Double-faced cantilever library shelving on mobile carriages', 'library');
 hdMobile('hd-mobile-textile', 'Mobile Rolled Textile Storage', 'Double-sided textile racks on mobile carriages', 'textile');
 hdMobile('hd-mobile-art', 'Mobile Art Screens', 'Art screens on skinny mobile carriages: gussets at every upright, chain box and crank', 'art');
-hdMobile('hd-mobile-gear', 'Mobile Gear Storage', 'Mobile shelving fitted with accessories: helmet shelves, ball racks, golf bag bays, instrument cubbies', 'gear');
+hdMobile('hd-mobile-gear', 'Mobile Athletic Storage', 'Mobile shelving with helmet shelves, pad and jersey hangers, ball racks', 'athletic');
+hdMobile('hd-mobile-golf', 'Mobile Golf Bag Storage', 'Golf bag bays with dividers and strap bars on mobile carriages', 'golf');
+hdMobile('hd-mobile-instruments', 'Mobile Instrument Storage', 'Instrument cubbies sized to each case, on mobile carriages', 'instruments');
+hdMobile('hd-mobile-bins', 'Mobile Painting Bins', 'Painting bins on mobile carriages, with or without roll-up doors', 'bins');
 hdMobile('hd-mobile-wardrobe', 'Mobile Wardrobe Cabinets', 'Steel wardrobe cabinets on mobile carriages, doors that open', 'wardrobe');
 hdMobile('hd-mobile-mezz', 'Two-Level Mobile Storage', 'Electric mobile shelving under and on top of a structural mezzanine, with aisles on both levels', 'shelving', { twoLevel: true, electric: true });
 
@@ -1629,7 +1676,7 @@ def('wire-cage', 'Wire Partition Enclosure', 'Welded wire cages from 10 x 8 ft u
       // gear hooks along the left wall: helmets, bags and jerseys
       for (let z = 34, i = 0; z < D - 10; z += 12, i++) {
         bx(unit, 3, 0.5, 0.5, M.chrome, 0.8, 62, z); bx(unit, 0.5, 1.4, 0.5, M.chrome, 3.3, 61, z);
-        if (i % 3 === 0) { const hm = new THREE.Mesh(new THREE.SphereGeometry(5, 20, 14, 0, Math.PI * 2, 0, Math.PI * 0.62), team); hm.position.set(6, 53, z + 0.25); unit.add(hm); }
+        if (i % 3 === 0) unit.add(footballHelmet(THREE, team, 6, 54, z + 0.25, Math.PI / 2));
         else if (i % 3 === 1) bx(unit, 7, 16, 9, bag, 2.5, 42, z - 4.25);
         else bx(unit, 1, 24, 16, jersey, 3, 36, z - 7.75);
       }
@@ -1743,8 +1790,7 @@ def('athletic', 'Athletic Team Lockers', 'Four 24" W x 24" D x 72" H lockers: fo
     bx(root, 16, 6, 9, pads, x0 + (iw - 16) / 2, 42, 2);
     // helmet shelf with a helmet
     bx(root, iw, 0.4, d - 2, paint, x0, 58, 0.6);
-    const helm = new THREE.Mesh(new THREE.SphereGeometry(5, 24, 16, 0, Math.PI * 2, 0, Math.PI * 0.62), team); helm.position.set(x0 + iw / 2, 58.4 + 1.6, 12); root.add(helm);
-    bx(root, 6, 0.6, 0.6, M.white, x0 + iw / 2 - 3, 60, 17.2); bx(root, 0.6, 3, 0.6, M.white, x0 + iw / 2 - 0.3, 58.6, 17.2);
+    root.add(footballHelmet(THREE, team, x0 + iw / 2, 58.4 + 3.4, 11));
     // lockable security box at the top
     bx(root, iw, 0.4, d - 1, paint, x0, 64, 0.6);
     const sb = group(root, x0 + 0.2, 64.4, d); bx(sb, iw - 0.4, 6.8, 0.5, paint, 0, 0, -0.5); cyl(sb, 0.6, 0.4, M.chrome, iw - 3, 3.4, 0.1, 16, 'z');
@@ -2364,5 +2410,5 @@ def('bike-storage', 'Bike Room Storage', 'Apartment and campus bike rooms: two-t
   };
 });
 
-const SHORT = { 'four-post': '4-post', 'bin-shelving': 'Bin shelving', 'wire-shelving': 'Wire', library: 'Library', 'hd-mobile': 'Mobile', lockers: 'Lockers', 'evidence-lockers': 'Evidence', 'flat-files': 'Flat files', rotary: 'Rotary', 'museum-cabinet': 'Museum cabinet', 'art-screens': 'Art screens', 'pallet-rack': 'Pallet rack', mezzanine: 'Mezzanine', vlm: 'VLM', casework: 'Casework', 'wire-cage': 'Wire cage', athletic: 'Athletic', 'mail-sorter': 'Mail sorter', weapons: 'Weapons', 'tire-rack': 'Tire rack', 'wire-track': 'Wire on track', 'ss-table': 'Stainless tables', install: 'Install steps', 'hd-mobile-open': 'Mobile shelving', 'hd-mobile-tire': 'Mobile tires', 'hd-mobile-grow': 'Mobile grow racks', 'hd-mobile-flat': 'Mobile flat files', 'hd-mobile-museum': 'Mobile cabinets', 'hd-mobile-library': 'Mobile library', 'hd-mobile-textile': 'Mobile textiles', 'hd-mobile-art': 'Mobile art screens', 'hd-mobile-mezz': 'Two-level mobile', 'hd-mobile-wardrobe': 'Mobile wardrobes', 'hd-mobile-gear': 'Mobile gear', 'bike-storage': 'Bike rooms', 'painting-bins': 'Painting bins', 'four-post-solander': 'Solander boxes', workstation: 'Workstation', fireproof: 'Fireproof', 'wall-art': 'Wall art screens', 'textile-rack': 'Textile racks' };
+const SHORT = { 'four-post': '4-post', 'bin-shelving': 'Bin shelving', 'wire-shelving': 'Wire', library: 'Library', 'hd-mobile': 'Mobile', lockers: 'Lockers', 'evidence-lockers': 'Evidence', 'flat-files': 'Flat files', rotary: 'Rotary', 'museum-cabinet': 'Museum cabinet', 'art-screens': 'Art screens', 'pallet-rack': 'Pallet rack', mezzanine: 'Mezzanine', vlm: 'VLM', casework: 'Casework', 'wire-cage': 'Wire cage', athletic: 'Athletic', 'mail-sorter': 'Mail sorter', weapons: 'Weapons', 'tire-rack': 'Tire rack', 'wire-track': 'Wire on track', 'ss-table': 'Stainless tables', install: 'Install steps', 'hd-mobile-open': 'Mobile shelving', 'hd-mobile-tire': 'Mobile tires', 'hd-mobile-grow': 'Mobile grow racks', 'hd-mobile-flat': 'Mobile flat files', 'hd-mobile-museum': 'Mobile cabinets', 'hd-mobile-library': 'Mobile library', 'hd-mobile-textile': 'Mobile textiles', 'hd-mobile-art': 'Mobile art screens', 'hd-mobile-mezz': 'Two-level mobile', 'hd-mobile-wardrobe': 'Mobile wardrobes', 'hd-mobile-gear': 'Mobile athletic', 'hd-mobile-golf': 'Mobile golf', 'hd-mobile-instruments': 'Mobile instruments', 'hd-mobile-bins': 'Mobile painting bins', 'bike-storage': 'Bike rooms', 'painting-bins': 'Painting bins', 'four-post-solander': 'Solander boxes', workstation: 'Workstation', fireproof: 'Fireproof', 'wall-art': 'Wall art screens', 'textile-rack': 'Textile racks' };
 for (const [id, s] of Object.entries(SHORT)) if (MODELS[id]) MODELS[id].short = s;
