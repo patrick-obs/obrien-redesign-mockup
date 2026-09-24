@@ -772,11 +772,11 @@ function hdMobile(id, name, dims, start, opts = {}) {
           if (kind === 'art') { hub.scale.setScalar(0.55); pad.scale.setScalar(0.6); }
           hub.visible = !electric; pad.visible = electric;
           hub.userData.dyn = pad.userData.dyn = true;
-          g.userData.onClick = () => { if (up) open2 = open2 === j - 1 ? j : j - 1; else open = open === j - 1 ? j : j - 1; move(); };
+          g.userData.onClick = () => { open = open === j - 1 ? j : j - 1; move(); };
           g.userData.wheel = hub; g.userData.pad = pad;
         }
         g.userData.fixed = fixed;
-        g.position.z = base[j] + (j > (up ? open2 : open) ? aisle : 0);
+        g.position.z = base[j] + (j > open ? aisle : 0);
         g.userData.base = base[j];
         return g;
       });
@@ -830,6 +830,7 @@ function hdMobile(id, name, dims, start, opts = {}) {
     const paintLoad = () => { const n = loadColor[kind] || 0; UNIT_MATS().forEach(m => { if (m.userData.c0 == null) m.userData.c0 = m.color.getHex(); m.color.setHex(n ? UNIT_COLORS[n][1] : m.userData.c0); }); wake(); };
     // anything left open (drawers, doors) closes before the carriages move
     const move = () => {
+      open2 = open;
       const go = () => { moveList(ranges, open); moveList(ranges2, open2); };
       if (!openParts.size) return go();
       [...openParts].forEach(f => f()); openParts.clear(); setTimeout(go, 750);
@@ -854,8 +855,7 @@ function hdMobile(id, name, dims, start, opts = {}) {
         { label: 'Aisle', when: () => kind !== 'pallet', options: AISLE_STD.map(a => a[0]), get: () => nearest(AISLE_STD), set: n => { aisleW = AISLE_STD[n][1]; make(); refit?.(); } },
         { label: 'Forklift aisle', when: () => kind === 'pallet', options: AISLE_FORK.map(a => a[0]), get: () => nearest(AISLE_FORK), set: n => { aisleW = AISLE_FORK[n][1]; make(); refit?.(); } },
         { label: 'Open next aisle', run: () => { open = (open + 1) % (C.N + 1); move(); } },
-        { label: 'Open next aisle upstairs', when: () => twoLevel, run: () => { open2 = (open2 + 1) % (C.N + 1); move(); } },
-        { label: 'Two levels on a mezzanine', toggle: true, when: () => kind !== 'pallet', get: () => twoLevel, set: v => { twoLevel = v; open2 = 1; make(); refit?.(); } },
+        { label: 'Two levels on a mezzanine', toggle: true, when: () => kind !== 'pallet', get: () => twoLevel, set: v => { twoLevel = v; open2 = open; make(); refit?.(); } },
         { label: 'Close all aisles', run: () => { open = C.N; move(); } },
         { label: 'Electric drive', when: () => !C.electricOnly, run: () => { if (C.electricOnly) return 'Electric only'; electric = !electric; [...ranges, ...ranges2].forEach(g => { if (g.userData.fixed) return; g.userData.wheel.visible = !electric; g.userData.pad.visible = electric; }); arms.forEach(q => { q.g.visible = electric; }); tick(); return electric ? 'Mechanical assist' : 'Electric drive'; } },
         { label: 'End panels', toggle: true, when: () => kind !== 'pallet', get: () => panelsOn ?? (kind !== 'art' && !!C.panels), set: v => { panelsOn = v; make(); } },
