@@ -404,7 +404,19 @@ function showroomPage(shell, heroImg) {
 }
 // load the viewer only on pages that have one
 const with3d = (html, ver) => html.includes('class="v3d') ? html.replace('</body>', `<script type="module" src="assets/3d/viewer.js?v=${ver}"></script>\n</body>`) : html;
-const CSS3D = `
+const CSS3D = `.v3d-ov{position:absolute;inset:4% 5%;z-index:6;background:#0c1a22;color:#dfeef0;border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,.35);overflow:auto;font:14px/1.45 system-ui,sans-serif;padding:14px 16px;cursor:auto;touch-action:auto}
+.v3d-ov-x{position:absolute;top:6px;right:10px;background:none;border:0;color:#9fd3d5;font-size:28px;cursor:pointer;line-height:1}
+.v3d-ov .c-top{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-right:30px;margin-bottom:10px}.v3d-ov .c-top span{color:#9fd3d5;font-size:12.5px}
+.v3d-ov .c-nav{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}.v3d-ov .c-nav button{background:#132a35;border:1px solid #1f4250;color:#cfe6e8;padding:6px 12px;border-radius:8px;cursor:pointer;font:inherit}.v3d-ov .c-nav .on{background:#0f7377;border-color:#0f7377;color:#fff}
+.v3d-ov .c-card{background:#132a35;border-radius:10px;padding:12px 14px}.v3d-ov .c-sub{color:#9fd3d5;font-size:12px}.v3d-ov .c-big{font-size:26px;font-weight:700;margin:4px 0}.v3d-ov .c-loc{margin-top:6px;color:#e8a33d;font-weight:600}.v3d-ov .c-qty{margin:6px 0 10px}.v3d-ov .c-qty b{font-size:22px}
+.v3d-ov .c-row{display:flex;gap:8px;flex-wrap:wrap}.v3d-ov button[data-act=call],.v3d-ov button[data-act=pick],.v3d-ov button[data-act=retall]{background:#0f7377;color:#fff;border:0;border-radius:8px;padding:8px 14px;font:inherit;font-weight:600;cursor:pointer}
+.v3d-ov button[disabled]{opacity:.45;cursor:not-allowed}.v3d-ov .ghost{background:none;border:1px solid #1f4250;color:#cfe6e8;border-radius:8px;padding:8px 14px;cursor:pointer;font:inherit}
+.v3d-ov .c-lines{margin:10px 0 0;padding-left:18px;color:#9fb9bd}.v3d-ov .c-lines .done{text-decoration:line-through;opacity:.6}.v3d-ov .c-lines .cur{color:#fff;font-weight:600}
+.v3d-ov input{width:100%;box-sizing:border-box;padding:8px 10px;border-radius:8px;border:1px solid #1f4250;background:#0a151b;color:#fff;margin-bottom:8px;font:inherit}
+.v3d-ov table{width:100%;border-collapse:collapse;font-size:13px}.v3d-ov td{padding:6px 4px;border-bottom:1px solid #1a3440;vertical-align:top}
+.v3d-ov .c-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:6px}.v3d-ov .c-grid .c-t{border:0;border-radius:8px;padding:10px 0;font-weight:700;cursor:pointer;background:#1f4250;color:#dfeef0}.v3d-ov .c-grid .c-bay{background:#2f9e44;color:#fff}.v3d-ov .c-grid .c-moving{background:#e8a33d;color:#1b1b1b}
+.v3d-ov .c-note{color:#9fb9bd;font-size:12px;margin-top:8px}
+
 /* 3D viewer */
 .v3d-sec{padding:60px 0;background:#f6f8f8}
 .v3d-home{background:linear-gradient(180deg,#fff,#f1f5f5)}

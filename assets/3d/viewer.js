@@ -127,6 +127,15 @@ function viewer(el) {
   const wake = () => { dirty = true; if (!frame) frame = requestAnimationFrame(loop); };
   controls.addEventListener('change', wake);
 
+  let ovClean = null;
+  const closePanel = () => { stage.querySelector('.v3d-ov')?.remove(); ovClean?.(); ovClean = null; };
+  const panel = (build) => {
+    closePanel();
+    const ov = document.createElement('div'); ov.className = 'v3d-ov'; ov.setAttribute('role', 'dialog');
+    ov.innerHTML = '<button type="button" class="v3d-ov-x" aria-label="Close">&times;</button><div class="v3d-ov-b"></div>';
+    stage.appendChild(ov); ov.querySelector('.v3d-ov-x').addEventListener('click', closePanel);
+    ovClean = build(ov.querySelector('.v3d-ov-b'), closePanel) || null;
+  };
   const scan = () => { clickables = []; current?.group.traverse(o => { if (o.userData.onClick) clickables.push(o); }); };
   function fit(group, view) {
     const box = new THREE.Box3().setFromObject(group), size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
@@ -144,11 +153,12 @@ function viewer(el) {
   }
 
   function load(id) {
+    closePanel();
     if (current) { scene.remove(current.group); current.group.traverse(o => { o.geometry?.dispose?.(); }); }
     const def = MODELS[id];
-    current = def.build({ THREE, tween, wait, wake, bake: g => bake(THREE, g), refit: () => { if (current) { fit(current.group, current.view); wake(); } } });
+    current = def.build({ THREE, tween, wait, wake, bake: g => bake(THREE, g), panel, refit: () => { if (current) { fit(current.group, current.view); wake(); } } });
     scan();
-    current.group.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+    current.group.traverse(o => { if (o.isMesh && !o.userData.noShadow) { o.castShadow = true; o.receiveShadow = true; } });
     bake(THREE, current.group);
     scene.add(current.group);
     fit(current.group, current.view);
