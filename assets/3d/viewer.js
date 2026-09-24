@@ -224,6 +224,7 @@ function viewer(el) {
     // slow machine: step the render resolution down instead of dropping frames
     if (last && now - last > 26) { if (++slow > 24 && pr > 1) { pr = Math.max(1, pr - 0.25); renderer.setPixelRatio(pr); resize(); slow = 0; } } else slow = Math.max(0, slow - 1);
     last = active || controls.autoRotate || lowRes ? now : 0;
+    if (active) current?.tick?.();
     const moving = controls.update(), busy = active || moving || controls.autoRotate;
     if (busy) setRes(true);
     // moving parts refresh shadows every few frames; a settled frame always gets a fresh shadow map

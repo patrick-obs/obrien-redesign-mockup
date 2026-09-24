@@ -443,7 +443,7 @@ function tireMesh(THREE, parent, list) {
   tagged.forEach((t, i) => { o.position.set(t.x, t.y, t.z + 13.62); o.rotation.set(0, 0, 0); o.scale.set(3.4, 5.6, 0.08); o.updateMatrix(); lm.setMatrixAt(i, o.matrix); });
   lm.instanceMatrix.needsUpdate = true; parent.add(lm);
 }
-function hdMobile(id, name, dims, start) {
+function hdMobile(id, name, dims, start, opts = {}) {
   def(id, name, dims, ({ THREE, tween, wake, bake, refit }) => {
     const k = kit(THREE), { M, bx, cyl, group, many } = k, root = new THREE.Group();
     const paint = k.std(0xbfc4c7, 0.5, 0.3), panel = k.std(0x2c2f31, 0.45, 0.25), ff = k.std(0xeeefed, 0.45, 0.3);
@@ -452,7 +452,8 @@ function hdMobile(id, name, dims, start) {
     const gWhite = k.std(0xf1f2f0, 0.4, 0.25), wire = k.meshMat(144, 26, 1.5, '#e9ecee', 0.6), trayM = k.std(0x1c1d1f, 0.7, 0.05), leaf = k.std(0xffffff, 0.7, 0), led = k.std(0xffffff, 0.3, 0, { emissive: 0xfff8e8, emissiveIntensity: 1.1 });
     const tBlue = k.std(0x1f5fb0, 0.45, 0.35), tBlueP = k.postMat(tBlue), bumperM = k.std(0x111213, 0.9, 0);
     const black = k.std(0x1c1e20, 0.45, 0.15), red = k.std(0xc4241c, 0.4, 0.1), go = k.std(0x39d353, 0.3, 0, { emissive: 0x1f8a33, emissiveIntensity: 0.9 }), stop = k.std(0xc92a2a, 0.35, 0.1, { emissive: 0x5a1414, emissiveIntensity: 0.5 });
-    let kind = start, electric = false, open = 2, unit, ranges = [], C, artPanels = false;
+    let kind = start, electric = !!opts.electric, open = 2, unit, ranges = [], C, artPanels = false, twoLevel = !!opts.twoLevel, open2 = 1, ranges2 = [], arms = [];
+    const armM = k.std(0x3a3f44, 0.5, 0.5), mzDeck = k.std(0x5d6468, 0.75, 0.4), railY = k.std(0xe0a526, 0.45, 0.35), steelM = k.std(0x4b5a63, 0.5, 0.5);
     const lPost = k.postMat(paint), tFrame = k.std(0x3a3f44, 0.45, 0.35), tTube = k.std(0xf6f7f5, 0.35, 0.1), aWhite = k.std(0xf3f4f2, 0.45, 0.25), gilt = k.std(0xa6832f, 0.35, 0.7);
     const tWraps = [k.std(0xe3e7ea, 0.3, 0.35), k.std(0xeceeee, 0.55, 0.1)], tBare = [k.std(0x9b2226, 0.85, 0), k.std(0x7a5230, 0.9, 0), k.std(0x3d5a7a, 0.85, 0), k.std(0x5e4a7a, 0.85, 0)];
     const artM = ['#8c3b2f', '#2f4f6f', '#c9a227', '#3d6b4f', '#b56f4a', '#5e4a7a', '#244a5a'].map(c => k.std(c, 0.8, 0)), screenMesh = k.meshMat(120, 96, 2, '#fbfbf9', 0.2);
@@ -607,8 +608,11 @@ function hdMobile(id, name, dims, start) {
       for (const rx of [8, L / 2 - 10, L / 2 + 10, L - 8]) bx(unit, 1.2, 0.35, total + 8, M.steel, rx - 0.6, deck, -4);
       open = Math.min(open, N);
       const handleM = kind === 'grow' ? red : black;
-      ranges = depths.map((dd, j) => {
-        const g = group(unit, 0, deck + 0.35, 0), fixed = j === 0 || j === depths.length - 1, last = j === depths.length - 1;
+      if (kind === 'pallet') twoLevel = false;
+      const MZ = h + cH + deck + 16;
+      const buildRanges = (yb, up) => depths.map((dd, j) => {
+        const g = group(unit, 0, yb + deck + 0.35, 0), fixed = j === 0 || j === depths.length - 1, last = j === depths.length - 1;
+        g.userData.dd = dd;
         bx(g, L, cH, dd, M.dark, 0, 0, 0);
         // rubber bumpers on both faces so carriages close up without touching
         for (const bxp of [6, L - 6]) for (const bz of [-0.4, dd]) cyl(g, 0.9, 0.4, bumperM, bxp, cH * 0.55, bz + 0.2, 12, 'z');
@@ -656,34 +660,81 @@ function hdMobile(id, name, dims, start) {
           if (kind === 'art') { hub.scale.setScalar(0.55); pad.scale.setScalar(0.6); }
           hub.visible = !electric; pad.visible = electric;
           hub.userData.dyn = pad.userData.dyn = true;
-          g.userData.onClick = () => { open = open === j - 1 ? j : j - 1; move(); };
+          g.userData.onClick = () => { if (up) open2 = open2 === j - 1 ? j : j - 1; else open = open === j - 1 ? j : j - 1; move(); };
           g.userData.wheel = hub; g.userData.pad = pad;
         }
         g.userData.fixed = fixed;
-        g.position.z = base[j] + (j > open ? aisle : 0);
+        g.position.z = base[j] + (j > (up ? open2 : open) ? aisle : 0);
         g.userData.base = base[j];
         return g;
       });
+      ranges = buildRanges(0, false);
+      ranges2 = [];
+      if (twoLevel) {
+        // structural mezzanine around the lower system; a second system rides rails on the deck
+        const x0 = -10, x1 = L + 46, z0 = -10, z1 = total + 10;
+        for (const cx of [x0, L / 2, x1 - 5]) for (const cz of [z0, z1 - 5]) { bx(unit, 5, MZ - 1.5, 5, steelM, cx, 0, cz); bx(unit, 11, 0.6, 11, M.steel, cx - 3, 0, cz - 3); }
+        for (const cz of [z0, z1 - 5]) bx(unit, x1 - x0, 9, 5, steelM, x0, MZ - 10.5, cz);
+        for (const cx of [x0, x1 - 5]) bx(unit, 5, 9, z1 - z0, steelM, cx, MZ - 10.5, z0);
+        bx(unit, x1 - x0, 1.5, z1 - z0, mzDeck, x0, MZ - 1.5, z0);
+        for (const rx of [8, L / 2 - 10, L / 2 + 10, L - 8]) bx(unit, 1.2, 0.35, total + 8, M.steel, rx - 0.6, MZ, -4);
+        const post = (x, z) => bx(unit, 2, 42, 2, railY, x - 1, MZ, z - 1);
+        for (let x = x0 + 1; x <= x1 - 1; x += 48) { post(x, z0 + 1); post(x, z1 - 1); }
+        for (let z = z0 + 1; z <= z1 - 60; z += 48) { post(x0 + 1, z); post(x1 - 1, z); }
+        for (const [zz, a, b] of [[z0 + 1, x0, x1], [z1 - 1, x0, x1]]) { bx(unit, b - a, 2, 2, railY, a, MZ + 40, zz - 1); bx(unit, b - a, 1.5, 1.5, railY, a, MZ + 21, zz - 0.75); bx(unit, b - a, 4, 0.3, railY, a, MZ, zz - 0.15); }
+        for (const xx of [x0 + 1, x1 - 1]) { bx(unit, 2, 2, z1 - z0 - 58, railY, xx - 1, MZ + 40, z0); bx(unit, 1.5, 1.5, z1 - z0 - 58, railY, xx - 0.75, MZ + 21, z0); bx(unit, 0.3, 4, z1 - z0 - 58, railY, xx - 0.15, MZ, z0); }
+        // stair down from the walkway on the handle side
+        const steps = Math.ceil(MZ / 7.5), rise = MZ / steps, run = 11, sx = x1, sz = z1 - 50;
+        for (let i = 0; i < steps; i++) bx(unit, run + 1, 1.2, 40, mzDeck, sx + i * run, MZ - (i + 1) * rise, sz);
+        for (const zz of [sz - 0.8, sz + 40.8]) k.bar(unit, sx, MZ - 4, sx + steps * run, -4, zz, 9, steelM, 1.5);
+        ranges2 = buildRanges(MZ - deck, true);
+      }
+      // telescopic cable arms over the end panels: power and data follow every carriage
+      arms = [];
+      for (const [list, yb] of [[ranges, 0], [ranges2, MZ - deck]]) for (let j = 0; j + 1 < list.length; j++) {
+        const a = list[j], b = list[j + 1], top = yb + deck + 0.35 + cH + h + 1.8, ag = group(unit, 0, 0, 0); ag.userData.dyn = true;
+        const maxSep = (a.userData.dd + b.userData.dd) / 2 + 0.8 + aisle, len = (maxSep / 2) * 1.08;
+        const lA = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.1, 1), armM), lB = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.1, 1), armM), knee = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1.8, 14), armM);
+        knee.rotation.z = Math.PI / 2; lA.scale.z = lB.scale.z = len;
+        const pa = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.6, 2.2), armM), pb = pa.clone();
+        [lA, lB, knee, pa, pb].forEach(m => { m.userData.dyn = true; ag.add(m); });
+        ag.visible = electric;
+        arms.push({ a, b, top, len, lA, lB, knee, pa, pb, g: ag, x: L + 0.8 });
+      }
+      tick();
       unit.traverse(o => { if (o.isMesh) { o.castShadow = o.receiveShadow = true; } });
       bake?.(unit); wake();
     };
-    const move = () => ranges.forEach((g, j) => {
+    const moveList = (list, op) => list.forEach((g, j) => {
       if (g.userData.fixed) return;
-      const to = g.userData.base + (j > open ? C.aisle : 0), dz = to - g.position.z; if (Math.abs(dz) < 0.1) return;
+      const to = g.userData.base + (j > op ? C.aisle : 0), dz = to - g.position.z; if (Math.abs(dz) < 0.1) return;
       // electric carriages ramp up and down smoothly; mechanical ones follow the handle
       const ms = electric ? 900 + Math.abs(dz) * (kind === 'pallet' ? 14 : 22) : 700 + Math.abs(dz) * 14;
       tween(g.position, 'z', to, ms);
       if (!electric) tween(g.userData.wheel.rotation, 'x', g.userData.wheel.rotation.x + dz * 0.16, ms);
     });
+    const move = () => { moveList(ranges, open); moveList(ranges2, open2); };
+    // each frame, fold or stretch the cable arms to the gap between their two carriages
+    const tick = () => {
+      for (const q of arms) {
+        if (!q.g.visible) continue;
+        const zA = q.a.position.z + q.a.userData.dd / 2, zB = q.b.position.z + q.b.userData.dd / 2, half = (zB - zA) / 2, dy = Math.sqrt(Math.max(q.len * q.len - half * half, 0.25)), zm = (zA + zB) / 2, ang = Math.atan2(dy, half);
+        q.lA.position.set(q.x, q.top + dy / 2, zA + half / 2); q.lA.rotation.x = -ang;
+        q.lB.position.set(q.x, q.top + dy / 2, zm + half / 2); q.lB.rotation.x = ang;
+        q.knee.position.set(q.x, q.top + dy, zm); q.pa.position.set(q.x, q.top, zA); q.pb.position.set(q.x, q.top, zB);
+      }
+    };
     make();
     return {
-      group: root, view: [1.45, 0.62, 0.62],
+      group: root, view: [1.45, 0.62, 0.62], tick,
       finishes: [{ name: 'Black', swatch: '#2c2f31', color: 0x2c2f31 }, { name: 'O\'Brien teal', swatch: '#0f7377', color: 0x0f7377 }, { name: 'Maple laminate', swatch: '#c79a66', color: 0xc79a66 }, { name: 'Light gray', swatch: '#c3c7ca', color: 0xbfc4c7 }, { name: 'Navy', swatch: '#2a3d5c', color: 0x2a3d5c }],
       setFinish: k.finisher(panel),
       actions: [
         { label: 'Open next aisle', run: () => { open = (open + 1) % (C.N + 1); move(); } },
+        { label: 'Open next aisle upstairs', when: () => twoLevel, run: () => { open2 = (open2 + 1) % (C.N + 1); move(); } },
+        { label: 'Two levels on a mezzanine', toggle: true, when: () => kind !== 'pallet', get: () => twoLevel, set: v => { twoLevel = v; open2 = 1; make(); refit?.(); } },
         { label: 'Close all aisles', run: () => { open = C.N; move(); } },
-        { label: 'Electric drive', when: () => !C.electricOnly, run: () => { if (C.electricOnly) return 'Electric only'; electric = !electric; ranges.forEach(g => { if (g.userData.fixed) return; g.userData.wheel.visible = !electric; g.userData.pad.visible = electric; }); return electric ? 'Mechanical assist' : 'Electric drive'; } },
+        { label: 'Electric drive', when: () => !C.electricOnly, run: () => { if (C.electricOnly) return 'Electric only'; electric = !electric; [...ranges, ...ranges2].forEach(g => { if (g.userData.fixed) return; g.userData.wheel.visible = !electric; g.userData.pad.visible = electric; }); arms.forEach(q => { q.g.visible = electric; }); tick(); return electric ? 'Mechanical assist' : 'Electric drive'; } },
         { label: 'End panels', toggle: true, when: () => kind === 'art', get: () => artPanels, set: v => { artPanels = v; make(); } },
         { label: HD_KINDS[start].label, run: () => { const was = HD_KINDS[kind].electricOnly; kind = HD_ORDER[(HD_ORDER.indexOf(kind) + 1) % HD_ORDER.length]; if (HD_KINDS[kind].electricOnly) electric = true; else if (was) electric = false; open = 1; make(); refit?.(); return HD_KINDS[kind].label; } },
       ],
@@ -699,6 +750,7 @@ hdMobile('hd-mobile-museum', 'Mobile Museum Cabinets', 'Museum storage cabinets 
 hdMobile('hd-mobile-library', 'Mobile Library Shelving', 'Double-faced cantilever library shelving on mobile carriages', 'library');
 hdMobile('hd-mobile-textile', 'Mobile Rolled Textile Storage', 'Double-sided textile racks on mobile carriages', 'textile');
 hdMobile('hd-mobile-art', 'Mobile Art Screens', 'Art screens on skinny mobile carriages: gussets at every upright, chain box and crank', 'art');
+hdMobile('hd-mobile-mezz', 'Two-Level Mobile Storage', 'Electric mobile shelving under and on top of a structural mezzanine, with aisles on both levels', 'shelving', { twoLevel: true, electric: true });
 
 /* ---------------- 6. lockers ---------------- */
 def('lockers', 'Steel Lockers', '72" H lockers: one to four tiers, single or double door, base or legs, locks, plates, interiors', ({ THREE, tween, wake, bake }) => {
@@ -1993,5 +2045,5 @@ def('install', 'Mobile Storage Install, Step by Step', 'Rails in the floor or on
   };
 });
 
-const SHORT = { 'four-post': '4-post', 'bin-shelving': 'Bin shelving', 'wire-shelving': 'Wire', library: 'Library', 'hd-mobile': 'Mobile', lockers: 'Lockers', 'evidence-lockers': 'Evidence', 'flat-files': 'Flat files', rotary: 'Rotary', 'museum-cabinet': 'Museum cabinet', 'art-screens': 'Art screens', 'pallet-rack': 'Pallet rack', mezzanine: 'Mezzanine', vlm: 'VLM', casework: 'Casework', 'wire-cage': 'Wire cage', athletic: 'Athletic', 'mail-sorter': 'Mail sorter', weapons: 'Weapons', 'tire-rack': 'Tire rack', 'wire-track': 'Wire on track', 'ss-table': 'Stainless tables', install: 'Install steps', 'hd-mobile-open': 'Mobile shelving', 'hd-mobile-tire': 'Mobile tires', 'hd-mobile-grow': 'Mobile grow racks', 'hd-mobile-flat': 'Mobile flat files', 'hd-mobile-museum': 'Mobile cabinets', 'hd-mobile-library': 'Mobile library', 'hd-mobile-textile': 'Mobile textiles', 'hd-mobile-art': 'Mobile art screens', 'four-post-solander': 'Solander boxes', workstation: 'Workstation', fireproof: 'Fireproof', 'wall-art': 'Wall art screens', 'textile-rack': 'Textile racks' };
+const SHORT = { 'four-post': '4-post', 'bin-shelving': 'Bin shelving', 'wire-shelving': 'Wire', library: 'Library', 'hd-mobile': 'Mobile', lockers: 'Lockers', 'evidence-lockers': 'Evidence', 'flat-files': 'Flat files', rotary: 'Rotary', 'museum-cabinet': 'Museum cabinet', 'art-screens': 'Art screens', 'pallet-rack': 'Pallet rack', mezzanine: 'Mezzanine', vlm: 'VLM', casework: 'Casework', 'wire-cage': 'Wire cage', athletic: 'Athletic', 'mail-sorter': 'Mail sorter', weapons: 'Weapons', 'tire-rack': 'Tire rack', 'wire-track': 'Wire on track', 'ss-table': 'Stainless tables', install: 'Install steps', 'hd-mobile-open': 'Mobile shelving', 'hd-mobile-tire': 'Mobile tires', 'hd-mobile-grow': 'Mobile grow racks', 'hd-mobile-flat': 'Mobile flat files', 'hd-mobile-museum': 'Mobile cabinets', 'hd-mobile-library': 'Mobile library', 'hd-mobile-textile': 'Mobile textiles', 'hd-mobile-art': 'Mobile art screens', 'hd-mobile-mezz': 'Two-level mobile', 'four-post-solander': 'Solander boxes', workstation: 'Workstation', fireproof: 'Fireproof', 'wall-art': 'Wall art screens', 'textile-rack': 'Textile racks' };
 for (const [id, s] of Object.entries(SHORT)) if (MODELS[id]) MODELS[id].short = s;
