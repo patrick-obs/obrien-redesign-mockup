@@ -1512,7 +1512,7 @@ def('wall-art', 'Wall-Mounted Art Screens', 'White mesh panels on the wall: fixe
 /* ---------------- 23. textile rack ---------------- */
 def('textile-rack', 'Rolled Textile Storage', '12 ft double-sided cantilever rack: rolls of different lengths on tubes resting on the arms', ({ THREE, tween }) => {
   const k = kit(THREE), { M, bx, cyl, group } = k, root = new THREE.Group();
-  const frame = k.std(0xf1f2f0, 0.4, 0.25), tube = k.std(0xf6f7f5, 0.35, 0.1), r = rng(31);
+  const frame = k.std(0x3a3f44, 0.45, 0.35), tube = k.std(0xf6f7f5, 0.35, 0.1), r = rng(31);
   const wraps = [k.std(0xe3e7ea, 0.3, 0.35), k.std(0xeceeee, 0.55, 0.1), k.std(0xd9dde0, 0.3, 0.4)];
   const bare = [k.std(0x9b2226, 0.85, 0), k.std(0x7a5230, 0.9, 0), k.std(0x8c6b3f, 0.9, 0), k.std(0x3d5a7a, 0.85, 0), k.std(0x5e4a7a, 0.85, 0)];
   const L = 144, H = 104, arm = 30, cols = [0, 48, 96, 144], levels = [10, 27, 44, 61, 78, 95], slots = [10, 22];
@@ -1551,7 +1551,7 @@ def('textile-rack', 'Rolled Textile Storage', '12 ft double-sided cantilever rac
   }
   return {
     group: root, view: [1.15, 0.5, 1.0],
-    finishes: [{ name: 'White', swatch: '#f1f2f0', color: 0xf1f2f0 }, { name: 'Light gray', swatch: '#c3c7ca', color: 0xbfc4c7 }, { name: 'Putty', swatch: '#d9cfbd', color: 0xd6ccb9 }, { name: 'Black', swatch: '#2c2f31', color: 0x2c2f31 }], setFinish: k.finisher(frame),
+    finishes: [{ name: 'Dark gray', swatch: '#3a3f44', color: 0x3a3f44 }, { name: 'White', swatch: '#f1f2f0', color: 0xf1f2f0 }, { name: 'Light gray', swatch: '#c3c7ca', color: 0xbfc4c7 }, { name: 'Putty', swatch: '#d9cfbd', color: 0xd6ccb9 }, { name: 'Black', swatch: '#2c2f31', color: 0x2c2f31 }], setFinish: k.finisher(frame),
     actions: [{ label: 'Lift out a roll', run: () => { const g = rolls[Math.min(5, rolls.length - 1)]; g.userData.onClick(); return g.userData.out ? 'Put it back' : 'Lift out a roll'; } }],
   };
 });
