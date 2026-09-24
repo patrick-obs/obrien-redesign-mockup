@@ -47,7 +47,7 @@ const GROUPS = [
   { name: 'Museum & art', ids: ['art-screens', 'wall-art', 'textile-rack', 'painting-bins'] },
   { name: 'Workspace', ids: ['casework', 'workstation', 'ss-table', 'mail-sorter'] },
   { name: 'Residential & campus', ids: ['bike-storage'] },
-  { name: 'Industrial', ids: ['pallet-rack', 'mezzanine', 'wire-cage'] },
+  { name: 'Industrial', ids: ['pallet-rack', 'pallet-museum', 'mezzanine', 'wire-cage'] },
   { name: 'For architects & GCs', ids: ['install'] },
 ];
 
@@ -189,7 +189,7 @@ function viewer(el) {
     closePanel();
     if (current) { scene.remove(current.group); current.group.traverse(o => { o.geometry?.dispose?.(); }); }
     const def = MODELS[id];
-    current = def.build({ THREE, tween, wait, wake: modelWake, bake: g => bake(THREE, g), panel, fly: (p, t) => { const m = current.group.matrixWorld; fly(new THREE.Vector3(...p).applyMatrix4(m), new THREE.Vector3(...t).applyMatrix4(m)); }, overview: () => overview(), isWalking: () => walking, refresh: () => { syncActs(); showActs(); }, refit: () => { if (current) { fit(current.group, current.view); wake(); } } });
+    current = def.build({ THREE, tween, wait, wake: modelWake, bake: g => bake(THREE, g), panel, lite: el.dataset.lite === '1', fly: (p, t) => { const m = current.group.matrixWorld; fly(new THREE.Vector3(...p).applyMatrix4(m), new THREE.Vector3(...t).applyMatrix4(m)); }, overview: () => overview(), isWalking: () => walking, refresh: () => { syncActs(); showActs(); }, refit: () => { if (current) { fit(current.group, current.view); wake(); } } });
     scan();
     current.group.traverse(o => { if (o.isMesh && !o.userData.noShadow) { o.castShadow = true; o.receiveShadow = true; } });
     bake(THREE, current.group);

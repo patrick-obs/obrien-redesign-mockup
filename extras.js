@@ -322,26 +322,28 @@ function photos(file, html) {
 const VIEW3D = {
   'four-post-shelving': 'four-post', 'bin-storage': 'bin-shelving', 'wire-shelving': 'wire-shelving,wire-track,bike-storage', 'cantilever-shelving': 'library,hd-mobile-library',
   'static-shelving': 'four-post,bin-shelving,wire-shelving,library,tire-rack', 'high-density-mobile-storage': 'hd-mobile,hd-mobile-mezz,wire-track', 'lockers': 'lockers,athletic,evidence-lockers,weapons', 'evidence-lockers': 'evidence-lockers',
-  'cabinets': 'flat-files,fireproof,rotary,museum-cabinet', 'rotary-cabinets': 'rotary', 'museum-cabinets': 'museum-cabinet,hd-mobile-museum,four-post-solander,textile-rack,hd-mobile-textile', 'art-screens': 'art-screens,hd-mobile-art,painting-bins,hd-mobile-bins,wall-art',
+  'cabinets': 'flat-files,fireproof,rotary,museum-cabinet', 'rotary-cabinets': 'rotary', 'museum-cabinets': 'museum-cabinet,hd-mobile-museum,four-post-solander,textile-rack,hd-mobile-textile', 'art-screens': 'art-screens,wall-art,hd-mobile-art,painting-bins,hd-mobile-bins,pallet-museum',
   'pallet-rack': 'pallet-rack', 'mezzanines': 'mezzanine,hd-mobile-mezz', 'lifts-carousels': 'vlm', 'modular-casework': 'casework,ss-table', 'wire-partitions': 'wire-cage,bike-storage',
   'weapons-storage': 'weapons,hd-mobile', 'athletic-storage': 'athletic,hd-mobile-gear,lockers', 'athletics': 'athletic,hd-mobile-gear,hd-mobile-golf,lockers', 'mail-sorters': 'mail-sorter', 'fireproof-cabinets': 'fireproof', 'wardrobe-cabinets': 'hd-mobile-wardrobe',
-  'military': 'weapons,hd-mobile,pallet-rack', 'museums': 'four-post-solander,painting-bins,hd-mobile-bins,art-screens,hd-mobile-art,museum-cabinet,hd-mobile-museum,textile-rack,hd-mobile-textile', 'libraries': 'library,hd-mobile-library', 'material-handling-warehouse': 'hd-mobile-open,hd-mobile-mezz,pallet-rack,mezzanine,vlm,workstation,wire-cage',
+  'military': 'weapons,hd-mobile,pallet-rack', 'museums': 'four-post-solander,painting-bins,hd-mobile-bins,art-screens,wall-art,hd-mobile-art,pallet-museum,hd-mobile-artrack,museum-cabinet,hd-mobile-museum,textile-rack,hd-mobile-textile', 'libraries': 'library,hd-mobile-library', 'material-handling-warehouse': 'hd-mobile-open,hd-mobile-mezz,pallet-rack,mezzanine,vlm,workstation,wire-cage',
   'vertical-farming': 'hd-mobile-grow,ss-table,wire-track', 'pharmaceutical-healthcare': 'casework,ss-table,wire-track,hd-mobile', 'education': 'lockers,bike-storage,athletic,hd-mobile-gear,hd-mobile-instruments,library,hd-mobile,mail-sorter', 'government-public-safety': 'evidence-lockers,weapons,hd-mobile,wire-cage',
   'corporate-legal': 'hd-mobile,rotary,fireproof,hd-mobile-flat,mail-sorter', 'automotive': 'tire-rack,hd-mobile-tire,bin-shelving,workstation,pallet-rack,vlm', 'retail': 'hd-mobile,four-post,bin-shelving,wire-track',
   'general-contractors': 'install,hd-mobile,mezzanine', 'design-specify': 'install,hd-mobile',
 };
-const ALL3D = 'hd-mobile,wire-track,vlm,rotary,four-post,bin-shelving,wire-shelving,library,tire-rack,lockers,athletic,evidence-lockers,weapons,flat-files,fireproof,museum-cabinet,art-screens,wall-art,textile-rack,painting-bins,casework,workstation,ss-table,mail-sorter,pallet-rack,mezzanine,wire-cage,install,bike-storage';
+const ALL3D = 'hd-mobile,wire-track,vlm,rotary,four-post,bin-shelving,wire-shelving,library,tire-rack,lockers,athletic,evidence-lockers,weapons,flat-files,fireproof,museum-cabinet,art-screens,wall-art,textile-rack,painting-bins,casework,workstation,ss-table,mail-sorter,pallet-rack,pallet-museum,mezzanine,wire-cage,install,bike-storage';
+// industry pages show the systems ready-made: fewer knobs, no presets
+const LITE = new Set(['museums', 'libraries', 'material-handling-warehouse', 'pharmaceutical-healthcare', 'education', 'government-public-safety', 'corporate-legal', 'automotive', 'retail', 'athletics', 'military', 'vertical-farming', 'general-contractors']);
 const viewer3d = (slug, name) => VIEW3D[slug] ? `
 <section class="v3d-sec">
   <div class="wrap">
     <div class="v3d-head"><div><span class="eyebrow">Explore in 3D</span><h2>${VIEW3D[slug].includes(',') ? 'Explore the systems in 3D' : `See ${name.replace(/\s*\(VLM\)/, '')} from every side`}</h2></div><a class="v3d-all" href="showroom.html">Open the 3D showroom &rarr;</a></div>
-    <div class="v3d" data-models="${VIEW3D[slug]}"></div>
+    <div class="v3d" data-models="${VIEW3D[slug]}"${LITE.has(slug) ? ' data-lite="1"' : ''}></div>
   </div>
 </section>` : '';
 const home3d = () => `
 <section class="v3d-sec v3d-home">
   <div class="wrap">
-    <div class="v3d-head"><div><span class="eyebrow">3D showroom</span><h2>Spin it, open it, see how it works</h2><p>Drag to look at every side. Tap a carriage to open an aisle, pull a drawer, swing a door.</p></div><a class="v3d-all" href="showroom.html">All 29 models &rarr;</a></div>
+    <div class="v3d-head"><div><span class="eyebrow">3D showroom</span><h2>Spin it, open it, see how it works</h2><p>Drag to look at every side. Tap a carriage to open an aisle, pull a drawer, swing a door.</p></div><a class="v3d-all" href="showroom.html">All 30 models &rarr;</a></div>
     <div class="v3d" data-models="hd-mobile,four-post,lockers,flat-files,vlm"></div>
   </div>
 </section>`;
@@ -352,7 +354,7 @@ function showroomPage(shell, heroImg) {
   <div class="wrap">
     <span class="eyebrow">3D showroom</span>
     <h1>Walk around the products</h1>
-    <p>Twenty-nine of the systems we plan and install, as interactive models. Drag to see every side, zoom in on the details, and try how they move.</p>
+    <p>Thirty of the systems we plan and install, as interactive models. Drag to see every side, zoom in on the details, and try how they move.</p>
   </div>
 </div>
 <section class="v3d-sec v3d-room"><div class="wrap">

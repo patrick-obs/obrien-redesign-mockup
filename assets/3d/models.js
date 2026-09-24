@@ -38,6 +38,44 @@ function artMat(THREE, i) {
   return ART[i % ART.length];
 }
 
+// museum objects on a pallet-sized footprint (x, y at the deck, z front edge, w wide, d deep)
+const OBJ = {};
+function museumObjects(THREE, parent, x, y, z, w, d, r, maxH = 44) {
+  if (!OBJ.bronze) Object.assign(OBJ, {
+    bronze: new THREE.MeshStandardMaterial({ color: 0x8a5a2b, roughness: 0.35, metalness: 0.8 }), marble: new THREE.MeshStandardMaterial({ color: 0xeeeae2, roughness: 0.4 }),
+    stone: new THREE.MeshStandardMaterial({ color: 0x9a948a, roughness: 0.85 }), plinth: new THREE.MeshStandardMaterial({ color: 0xf6f6f3, roughness: 0.6 }),
+    crate: new THREE.MeshStandardMaterial({ color: 0xc8a06a, roughness: 0.85 }), slat: new THREE.MeshStandardMaterial({ color: 0xa47c48, roughness: 0.85 }), glaze: new THREE.MeshStandardMaterial({ color: 0x2f5a7a, roughness: 0.3, metalness: 0.1 }),
+  });
+  const add = (geo, m, px, py, pz, s = [1, 1, 1], rot = 0) => { const me = new THREE.Mesh(geo, m); me.position.set(px, py, pz); me.scale.set(...s); me.rotation.y = rot; me.castShadow = me.receiveShadow = true; parent.add(me); return me; };
+  const cx = x + w / 2, cz = z + d / 2, kind = Math.floor(r() * 5), m = [OBJ.bronze, OBJ.marble, OBJ.stone][Math.floor(r() * 3)];
+  if (kind === 4) { // crated work
+    const cw = w * 0.85, ch = Math.min(maxH, 18 + r() * 20), cd = d * 0.8;
+    add(new THREE.BoxGeometry(cw, ch, cd), OBJ.crate, cx, y + ch / 2, cz);
+    for (const yy of [2, ch - 2]) add(new THREE.BoxGeometry(cw + 0.4, 2.4, cd + 0.4), OBJ.slat, cx, y + yy, cz);
+    add(new THREE.BoxGeometry(2.4, ch, cd + 0.5), OBJ.slat, cx, y + ch / 2, cz);
+    return;
+  }
+  const ph = 6 + r() * 6; add(new THREE.BoxGeometry(Math.min(w, d) * 0.55, ph, Math.min(w, d) * 0.55), OBJ.plinth, cx, y + ph / 2, cz);
+  const top = y + ph, room = Math.max(10, maxH - ph);
+  if (kind === 0) { // bust
+    const s2 = Math.min(1, room / 22);
+    add(new THREE.CylinderGeometry(3.2 * s2, 3.6 * s2, 3 * s2, 16), m, cx, top + 1.5 * s2, cz);
+    add(new THREE.BoxGeometry(12 * s2, 6 * s2, 6 * s2), m, cx, top + 6 * s2, cz, [1, 1, 1], r() - 0.5);
+    add(new THREE.CylinderGeometry(1.6 * s2, 1.9 * s2, 3 * s2, 12), m, cx, top + 10 * s2, cz);
+    add(new THREE.SphereGeometry(4 * s2, 18, 14), m, cx, top + 15 * s2, cz, [0.85, 1.1, 0.95]);
+  } else if (kind === 1) { // vase
+    const pts = [[0, 0], [3.5, 0], [5.5, 4], [6.2, 9], [4.2, 15], [2.6, 18], [3.4, 20]].map(([a, b]) => new THREE.Vector2(a, b));
+    const s2 = Math.min(1.1, room / 20); add(new THREE.LatheGeometry(pts, 28), [OBJ.glaze, OBJ.marble, OBJ.stone][Math.floor(r() * 3)], cx, top, cz, [s2, s2, s2]);
+  } else if (kind === 2) { // abstract bronze
+    const s2 = Math.min(1, room / 26); add(new THREE.TorusKnotGeometry(5 * s2, 1.6 * s2, 80, 10), OBJ.bronze, cx, top + 9 * s2, cz, [1, 1, 1], r() * 3);
+  } else { // standing figure
+    const hh = Math.min(room, 20 + r() * 12);
+    add(new THREE.CylinderGeometry(2.2, 3.2, hh * 0.62, 12), m, cx, top + hh * 0.31, cz);
+    add(new THREE.CylinderGeometry(3.4, 2.4, hh * 0.25, 12), m, cx, top + hh * 0.74, cz);
+    add(new THREE.SphereGeometry(2.4, 14, 10), m, cx, top + hh * 0.92, cz);
+  }
+}
+
 function kit(THREE) {
   const std = (color, roughness = 0.55, metalness = 0.25, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness, metalness, ...extra });
   const M = {
@@ -462,11 +500,12 @@ const HD_KINDS = {
   library: { label: 'Storage: library shelving', L: 108, d: 11.5, h: 84, N: 4, aisle: 48, cH: 5, panels: true },
   textile: { label: 'Storage: rolled textiles', L: 144, d: 30, h: 96, N: 3, aisle: 48, cH: 6 },
   art: { label: 'Storage: art screens', L: 120, d: 5, h: 96, N: 6, aisle: 48, cH: 4, dm: 12, df: 12 },
+  artrack: { label: 'Storage: museum object rack', L: 198, d: 42, h: 144, N: 3, aisle: 72, cH: 8 },
   pallet: { label: 'Storage: pallet rack', L: 198, d: 42, h: 144, N: 3, aisle: 120, cH: 8, electricOnly: true },
 };
 const UNIT_COLORS = [['Standard', 0], ['Light gray', 0xbfc4c7], ['Putty', 0xd6ccb9], ['White', 0xeeefed], ['Black', 0x2c2f31], ['Blue', 0x2a4d7a]];
 const AISLE_STD = [['36 in (ADA minimum)', 36], ['42 in', 42], ['48 in', 48], ['60 in (carts, pallet jack)', 60], ['72 in', 72]], AISLE_FORK = [['8 ft (reach truck)', 96], ['10 ft', 120], ['12 ft (forklift)', 144]];
-const HD_ORDER = ['shelving', 'open', 'library', 'flat', 'museum', 'wardrobe', 'bins', 'art', 'textile', 'athletic', 'golf', 'instruments', 'tire', 'grow', 'pallet'];
+const HD_ORDER = ['shelving', 'open', 'library', 'flat', 'museum', 'wardrobe', 'bins', 'art', 'artrack', 'textile', 'athletic', 'golf', 'instruments', 'tire', 'grow', 'pallet'];
 // tires: a lathed cross-section (sidewalls, flat tread, bead) with a block tread texture; labels on the tread
 let TIRE = null;
 function tireParts(THREE) {
@@ -493,7 +532,7 @@ function tireMesh(THREE, parent, list) {
   lm.instanceMatrix.needsUpdate = true; parent.add(lm);
 }
 function hdMobile(id, name, dims, start, opts = {}) {
-  def(id, name, dims, ({ THREE, tween, wake, bake, refit, fly, overview, isWalking }) => {
+  def(id, name, dims, ({ THREE, tween, wake, bake, refit, fly, overview, isWalking, lite }) => {
     const k = kit(THREE), { M, bx, cyl, group, many } = k, root = new THREE.Group();
     const paint = k.std(0xbfc4c7, 0.5, 0.3), panel = k.std(0x2c2f31, 0.45, 0.25), ff = k.std(0xeeefed, 0.45, 0.3);
     const up = k.std(0x1f4e8c, 0.45, 0.35), beam = k.std(0xe3671c, 0.45, 0.35);
@@ -717,9 +756,17 @@ function hdMobile(id, name, dims, start, opts = {}) {
         doorPair(p, x + 0.2, 35.6, y0 + 0.4, H - 0.8, fz, dir, false, wardM);
       }
     };
+    const artRack = kind === 'artrack', wUp = k.std(0xf1f2f0, 0.45, 0.3), perfM = (() => { const c = document.createElement('canvas'); c.width = c.height = 32; const g = c.getContext('2d'); g.fillStyle = '#d3d7da'; g.fillRect(0, 0, 32, 32); g.fillStyle = '#6f777c'; for (const [x, y] of [[8, 8], [24, 8], [16, 20], [0, 20], [32, 20], [8, 32], [24, 32], [8, 0], [24, 0]]) { g.beginPath(); g.arc(x, y, 3, 0, Math.PI * 2); g.fill(); } const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(16, 20); return new THREE.MeshStandardMaterial({ map: t, roughness: 0.35, metalness: 0.8 }); })();
     const palletFace = (p, y0, z0, loads, r) => {
-      const bw = 96, D = C.d;
-      for (let i = 0; i <= 2; i++) { const x = i * (bw + 3); for (const z of [z0, z0 + D - 3]) bx(p, 3, C.h, 3, up, x, y0, z); for (let y = 6; y < C.h; y += 36) bx(p, 1.4, 1.4, D - 6, up, x + 0.8, y0 + y, z0 + 3); }
+      const bw = 96, D = C.d, upM = kind === 'artrack' ? wUp : up, bmM = kind === 'artrack' ? wUp : beam;
+      for (let i = 0; i <= 2; i++) { const x = i * (bw + 3); for (const z of [z0, z0 + D - 3]) bx(p, 3, C.h, 3, upM, x, y0, z); for (let y = 6; y < C.h; y += 36) bx(p, 1.4, 1.4, D - 6, upM, x + 0.8, y0 + y, z0 + 3); }
+      if (kind === 'artrack') {
+        for (let b = 0; b < 2; b++) { const x0 = b * (bw + 3) + 3; for (const lv of [0, 50, 100]) {
+          if (lv) { bx(p, bw, 4.5, 1.8, bmM, x0, y0 + lv, z0); bx(p, bw, 4.5, 1.8, bmM, x0, y0 + lv, z0 + D - 1.8); for (let q = 0; q < 3; q++) bx(p, bw / 3 - 0.4, 0.25, D - 2, perfM, x0 + q * (bw / 3) + 0.2, y0 + lv + 4.5, z0 + 1); }
+          for (let q = 0; q < 3; q++) museumObjects(THREE, p, x0 + 2 + q * 31, y0 + lv + (lv ? 4.75 : 0), z0 + 2, 30, D - 4, r, lv >= 100 ? 36 : 42);
+        } }
+        return;
+      }
       for (let b = 0; b < 2; b++) {
         const x0 = b * (bw + 3) + 3;
         for (const lv of [0, 50, 100]) {
@@ -816,7 +863,7 @@ function hdMobile(id, name, dims, start, opts = {}) {
           artFace(g, cH, dd, r);
           if ((panelsOn ?? false)) { bx(g, 1.6, h + cH, dd - 0.3, panel, L + 1.3, 0, 0.15); bx(g, 1.6, h + cH, dd - 0.3, panel, -1.6, 0, 0.15); }
           if (!fixed) bx(g, 1.2, 41, 4, black, L, 0.5, dd / 2 - 2);
-        } else if (kind === 'pallet') {
+        } else if (kind === 'pallet' || kind === 'artrack') {
           const loads = []; palletFace(g, cH, 0.5, loads, r); if (!fixed) palletFace(g, cH, d + 2.5, loads, r); many(g, loads, M.kraft);
         } else {
           const list = []; for (const [z, dir] of faces) frameFace(g, cH, z, dir, list, r);
@@ -945,21 +992,22 @@ function hdMobile(id, name, dims, start, opts = {}) {
     return {
       group: root, view: [1.45, 0.62, 0.62], tick,
       prompt: 'Tap a carriage or its handle to open that aisle',
-      presets: [
+      presets: lite ? [] : [
         ['Records room', { kind: 'shelving', electric: false, twoLevel: false }],
         ['Museum collections', { kind: 'museum', electric: false, twoLevel: false }],
         ['Art storage', { kind: 'bins', electric: false, twoLevel: false }],
         ['Athletics', { kind: 'athletic', electric: false, twoLevel: false }],
+        ['Museum objects, electric', { kind: 'artrack', electric: true, twoLevel: false }],
         ['Warehouse, electric', { kind: 'pallet', electric: true, twoLevel: false }],
         ['Two stories on a mezzanine', { kind: 'shelving', electric: true, twoLevel: true }],
       ].map(([label, p]) => ({ label, run: () => { kind = p.kind; electric = !!(p.electric || HD_KINDS[kind].electricOnly); twoLevel = p.twoLevel && kind !== 'pallet'; panelsOn = null; aisleW = null; openParts.clear(); open = 1; make(); refit?.(); } })),
       finishes: [{ name: 'Black', swatch: '#2c2f31', color: 0x2c2f31 }, { name: 'O\'Brien teal', swatch: '#0f7377', color: 0x0f7377 }, { name: 'Maple laminate', swatch: '#c79a66', color: 0xc79a66 }, { name: 'Light gray', swatch: '#c3c7ca', color: 0xbfc4c7 }, { name: 'Navy', swatch: '#2a3d5c', color: 0x2a3d5c }],
       setFinish: k.finisher(panel),
       actions: [
-        { label: 'Storage', options: HD_ORDER.map(q => HD_KINDS[q].label.replace('Storage: ', '').replace(/^./, c => c.toUpperCase())), get: () => HD_ORDER.indexOf(kind), set: n => { const was = HD_KINDS[kind].electricOnly; kind = HD_ORDER[n]; panelsOn = null; aisleW = null; openParts.clear(); if (HD_KINDS[kind].electricOnly) electric = true; else if (was) electric = false; open = 1; make(); refit?.(); } },
+        { label: 'Storage', when: () => !lite, options: HD_ORDER.map(q => HD_KINDS[q].label.replace('Storage: ', '').replace(/^./, c => c.toUpperCase())), get: () => HD_ORDER.indexOf(kind), set: n => { const was = HD_KINDS[kind].electricOnly; kind = HD_ORDER[n]; panelsOn = null; aisleW = null; openParts.clear(); if (HD_KINDS[kind].electricOnly) electric = true; else if (was) electric = false; open = 1; make(); refit?.(); } },
         { label: 'Aisle', when: () => kind !== 'pallet', options: AISLE_STD.map(a => a[0]), get: () => nearest(AISLE_STD), set: n => { aisleW = AISLE_STD[n][1]; make(); refit?.(); } },
         { label: 'Forklift aisle', when: () => kind === 'pallet', options: AISLE_FORK.map(a => a[0]), get: () => nearest(AISLE_FORK), set: n => { aisleW = AISLE_FORK[n][1]; make(); refit?.(); } },
-        { label: 'Two levels on a mezzanine', toggle: true, when: () => kind !== 'pallet', get: () => twoLevel, set: v => { twoLevel = v; open2 = open; make(); refit?.(); } },
+        { label: 'Two levels on a mezzanine', toggle: true, when: () => !lite && kind !== 'pallet', get: () => twoLevel, set: v => { twoLevel = v; open2 = open; make(); refit?.(); } },
         { label: 'Close all aisles', run: () => { if (isWalking?.()) overview?.(); open = C.N; move(); } },
         { label: 'Step into the aisle', when: () => !isWalking?.(), run: () => {
           // open an aisle if none is, then stand in it at eye level looking down its length
@@ -970,11 +1018,11 @@ function hdMobile(id, name, dims, start, opts = {}) {
         { label: 'Back to overview', when: () => !!isWalking?.(), run: () => { overview?.(); } },
         { label: 'Aisle safety', when: () => electric, options: ['None shown', 'Safety sweeps', 'Photo-eye light curtain', 'Sweeps, photo eyes and light carpet'], get: () => safety, set: n => { safety = n; tick(); wake(); } },
         { label: 'Electric', toggle: true, when: () => !C.electricOnly && !C.noElectric, get: () => electric, set: v => { electric = v; [...ranges, ...ranges2].forEach(g => { if (g.userData.fixed) return; g.userData.wheel.visible = !electric; g.userData.pad.visible = electric; }); arms.forEach(q => { q.g.visible = electric; }); tick(); wake(); } },
-        { label: 'End panels', toggle: true, when: () => kind !== 'pallet', get: () => panelsOn ?? (kind !== 'art' && !!C.panels), set: v => { panelsOn = v; make(); } },
+        { label: 'End panels', toggle: true, when: () => !lite && kind !== 'pallet', get: () => panelsOn ?? (kind !== 'art' && !!C.panels), set: v => { panelsOn = v; make(); } },
         { label: 'Roll-up doors', toggle: true, when: () => kind === 'bins', get: () => binDoors, set: v => { binDoors = v; make(); } },
         { label: 'Open the roll-up doors', when: () => kind === 'bins' && binDoors, run: () => { const o = !binDoorsList.every(d => d.open); binDoorsList.forEach(d => { if (d.open !== o) d.click(); }); return o ? 'Close the roll-up doors' : 'Open the roll-up doors'; } },
-        { label: 'Closed shelving', toggle: true, when: () => kind === 'shelving', get: () => closedShelf, set: v => { closedShelf = v; make(); } },
-        { label: 'Unit color', options: UNIT_COLORS.map(c => c[0]), get: () => loadColor[kind] || 0, set: n => { loadColor[kind] = n; paintLoad(); } },
+        { label: 'Closed shelving', toggle: true, when: () => !lite && kind === 'shelving', get: () => closedShelf, set: v => { closedShelf = v; make(); } },
+        { label: 'Unit color', when: () => !lite, options: UNIT_COLORS.map(c => c[0]), get: () => loadColor[kind] || 0, set: n => { loadColor[kind] = n; paintLoad(); } },
       ],
     };
   });
@@ -993,6 +1041,7 @@ hdMobile('hd-mobile-golf', 'Mobile Golf Bag Storage', 'Golf bag bays with divide
 hdMobile('hd-mobile-instruments', 'Mobile Instrument Storage', 'Instrument cubbies sized to each case, on mobile carriages', 'instruments');
 hdMobile('hd-mobile-bins', 'Mobile Painting Bins', 'Painting bins on mobile carriages, with or without roll-up doors', 'bins');
 hdMobile('hd-mobile-wardrobe', 'Mobile Wardrobe Cabinets', 'Steel wardrobe cabinets on mobile carriages, doors that open', 'wardrobe');
+hdMobile('hd-mobile-artrack', 'Mobile Museum Object Rack', 'White mobile rack with perforated aluminum decks for sculpture and crated works', 'artrack', { electric: true });
 hdMobile('hd-mobile-mezz', 'Two-Level Mobile Storage', 'Electric mobile shelving under and on top of a structural mezzanine, with aisles on both levels', 'shelving', { twoLevel: true, electric: true });
 
 /* ---------------- 6. lockers ---------------- */
@@ -1359,14 +1408,17 @@ def('art-screens', 'Sliding Art Screens', 'Two facing banks of 8 ft x 8 ft mesh 
 });
 
 /* ---------------- 11. pallet rack ---------------- */
-def('pallet-rack', 'Selective Pallet Rack', '96" bays, 42" frames, 16 ft uprights: single run, back to back or two runs with an aisle; wire, aluminum or perforated decks', ({ THREE, wake, bake, refit }) => {
+function palletModel(id, name, dims0, start) {
+def(id, name, dims0, ({ THREE, wake, bake, refit }) => {
   const k = kit(THREE), { M, bx, group, many } = k, root = new THREE.Group();
   const up = k.std(0x1f4e8c, 0.45, 0.35), upP = k.postMat(up), beam = k.std(0xe3671c, 0.45, 0.35), galv = k.std(0xb9c0c4, 0.4, 0.7);
   const alu = k.std(0xd3d7da, 0.35, 0.85);
   const perfTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 32; const g = c.getContext('2d'); g.fillStyle = '#d3d7da'; g.fillRect(0, 0, 32, 32); g.fillStyle = '#6f777c'; for (const [x, y] of [[8, 8], [24, 8], [16, 20], [0, 20], [32, 20], [8, 32], [24, 32], [8, 0], [24, 0]]) { g.beginPath(); g.arc(x, y, 3, 0, Math.PI * 2); g.fill(); } const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8; return t; })();
   const bays = 2, bw = 96, D = 42, H = 192, levels = [0, 60, 120];
   const LAYOUTS = ['Single run', 'Back to back', 'Two runs, one aisle'], DECKS = ['Wire decks', 'Solid aluminum decks', 'Perforated aluminum, 3 pieces', 'Pallet supports', 'Open beams'];
-  let layout = 0, deckKind = 0, stopsOn = true, guardsOn = true, loadsOn = true, unit;
+  let layout = 0, deckKind = 0, stopsOn = true, guardsOn = true, loadsOn = true, objects = false, unit;
+  const st = start.state || {}; layout = st.layout ?? layout; deckKind = st.deckKind ?? deckKind; stopsOn = st.stopsOn ?? stopsOn; guardsOn = st.guardsOn ?? guardsOn; objects = !!st.objects;
+  if (start.white) { up.color.setHex(0xf1f2f0); upP.color.setHex(0xf1f2f0); beam.color.setHex(0xf1f2f0); }
   const row = (z0, front, seed) => {
     const r = rng(seed), g = group(unit, 0, 0, z0), loads = [];
     for (let i = 0; i <= bays; i++) {
@@ -1389,6 +1441,7 @@ def('pallet-rack', 'Selective Pallet Rack', '96" bays, 42" frames, 16 ft upright
           else if (deckKind === 3) for (const px of [x0 + 8, x0 + 38, x0 + 54, x0 + 84]) bx(g, 3, 1.4, D - 2, galv, px, y + 3.2, 1);
           if (stopsOn) { bx(g, bw, 4, 1.2, beam, x0, y + 4.5, back); }
         } else if (stopsOn) bx(g, bw, 3, 2, beam, x0, 8, front > 0 ? D - 2.5 : 0.5);
+        if (objects) { for (let p = 0; p < 3; p++) museumObjects(THREE, g, x0 + 2 + p * 31, y + (y ? 4.75 : 0), 2, 30, D - 4, r, 54); continue; }
         for (let p = 0; p < 2; p++) {
           const px = x0 + 3 + p * 46, py = y + (y ? 4.75 : 0);
           for (let q = 0; q < 3; q++) loads.push({ x: px, y: py, z: 1 + q * 18.5, w: 40, h: 5, d: 3.5, color: '#b08658' });
@@ -1398,7 +1451,7 @@ def('pallet-rack', 'Selective Pallet Rack', '96" bays, 42" frames, 16 ft upright
         }
       }
     }
-    if (loadsOn) many(g, loads, M.kraft);
+    if (loadsOn && !objects) many(g, loads, M.kraft);
     if (guardsOn) {
       const yel = k.std(0xf2c230, 0.5, 0.2), blk = k.std(0x1a1a1a, 0.6, 0.1), fz = front > 0 ? D - 3.6 : -1;
       for (let i = 0; i <= bays; i++) { const x = i * (bw + 3); bx(g, 5, 18, 4.6, yel, x - 1, 0, fz); for (const y of [4, 11]) bx(g, 5.2, 2.4, 4.8, blk, x - 1.1, y, fz - 0.1); }
@@ -1432,18 +1485,22 @@ def('pallet-rack', 'Selective Pallet Rack', '96" bays, 42" frames, 16 ft upright
     finishes: [{ name: 'Blue and orange', swatch: 'linear-gradient(90deg,#1f4e8c 50%,#e3671c 50%)', up: 0x1f4e8c, beam: 0xe3671c }, { name: 'White and gray', swatch: 'linear-gradient(90deg,#f1f2f0 50%,#8f969a 50%)', up: 0xf1f2f0, beam: 0x8f969a }, { name: 'Green and orange', swatch: 'linear-gradient(90deg,#2f6b4f 50%,#e3671c 50%)', up: 0x2f6b4f, beam: 0xe3671c }, { name: 'Gray and yellow', swatch: 'linear-gradient(90deg,#6b7378 50%,#f2b705 50%)', up: 0x6b7378, beam: 0xf2b705 }, { name: 'All black', swatch: '#26292b', up: 0x26292b, beam: 0x26292b }, { name: 'All white', swatch: '#f1f2f0', up: 0xf1f2f0, beam: 0xf1f2f0 }],
     setFinish: f => { up.color.setHex(f.up); upP.color.setHex(f.up); beam.color.setHex(f.beam); },
     presets: [
-      { label: 'Warehouse', run: () => { layout = 2; deckKind = 0; stopsOn = true; guardsOn = true; loadsOn = true; re(); } },
-      { label: 'Museum, white with perforated decks', run: () => { layout = 1; deckKind = 2; stopsOn = false; guardsOn = false; loadsOn = true; up.color.setHex(0xf1f2f0); upP.color.setHex(0xf1f2f0); beam.color.setHex(0xf1f2f0); re(); } },
+      { label: 'Warehouse', run: () => { layout = 2; deckKind = 0; stopsOn = true; guardsOn = true; loadsOn = true; objects = false; re(); } },
+      { label: 'Museum, white with perforated decks', run: () => { layout = 1; deckKind = 2; stopsOn = false; guardsOn = false; loadsOn = true; objects = true; up.color.setHex(0xf1f2f0); upP.color.setHex(0xf1f2f0); beam.color.setHex(0xf1f2f0); re(); } },
     ],
     actions: [
       { label: 'Layout', options: LAYOUTS, get: () => layout, set: n => { layout = n; re(); } },
       { label: 'Decking', options: DECKS, get: () => deckKind, set: n => { deckKind = n; re(); } },
       { label: 'Pallet stops', toggle: true, get: () => stopsOn, set: v => { stopsOn = v; re(); } },
       { label: 'Post protectors', toggle: true, get: () => guardsOn, set: v => { guardsOn = v; re(); } },
+      { label: 'Holds', options: ['Pallet loads', 'Museum objects'], get: () => (objects ? 1 : 0), set: n => { objects = n === 1; re(); } },
       { label: 'Loads', toggle: true, get: () => loadsOn, set: v => { loadsOn = v; re(); } },
     ],
   };
 });
+}
+palletModel('pallet-rack', 'Selective Pallet Rack', '96" bays, 42" frames, 16 ft uprights: single run, back to back or two runs with an aisle; wire, aluminum or perforated decks', {});
+palletModel('pallet-museum', 'Museum Object Rack', 'White pallet rack, back to back, with 3-piece perforated aluminum decks holding sculpture and crated works', { white: true, state: { layout: 1, deckKind: 2, stopsOn: false, guardsOn: false, objects: true } });
 
 /* ---------------- 12. mezzanine ---------------- */
 def('mezzanine', 'Structural Steel Mezzanine', '20 ft x 16 ft platform, 9 ft clear, stair and handrail', ({ THREE, tween, wake }) => {
@@ -2026,12 +2083,12 @@ def('fireproof', 'Fireproof File Cabinets', 'A 4-drawer vertical (21" W x 31" D)
 });
 
 /* ---------------- 22. wall-mounted art screens ---------------- */
-def('wall-art', 'Wall-Mounted Art Screens', 'White mesh panels fixed to the wall on standoffs', ({ THREE, tween, wake }) => {
+def('wall-art', 'Stationary Art Screens', 'White mesh panels fixed to the wall on standoffs, or freestanding double-sided screens on feet', ({ THREE, tween, wake, refit }) => {
   const k = kit(THREE), { M, bx, cyl, group } = k, root = new THREE.Group();
   const white = k.std(0xf3f4f2, 0.45, 0.25), wall = k.std(0xe9e6df, 0.9, 0), gilt = k.std(0xa6832f, 0.35, 0.7), mesh = k.meshMat(48, 96, 2, '#fbfbf9', 0.2);
   const art = ['#8c3b2f', '#2f4f6f', '#c9a227', '#3d6b4f', '#b56f4a', '#5e4a7a', '#244a5a'].map(c => k.std(c, 0.8, 0));
   const PW = 48, PH = 96, r = rng(23);
-  bx(root, 190, 120, 6, wall, -10, 0, -6);
+  const wallG = bx(root, 190, 120, 6, wall, -10, 0, -6); wallG.userData.dyn = true;
   // frames stay inside the panel: width and height are clipped to the panel edges
   const hang = (g, face) => {
     let x = 3;
@@ -2055,10 +2112,16 @@ def('wall-art', 'Wall-Mounted Art Screens', 'White mesh panels fixed to the wall
     const p = panel(fixed, false); p.position.set(4 + i * (PW + 6), 10, 4);
     for (const y of [4, PH - 8]) for (const x of [4, PW - 6]) { bx(p, 2, 2, 4, white, x, y, -4.2); }
   }
+  // freestanding: double-sided panels in a row on T-feet, art on both faces
+  const free = group(root); free.userData.dyn = true; free.visible = false;
+  for (let i = 0; i < 3; i++) {
+    const p = panel(free, true); p.position.set(4 + i * (PW + 16), 6, 40);
+    for (const x of [6, PW - 6]) { bx(p, 2, 6, 2, white, x - 1, -6, -1); bx(p, 3, 1.4, 26, white, x - 1.5, -6, -13); }
+  }
   return {
     group: root, view: [0.55, 0.35, 1.4],
     finishes: [{ name: 'White', swatch: '#f3f4f2', color: 0xf3f4f2 }, { name: 'Light gray', swatch: '#c3c7ca', color: 0xbfc4c7 }, { name: 'Black', swatch: '#2c2f31', color: 0x2c2f31 }], setFinish: k.finisher(white),
-    actions: [],
+    actions: [{ label: 'Mounting', options: ['Wall mounted', 'Freestanding'], get: () => (free.visible ? 1 : 0), set: n => { free.visible = n === 1; fixed.visible = wallG.visible = n === 0; wake(); refit?.(); } }],
   };
 });
 
@@ -2509,5 +2572,5 @@ def('bike-storage', 'Bike Room Storage', 'Apartment and campus bike rooms: two-t
   };
 });
 
-const SHORT = { 'four-post': '4-post', 'bin-shelving': 'Bin shelving', 'wire-shelving': 'Wire', library: 'Library', 'hd-mobile': 'Mobile', lockers: 'Lockers', 'evidence-lockers': 'Evidence', 'flat-files': 'Flat files', rotary: 'Rotary', 'museum-cabinet': 'Museum cabinet', 'art-screens': 'Art screens', 'pallet-rack': 'Pallet rack', mezzanine: 'Mezzanine', vlm: 'VLM', casework: 'Casework', 'wire-cage': 'Wire cage', athletic: 'Athletic', 'mail-sorter': 'Mail sorter', weapons: 'Weapons', 'tire-rack': 'Tire rack', 'wire-track': 'Wire on track', 'ss-table': 'Stainless tables', install: 'Install steps', 'hd-mobile-open': 'Mobile shelving', 'hd-mobile-tire': 'Mobile tires', 'hd-mobile-grow': 'Mobile grow racks', 'hd-mobile-flat': 'Mobile flat files', 'hd-mobile-museum': 'Mobile cabinets', 'hd-mobile-library': 'Mobile library', 'hd-mobile-textile': 'Mobile textiles', 'hd-mobile-art': 'Mobile art screens', 'hd-mobile-mezz': 'Two-level mobile', 'hd-mobile-wardrobe': 'Mobile wardrobes', 'hd-mobile-gear': 'Mobile athletic', 'hd-mobile-golf': 'Mobile golf', 'hd-mobile-instruments': 'Mobile instruments', 'hd-mobile-bins': 'Mobile painting bins', 'bike-storage': 'Bike rooms', 'painting-bins': 'Painting bins', 'four-post-solander': 'Solander boxes', workstation: 'Workstation', fireproof: 'Fireproof', 'wall-art': 'Wall art screens', 'textile-rack': 'Textile racks' };
+const SHORT = { 'four-post': '4-post', 'bin-shelving': 'Bin shelving', 'wire-shelving': 'Wire', library: 'Library', 'hd-mobile': 'Mobile', lockers: 'Lockers', 'evidence-lockers': 'Evidence', 'flat-files': 'Flat files', rotary: 'Rotary', 'museum-cabinet': 'Museum cabinet', 'art-screens': 'Art screens', 'pallet-rack': 'Pallet rack', mezzanine: 'Mezzanine', vlm: 'VLM', casework: 'Casework', 'wire-cage': 'Wire cage', athletic: 'Athletic', 'mail-sorter': 'Mail sorter', weapons: 'Weapons', 'tire-rack': 'Tire rack', 'wire-track': 'Wire on track', 'ss-table': 'Stainless tables', install: 'Install steps', 'hd-mobile-open': 'Mobile shelving', 'hd-mobile-tire': 'Mobile tires', 'hd-mobile-grow': 'Mobile grow racks', 'hd-mobile-flat': 'Mobile flat files', 'hd-mobile-museum': 'Mobile cabinets', 'hd-mobile-library': 'Mobile library', 'hd-mobile-textile': 'Mobile textiles', 'hd-mobile-art': 'Mobile art screens', 'hd-mobile-mezz': 'Two-level mobile', 'pallet-museum': 'Object rack', 'hd-mobile-artrack': 'Mobile object rack', 'hd-mobile-wardrobe': 'Mobile wardrobes', 'hd-mobile-gear': 'Mobile athletic', 'hd-mobile-golf': 'Mobile golf', 'hd-mobile-instruments': 'Mobile instruments', 'hd-mobile-bins': 'Mobile painting bins', 'bike-storage': 'Bike rooms', 'painting-bins': 'Painting bins', 'four-post-solander': 'Solander boxes', workstation: 'Workstation', fireproof: 'Fireproof', 'wall-art': 'Wall art screens', 'textile-rack': 'Textile racks' };
 for (const [id, s] of Object.entries(SHORT)) if (MODELS[id]) MODELS[id].short = s;
