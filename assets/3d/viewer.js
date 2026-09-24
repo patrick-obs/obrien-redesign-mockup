@@ -126,17 +126,17 @@ function viewer(el) {
   const wait = ms => tween({ t: 0 }, 't', 1, ms, 'lin');
 
   let current = null, frame = 0, dirty = true, home = null, clickables = [], slow = 0, pr = Math.min(devicePixelRatio, 2), last = 0;
-  let sceneDirty = true, lowRes = false;
+  let sceneDirty = true, lowRes = false, heavy = false, measured = false, shadowTick = 0;
   const wake = () => { dirty = true; if (!frame) frame = requestAnimationFrame(loop); };
   const modelWake = () => { sceneDirty = true; wake(); };
   // while anything moves, render a little softer; one crisp frame when it settles
-  const setRes = (low) => { if (low === lowRes) return; lowRes = low; renderer.setPixelRatio(low ? Math.min(pr, 1.25) : pr); renderer.setSize(stage.clientWidth, stage.clientHeight, false); };
+  const setRes = (low) => { if (low === lowRes) return; lowRes = low; renderer.setPixelRatio(low ? Math.min(pr, heavy ? 1 : 1.25) : pr); renderer.setSize(stage.clientWidth, stage.clientHeight, false); };
   controls.addEventListener('change', wake);
 
   let ovClean = null;
   const closePanel = () => { stage.querySelector('.v3d-ov')?.remove(); ovClean?.(); ovClean = null; };
   const panel = (build) => {
-    closePanel();
+    closePanel(); measured = false;
     const ov = document.createElement('div'); ov.className = 'v3d-ov'; ov.setAttribute('role', 'dialog');
     ov.innerHTML = '<button type="button" class="v3d-ov-x" aria-label="Close">&times;</button><div class="v3d-ov-b"></div>';
     stage.appendChild(ov); ov.querySelector('.v3d-ov-x').addEventListener('click', closePanel);
@@ -164,7 +164,7 @@ function viewer(el) {
     closePanel();
     if (current) { scene.remove(current.group); current.group.traverse(o => { o.geometry?.dispose?.(); }); }
     const def = MODELS[id];
-    current = def.build({ THREE, tween, wait, wake: modelWake, bake: g => bake(THREE, g), panel, refit: () => { if (current) { fit(current.group, current.view); wake(); } } });
+    current = def.build({ THREE, tween, wait, wake: modelWake, bake: g => bake(THREE, g), panel, refresh: () => { syncActs(); showActs(); }, refit: () => { if (current) { fit(current.group, current.view); wake(); } } });
     scan();
     current.group.traverse(o => { if (o.isMesh && !o.userData.noShadow) { o.castShadow = true; o.receiveShadow = true; } });
     bake(THREE, current.group);
@@ -226,8 +226,9 @@ function viewer(el) {
     last = active || controls.autoRotate || lowRes ? now : 0;
     const moving = controls.update(), busy = active || moving || controls.autoRotate;
     if (busy) setRes(true);
-    if (active || sceneDirty) { renderer.shadowMap.needsUpdate = true; sceneDirty = false; }
-    if (dirty || busy) { renderer.render(scene, camera); dirty = false; }
+    // moving parts refresh shadows every few frames; a settled frame always gets a fresh shadow map
+    if (sceneDirty || (active && ++shadowTick % (heavy ? 4 : 2) === 0)) { renderer.shadowMap.needsUpdate = true; sceneDirty = false; }
+    if (dirty || busy) { renderer.render(scene, camera); dirty = false; if (!measured) { measured = true; heavy = renderer.info.render.calls > 110; } }
     if (busy) frame = requestAnimationFrame(loop);
     else if (lowRes) { setRes(false); renderer.shadowMap.needsUpdate = true; renderer.render(scene, camera); }
   }

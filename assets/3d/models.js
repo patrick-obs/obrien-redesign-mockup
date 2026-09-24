@@ -366,11 +366,12 @@ const HD_KINDS = {
   shelving: { label: 'Storage: shelving', L: 108, d: 15, h: 84, N: 5, aisle: 36, cH: 5, panels: true },
   open: { label: 'Storage: open shelving', L: 144, d: 24, h: 96, N: 4, aisle: 42, cH: 6 },
   flat: { label: 'Storage: flat files', L: 100, d: 38, h: 50, N: 3, aisle: 40, cH: 6, panels: true },
+  museum: { label: 'Storage: museum cabinets', L: 98, d: 31, h: 76, N: 3, aisle: 40, cH: 6, panels: true },
   tire: { label: 'Storage: tire racks', L: 144, d: 28, h: 94, N: 3, aisle: 40, cH: 6 },
   grow: { label: 'Storage: grow racks', L: 144, d: 26, h: 96, N: 3, aisle: 36, cH: 6 },
   pallet: { label: 'Storage: pallet rack', L: 198, d: 42, h: 144, N: 3, aisle: 120, cH: 8, electricOnly: true },
 };
-const HD_ORDER = ['shelving', 'open', 'flat', 'tire', 'grow', 'pallet'];
+const HD_ORDER = ['shelving', 'open', 'flat', 'museum', 'tire', 'grow', 'pallet'];
 // tires: a lathed cross-section (sidewalls, flat tread, bead) with a block tread texture; labels on the tread
 let TIRE = null;
 function tireParts(THREE) {
@@ -412,6 +413,23 @@ function hdMobile(id, name, dims, start) {
         const x = u * 50; bx(p, 50, C.h, C.d, ff, x, y0, z0);
         const fz = dir > 0 ? z0 + C.d : z0 - 0.8;
         for (let i = 0; i < 15; i++) { const y = y0 + 0.4 + i * (C.h / 15); bx(p, 48.6, C.h / 15 - 0.35, 0.8, ff, x + 0.7, y, fz); bx(p, 20, 0.45, 0.8, M.chrome, x + 15, y + C.h / 15 - 1.4, dir > 0 ? fz + 0.8 : fz - 0.8); }
+      }
+    };
+    const mWhite = k.std(0xf1f2f0, 0.38, 0.2), mPlate = k.std(0xd7dbde, 0.25, 0.85), mObj = [0xb56f4a, 0x6b8f71, 0xc9a227, 0x3d5a7a].map(c => k.std(c, 0.6, 0.05));
+    // museum cabinet pair: white case, glass double doors with latch plates, drawers low and shelves high behind the glass
+    const museumFace = (p, y0, z0, dir) => {
+      const D = C.d, H = C.h, fz = dir > 0 ? z0 + D : z0 - 0.9, back = dir > 0 ? z0 : z0 + D - 1;
+      for (let u = 0; u < 2; u++) {
+        const x = u * 49;
+        bx(p, 48, 1, D, mWhite, x, y0, z0); bx(p, 48, 1, D, mWhite, x, y0 + H - 1, z0); bx(p, 1, H, D, mWhite, x, y0, z0); bx(p, 1, H, D, mWhite, x + 47, y0, z0); bx(p, 48, H, 1, mWhite, x, y0, back);
+        for (let i = 0; i < 5; i++) bx(p, 44, 5.4, 0.5, mWhite, x + 2, y0 + 2 + i * 6.2, dir > 0 ? z0 + D - 3 : z0 + 2.5);
+        for (const sy of [42, 56]) { bx(p, 46, 0.6, D - 4, mWhite, x + 1, y0 + sy, z0 + 2); bx(p, 8, 5, 8, mObj[(u + sy) % 4], x + 6, y0 + sy + 0.6, z0 + D / 2 - 4); bx(p, 10, 4, 7, mObj[(u + sy + 1) % 4], x + 28, y0 + sy + 0.6, z0 + D / 2 - 3); }
+        for (const side of [0, 1]) {
+          const dx = x + side * 24;
+          bx(p, 24, 4, 0.9, mWhite, dx, y0 + H - 4, fz); bx(p, 24, 4, 0.9, mWhite, dx, y0, fz); bx(p, 4, H, 0.9, mWhite, dx, y0, fz); bx(p, 4, H, 0.9, mWhite, dx + 20, y0, fz);
+          bx(p, 16, H - 8, 0.2, M.glass, dx + 4, y0 + 4, fz + 0.35);
+          bx(p, 2.6, 9, 0.25, mPlate, dx + (side ? 0.7 : 20.7), y0 + H / 2 - 4.5, dir > 0 ? fz + 0.9 : fz - 0.25);
+        }
       }
     };
     const palletFace = (p, y0, z0, loads, r) => {
@@ -492,6 +510,8 @@ function hdMobile(id, name, dims, start) {
           if (!fixed || last) { const back = shelving(k, g, { bays: 3, w: 36, d, h, closed: true, shelves: 7, paint, contents: 'boxes', seed: 30 + j, y: cH }); back.rotation.y = Math.PI; back.position.set(L, cH, fixed ? d + 0.5 : d); }
         } else if (kind === 'flat') {
           for (const [z, dir] of faces) flatFace(g, cH, z, dir);
+        } else if (kind === 'museum') {
+          for (const [z, dir] of faces) museumFace(g, cH, z, dir);
         } else if (kind === 'pallet') {
           const loads = []; palletFace(g, cH, 0.5, loads, r); if (!fixed) palletFace(g, cH, d + 2.5, loads, r); many(g, loads, M.kraft);
         } else {
@@ -556,6 +576,7 @@ hdMobile('hd-mobile-open', 'Mobile Open Shelving', 'Open-frame shelving with pic
 hdMobile('hd-mobile-tire', 'Mobile Tire Storage', 'Tire racks on mobile carriages', 'tire');
 hdMobile('hd-mobile-grow', 'Mobile Grow Racks', 'Lit grow racks on mobile carriages, one aisle for the whole room', 'grow');
 hdMobile('hd-mobile-flat', 'Mobile Flat File Storage', 'Flat file cabinets on mobile carriages', 'flat');
+hdMobile('hd-mobile-museum', 'Mobile Museum Cabinets', 'Museum storage cabinets on mobile carriages', 'museum');
 
 /* ---------------- 6. lockers ---------------- */
 def('lockers', 'Steel Lockers', '72" H lockers: one to four tiers, single or double door, base or legs, locks, plates, interiors', ({ THREE, tween, wake, bake }) => {
@@ -688,42 +709,58 @@ def('evidence-lockers', 'Pass-Through Evidence Lockers', 'Set into a wall: offic
 });
 
 /* ---------------- 7. flat files ---------------- */
-def('flat-files', 'Flat File Cabinets', 'Two stacked 5-drawer units, 50" W x 38" D', ({ THREE, tween }) => {
+def('flat-files', 'Flat File Cabinets', 'Flat files from 50" x 38" to 72" x 54", 2" or 3" drawers, stacked one to three high', ({ THREE, tween, wake, bake, refit }) => {
   const k = kit(THREE), { M, bx, group } = k, root = new THREE.Group();
   const slide = k.std(0xc9ced2, 0.25, 0.9);
   const paint = k.std(0xeeefed, 0.45, 0.3), inner = k.std(0xd7dada, 0.5, 0.3), paper = [M.white, k.std(0xf1ede2, 0.85, 0), k.std(0xe6ecef, 0.85, 0)];
-  const W = 50, D = 38, uh = 16.5, base = 4, r = rng(3);
-  bx(root, W - 2, base, D - 3, M.dark, 1, 0, 1);
-  const drawers = [];
-  for (let u = 0; u < 2; u++) {
-    const y0 = base + u * (uh + 0.3);
-    bx(root, W, 0.6, D, paint, 0, y0 + uh - 0.6, 0); bx(root, W, 0.4, D, paint, 0, y0, 0);
-    bx(root, 0.6, uh, D, paint, 0, y0, 0); bx(root, 0.6, uh, D, paint, W - 0.6, y0, 0); bx(root, W, uh, 0.4, paint, 0, y0, 0);
-    for (let i = 0; i < 5; i++) {
-      // open-top drawer: front, floor, sides, back and a rear hood, with loose sheets inside
-      const dy = y0 + 0.5 + i * 3.1, dr = group(root, 0, 0, 0), mid = group(root, 0, 0, 0), iw = W - 3, id = D - 2.8, ih = 2.2;
-      // full-extension slides: cabinet member fixed, middle member travels half, drawer member rides the box
-      for (const [x0, x1, x2] of [[0.6, 0.92, 1.2], [W - 0.9, W - 1.17, W - 1.5]]) {
-        bx(root, 0.3, 1, D - 2, slide, x0, dy + 0.75, 0.5);
-        bx(mid, 0.25, 0.8, D - 5, slide, x1, dy + 0.85, 1.5);
-        bx(dr, 0.3, 0.9, id - 1.5, slide, x2, dy + 0.8, 2);
+  const SIZES = [[50, 38, 'Standard 50" x 38"'], [60, 43, 'Large 60" x 43"'], [72, 54, 'Oversize 72" x 54"']];
+  const DEPTHS = [[2.2, 5, '2" drawers, 5 high'], [3.2, 4, '3" drawers, 4 high'], [1.4, 7, '1 1/2" drawers, 7 high']];
+  let si = 0, di = 0, stack = 2, unit, drawers = [];
+  const make = () => {
+    if (unit) root.remove(unit);
+    unit = group(root); unit.userData.dyn = true; drawers = [];
+    const [W, D] = SIZES[si], [ih, n] = DEPTHS[di], pitch = ih + 0.9, uh = n * pitch + 1.1, base = 4, r = rng(3);
+    bx(unit, W - 2, base, D - 3, M.dark, 1, 0, 1);
+    for (let u = 0; u < stack; u++) {
+      const y0 = base + u * (uh + 0.3);
+      bx(unit, W, 0.6, D, paint, 0, y0 + uh - 0.6, 0); bx(unit, W, 0.4, D, paint, 0, y0, 0);
+      bx(unit, 0.6, uh, D, paint, 0, y0, 0); bx(unit, 0.6, uh, D, paint, W - 0.6, y0, 0); bx(unit, W, uh, 0.4, paint, 0, y0, 0);
+      for (let i = 0; i < n; i++) {
+        // open-top drawer: front, floor, sides, back and a rear hood, with loose sheets inside
+        const dy = y0 + 0.5 + i * pitch, dr = group(unit, 0, 0, 0), mid = group(unit, 0, 0, 0), iw = W - 3, id = D - 2.8;
+        mid.userData.dyn = true;
+        // full-extension slides: cabinet member fixed, middle member travels half, drawer member rides the box
+        for (const [x0, x1, x2] of [[0.6, 0.92, 1.2], [W - 0.9, W - 1.17, W - 1.5]]) {
+          bx(unit, 0.3, Math.min(1, ih * 0.45), D - 2, slide, x0, dy + 0.6, 0.5);
+          bx(mid, 0.25, Math.min(0.8, ih * 0.36), D - 5, slide, x1, dy + 0.7, 1.5);
+          bx(dr, 0.3, Math.min(0.9, ih * 0.4), id - 1.5, slide, x2, dy + 0.65, 2);
+        }
+        bx(dr, W - 1.6, pitch - 0.2, 0.8, paint, 0.8, dy, D - 0.8);
+        bx(dr, iw, 0.12, id, inner, 1.5, dy + 0.1, 1);
+        bx(dr, 0.15, ih, id, inner, 1.5, dy + 0.1, 1); bx(dr, 0.15, ih, id, inner, 1.5 + iw - 0.15, dy + 0.1, 1);
+        bx(dr, iw, ih, 0.15, inner, 1.5, dy + 0.1, 1);
+        bx(dr, iw, 0.1, 5, inner, 1.5, dy + ih, 1);
+        const sheets = 2 + Math.floor(r() * 5), sw = W * 0.72, sd = D * 0.62;
+        for (let s = 0; s < sheets; s++) bx(dr, sw - r() * 6, 0.05, sd - r() * 4, paper[s % 3], 5 + r() * 2, dy + 0.25 + s * 0.09, 7 + r() * 2);
+        bx(dr, 22, 0.5, 0.9, M.chrome, W / 2 - 11, dy + pitch - 1.2, D);
+        bx(dr, 3, Math.min(1.3, pitch - 1.8), 0.1, M.label, W / 2 - 1.5, dy + 0.4, D + 0.02);
+        const out = D * 0.74;
+        dr.userData.onClick = () => { dr.userData.open = !dr.userData.open; const o = dr.userData.open; tween(dr.position, 'z', o ? out : 0, 700, 'out'); tween(mid.position, 'z', o ? out / 2 : 0, 700, 'out'); };
+        drawers.push(dr);
       }
-      bx(dr, W - 1.6, 2.9, 0.8, paint, 0.8, dy, D - 0.8);
-      bx(dr, iw, 0.12, id, inner, 1.5, dy + 0.1, 1);
-      bx(dr, 0.15, ih, id, inner, 1.5, dy + 0.1, 1); bx(dr, 0.15, ih, id, inner, 1.5 + iw - 0.15, dy + 0.1, 1);
-      bx(dr, iw, ih, 0.15, inner, 1.5, dy + 0.1, 1);
-      bx(dr, iw, 0.1, 5, inner, 1.5, dy + ih, 1);
-      const sheets = 3 + Math.floor(r() * 6);
-      for (let s = 0; s < sheets; s++) bx(dr, 36 - r() * 6, 0.05, 24 - r() * 4, paper[s % 3], 5 + r() * 2, dy + 0.25 + s * 0.09, 7 + r() * 2);
-      bx(dr, 22, 0.5, 0.9, M.chrome, W / 2 - 11, dy + 1.9, D);
-      bx(dr, 3, 1.3, 0.1, M.label, W / 2 - 1.5, dy + 0.4, D + 0.02);
-      dr.userData.onClick = () => { dr.userData.open = !dr.userData.open; const o = dr.userData.open; tween(dr.position, 'z', o ? 28 : 0, 700, 'out'); tween(mid.position, 'z', o ? 14 : 0, 700, 'out'); };
-      drawers.push(dr);
     }
-  }
+    unit.traverse(q => { if (q.isMesh) { q.castShadow = q.receiveShadow = true; } });
+    bake?.(unit); wake();
+  };
+  make();
   return {
     group: root, view: [0.7, 0.9, 1.2], finishes: k.FIN.cabinets, setFinish: k.finisher(paint),
-    actions: [{ label: 'Open a drawer', run: () => { const dr = drawers[7]; dr.userData.onClick(); return dr.userData.open ? 'Close the drawer' : 'Open a drawer'; } }],
+    actions: [
+      { label: 'Open a drawer', run: () => { const dr = drawers[Math.min(drawers.length - 1, Math.floor(drawers.length * 0.7))]; dr.userData.onClick(); return dr.userData.open ? 'Close the drawer' : 'Open a drawer'; } },
+      { label: 'Size', options: SIZES.map(s => s[2]), get: () => si, set: n => { si = n; make(); refit?.(); } },
+      { label: 'Drawers', options: DEPTHS.map(s => s[2]), get: () => di, set: n => { di = n; make(); refit?.(); } },
+      { label: 'Stacked', options: ['1 unit', '2 units', '3 units'], get: () => stack - 1, set: n => { stack = n + 1; make(); refit?.(); } },
+    ],
   };
 });
 
@@ -1638,56 +1675,70 @@ def('ss-table', 'Stainless Steel Work Table', '60" W x 30" D x 34" H: stainless 
 });
 
 /* ---------------- 27. install sequence ---------------- */
-def('install', 'Mobile Storage Install, Step by Step', 'From bare slab to working system: layout, rails, shims, grout, deck, fasteners, carriages, shelving', ({ THREE, tween, wait, wake }) => {
+def('install', 'Mobile Storage Install, Step by Step', 'Rails in the floor or on a raised deck, then carriages, shelving, drive and handles: pick the floor method and play it', ({ THREE, tween, wait, wake, refresh }) => {
   const k = kit(THREE), { M, bx, cyl, group } = k, root = new THREE.Group();
   const paint = k.std(0xbfc4c7, 0.5, 0.3), panel = k.std(0x2c2f31, 0.45, 0.25), black = k.std(0x1c1e20, 0.45, 0.15);
+  const concrete = k.std(0xb9bcbc, 0.9, 0), plug = k.std(0xaeb2b2, 0.92, 0), slc = k.std(0x9fa4a5, 0.8, 0), kerf = k.std(0x55595b, 0.9, 0);
   const chalk = k.std(0x2f6fdf, 0.6, 0, { emissive: 0x1b3f8a, emissiveIntensity: 0.4 }), shimM = k.std(0x9aa1a6, 0.4, 0.7), grout = k.std(0x8d9091, 0.95, 0);
-  const masonite = k.std(0x6b4a2f, 0.75, 0), ply = k.std(0xd9b27c, 0.8, 0), railM = k.std(0x7d858a, 0.35, 0.8), hole = k.std(0x2b2d2f, 0.9, 0), toolM = k.std(0x1f6fb3, 0.5, 0.2), alu = k.std(0xc9ced2, 0.3, 0.85);
-  const L = 108, d = 15, h = 84, N = 4, aisle = 36, cH = 5, RH = 1.25;
+  const masonite = k.std(0x6b4a2f, 0.75, 0), ply = k.std(0xd9b27c, 0.8, 0), railM = k.std(0x7d858a, 0.35, 0.8), hole = k.std(0x2b2d2f, 0.9, 0), toolM = k.std(0x1f6fb3, 0.5, 0.2), alu = k.std(0xc9ced2, 0.3, 0.85), keyM = k.std(0xc9a227, 0.35, 0.7);
+  // chain links and floor tile textures
+  const tex = (w, hgt, draw, rx, ry) => { const c = document.createElement('canvas'); c.width = w; c.height = hgt; draw(c.getContext('2d')); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry); t.anisotropy = 8; return t; };
+  const chainM = new THREE.MeshStandardMaterial({ map: tex(32, 64, g => { g.fillStyle = '#3a3d40'; g.fillRect(0, 0, 32, 64); g.strokeStyle = '#a9b0b5'; g.lineWidth = 5; for (const y of [2, 34]) { g.beginPath(); g.ellipse(16, y + 14, 9, 14, 0, 0, Math.PI * 2); g.stroke(); } }, 1, 40), roughness: 0.4, metalness: 0.8 });
+  const vctM = new THREE.MeshStandardMaterial({ map: tex(128, 128, g => { g.fillStyle = '#d9d4c7'; g.fillRect(0, 0, 128, 128); g.fillStyle = '#c9c2b2'; g.fillRect(0, 0, 64, 64); g.fillRect(64, 64, 64, 64); g.strokeStyle = '#b8b1a2'; g.lineWidth = 1; g.strokeRect(0, 0, 64, 64); g.strokeRect(64, 64, 64, 64); }, 1, 1), roughness: 0.55, metalness: 0 });
+  const L = 108, d = 15, h = 84, N = 4, aisle = 36, cH = 5, TW = 8;
   const depths = [d + 1, ...Array(N).fill(2 * d + 1), d + 1];
   const base = []; let acc = 0; for (const dd of depths) { base.push(acc); acc += dd + 0.5; }
   const total = acc + aisle, z0 = -6, z1 = total + 6, x0 = -8, x1 = L + 10;
   const rails = [8, L / 2 - 10, L / 2 + 10, L - 8];
-  bx(root, L + 60, 4, total + 60, k.std(0xb9bcbc, 0.9, 0), -30, -4, -30);
+  const METHODS = ['Raised subfloor', 'In-floor, new slab', 'In-floor, cut into slab'], FINISH = ['Exposed concrete', 'VCT tile'];
+  let method = 0, finish = 0;
+  // slab: lower 2" is solid; the top 2" has a trough at every rail, filled with a plug unless the trough is formed or cut
+  bx(root, L + 60, 2, total + 60, concrete, -30, -4, -30);
+  { let a = -30; for (const rx of rails) { bx(root, rx - TW / 2 - a, 2, total + 60, concrete, a, -2, -30); bx(root, TW, 2, z0 + 30, concrete, rx - TW / 2, -2, -30); bx(root, TW, 2, total + 30 - z1, concrete, rx - TW / 2, -2, z1); a = rx + TW / 2; } bx(root, L + 30 - a, 2, total + 60, concrete, a, -2, -30); }
+  const stage = () => { const g = group(root); g.userData.dyn = true; g.visible = false; return g; };
+  const plugs = rails.map(rx => { const g = stage(); bx(g, TW, 2, z1 - z0, plug, rx - TW / 2, -2, z0); return g; });
   // step placard
   const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 256; const cx = cv.getContext('2d');
-  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8;
-  const sign = new THREE.Mesh(new THREE.PlaneGeometry(110, 27.5), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }));
+  const signTex = new THREE.CanvasTexture(cv); signTex.colorSpace = THREE.SRGBColorSpace; signTex.anisotropy = 8;
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(110, 27.5), new THREE.MeshBasicMaterial({ map: signTex, toneMapped: false }));
   sign.position.set(L / 2, h + 44, -34); sign.rotation.y = 0.9; root.add(sign);
   const say = (a, b) => {
     cx.fillStyle = '#023c3f'; cx.fillRect(0, 0, 1024, 256); cx.fillStyle = '#e8a33d'; cx.fillRect(0, 0, 14, 256);
     cx.fillStyle = '#9fd3d5'; cx.font = 'bold 42px system-ui, sans-serif'; cx.fillText(a, 48, 90);
     let fz = 60; do { cx.font = 'bold ' + fz + 'px system-ui, sans-serif'; fz -= 2; } while (cx.measureText(b).width > 940 && fz > 28);
-    cx.fillStyle = '#ffffff'; cx.fillText(b, 48, 184);
-    tex.needsUpdate = true; wake();
+    cx.fillStyle = '#ffffff'; cx.fillText(b, 48, 184); signTex.needsUpdate = true; wake();
   };
-  const stage = () => { const g = group(root); g.userData.dyn = true; g.visible = false; return g; };
-  // 1 layout lines, 2 rails, 3 shims, 4 grout
+  // shared floor pieces
   const lines = stage(); for (const rx of rails) bx(lines, 0.3, 0.05, z1 - z0, chalk, rx - 0.15, 0.01, z0);
   for (const z of [z0, z1]) bx(lines, x1 - x0, 0.05, 0.3, chalk, x0, 0.01, z);
-  const railG = rails.map(rx => { const g = stage(); bx(g, 2, 1, z1 - z0 - 4, railM, rx - 1, 0.25, z0 + 2); bx(g, 0.8, 0.3, z1 - z0 - 4, alu, rx - 0.4, 1.25, z0 + 2); return g; });
-  const shims = stage(); for (const rx of rails) for (let z = z0 + 4; z < z1 - 3; z += 24) bx(shims, 2.4, 0.25, 3, shimM, rx - 1.2, 0, z);
-  const groutG = stage(); for (const rx of rails) for (const sx of [-1.6, 1]) bx(groutG, 0.6, 0.35, z1 - z0 - 4, grout, rx + sx, 0, z0 + 2);
-  // 5 masonite, 6 saw cut, 7 plywood between the rails
+  const saw = stage(); { bx(saw, 8, 3, 6, toolM, -4, 0.2, -3); cyl(saw, 3.2, 0.2, alu, 0, 1, 0, 24, 'x'); bx(saw, 2, 4, 2, black, -1, 3.2, -1); }
+  // raised subfloor pieces
+  const railsR = rails.map(rx => { const g = stage(); bx(g, 2, 1, z1 - z0 - 4, railM, rx - 1, 0.25, z0 + 2); bx(g, 0.8, 0.3, z1 - z0 - 4, alu, rx - 0.4, 1.25, z0 + 2); return g; });
+  const shimsR = stage(); for (const rx of rails) for (let z = z0 + 4; z < z1 - 3; z += 24) bx(shimsR, 2.4, 0.25, 3, shimM, rx - 1.2, 0, z);
+  const groutR = stage(); for (const rx of rails) for (const sx of [-1.6, 1]) bx(groutR, 0.6, 0.35, z1 - z0 - 4, grout, rx + sx, 0, z0 + 2);
   const bays = []; { let a = x0; for (const rx of rails) { bays.push([a, rx - 1.6]); a = rx + 1.6; } bays.push([a, x1]); }
-  const sheets = (m, t, y) => { const out = []; for (const [a, b] of bays) for (let z = z0; z < z1; z += 48) { const g = stage(); bx(g, b - a, t, Math.min(48, z1 - z) - 0.1, m, a, y, z); out.push(g); } return out; };
-  const mason = sheets(masonite, 0.25, 0), plyG = sheets(ply, 1, 0.25);
-  const saw = stage(); { const s = group(saw, 0, 0, 0); bx(s, 8, 3, 6, toolM, -4, 1.25, -3); cyl(s, 3.2, 0.2, alu, 0, 2.2, 0, 24, 'x'); bx(s, 2, 4, 2, black, -1, 4.2, -1); saw.userData.tool = s; }
+  // one mesh per layer per bay keeps draw calls down
+  const layer = (m, t, y) => bays.map(([a, b]) => { const g = stage(); for (let z = z0; z < z1; z += 48) bx(g, b - a, t, Math.min(48, z1 - z) - 0.1, m, a, y, z); return g; });
+  const mason = layer(masonite, 0.25, 0), plyG = layer(ply, 1, 0.25), vctR = layer(vctM, 0.125, 1.25);
+  vctR.forEach(g => g.children.forEach(t => { t.material = vctM.clone(); t.material.map = vctM.map.clone(); t.material.map.repeat.set(t.scale.x / 24, t.scale.z / 24); t.material.map.needsUpdate = true; }));
   const stack = stage(); bx(stack, 48, 4, 96, ply, x1 + 20, 0, 20);
-  // 8 hammer drill, 9 Tapcons: one pattern of points across the deck, revealed row by row
   const pts = []; for (let z = z0 + 6; z < z1 - 4; z += 16) for (const [a, b] of bays) for (let x = a + 5; x < b - 3; x += 16) pts.push([x, z]);
-  const mk = (geo, m, y) => { const im = new THREE.InstancedMesh(geo, m, pts.length), o = new THREE.Object3D(); pts.forEach(([x, z], i) => { o.position.set(x, y, z); o.updateMatrix(); im.setMatrixAt(i, o.matrix); }); im.instanceMatrix.needsUpdate = true; im.count = 0; root.add(im); return im; };
-  const holes = mk(new THREE.CylinderGeometry(0.35, 0.35, 0.05, 10), hole, RH + 0.02), screws = mk(new THREE.CylinderGeometry(0.55, 0.55, 0.15, 6), alu, RH + 0.08);
-  const drill = stage(); { bx(drill, 3, 8, 3, toolM, -1.5, RH + 6, -1.5); bx(drill, 6, 3, 3, toolM, -1.5, RH + 11, -1.5); cyl(drill, 0.3, 6, alu, 0, RH + 3, 0, 8); }
-  // 10 aluminum ramp edges on the open sides
-  const ramps = stage(); { const s = new THREE.Shape(); s.moveTo(0, 0); s.lineTo(5, 0); s.lineTo(0, RH); s.closePath(); for (const [xx, rot] of [[x1, 0], [x0, Math.PI]]) { const m = new THREE.Mesh(new THREE.ExtrudeGeometry(s, { depth: z1 - z0, bevelEnabled: false }), alu); m.rotation.y = rot; m.position.set(xx, 0, rot ? z1 : z0); ramps.add(m); } }
-  // 11 to 14: carriages, shelving, end panels, load, first aisle
-  const parts = { carriage: [], splice: [], frame: [], panels: [], loaded: [], chain: [], covers: [], keys: [], handles: [] };
-  const chainM = k.std(0x55595d, 0.5, 0.8), keyM = k.std(0xc9a227, 0.35, 0.7), TAKE0 = 48.6, TAKE1 = 50;
+  const inst = (geo, m, y) => { const im = new THREE.InstancedMesh(geo, m, pts.length), o = new THREE.Object3D(); pts.forEach(([x, z], i) => { o.position.set(x, y, z); o.updateMatrix(); im.setMatrixAt(i, o.matrix); }); im.instanceMatrix.needsUpdate = true; im.count = 0; root.add(im); return im; };
+  const holes = inst(new THREE.CylinderGeometry(0.35, 0.35, 0.05, 10), hole, 1.27), screws = inst(new THREE.CylinderGeometry(0.55, 0.55, 0.15, 6), alu, 1.33);
+  const drill = stage(); { bx(drill, 3, 8, 3, toolM, -1.5, 7.25, -1.5); bx(drill, 6, 3, 3, toolM, -1.5, 12.25, -1.5); cyl(drill, 0.3, 6, alu, 0, 4.25, 0, 8); }
+  const ramps = stage(); { const s = new THREE.Shape(); s.moveTo(0, 0); s.lineTo(5, 0); s.lineTo(0, 1.25); s.closePath(); for (const [xx, rot] of [[x1, 0], [x0, Math.PI]]) { const m = new THREE.Mesh(new THREE.ExtrudeGeometry(s, { depth: z1 - z0, bevelEnabled: false }), alu); m.rotation.y = rot; m.position.set(xx, 0, rot ? z1 : z0); ramps.add(m); } }
+  // in-floor pieces: kerf cuts, rails in the trough, shim stacks, self-leveling fill, finish tile
+  const kerfs = stage(); for (const rx of rails) for (const sx of [-TW / 2, TW / 2]) bx(kerfs, 0.25, 0.04, z1 - z0, kerf, rx + sx - 0.125, 0, z0);
+  const railsF = rails.map(rx => { const g = stage(); bx(g, 2, 1, z1 - z0 - 4, railM, rx - 1, -1, z0 + 2); bx(g, 0.8, 0.02, z1 - z0 - 4, alu, rx - 0.4, 0, z0 + 2); return g; });
+  const shimsF = stage(); for (const rx of rails) for (let z = z0 + 4; z < z1 - 3; z += 24) bx(shimsF, 3, 1, 3, shimM, rx - 1.5, -2, z);
+  const fill = rails.map(rx => { const g = group(root, 0, -2, 0); g.userData.dyn = true; g.visible = false; bx(g, TW / 2 - 1, 2, z1 - z0, slc, rx - TW / 2, 0, z0); bx(g, TW / 2 - 1, 2, z1 - z0, slc, rx + 1, 0, z0); return g; });
+  const vctF = (() => { const out = []; let a = x0 - 14; for (const rx of [...rails, x1 + 14]) { const b = rx === x1 + 14 ? rx : rx - 1; const g = stage(); const t = bx(g, b - a, 0.125, z1 - z0 + 20, vctM.clone(), a, 0, z0 - 10); t.material.map = vctM.map.clone(); t.material.map.repeat.set((b - a) / 24, (z1 - z0 + 20) / 24); t.material.map.needsUpdate = true; out.push(g); a = rx + 1; } return out; })();
+  // system: carriages with drive shafts already in them, splice, shelving, chain drive, panels, keys, handles
+  const TAKE0 = 48.6, TAKE1 = 50;
+  const parts = { carriage: [], splice: [], frame: [], loaded: [], chain: [], covers: [], panels: [], keys: [], handles: [] };
   const ranges = depths.map((dd, j) => {
-    const g = group(root, 0, RH, base[j]), fixed = j === 0 || j === depths.length - 1, last = j === depths.length - 1;
-    g.userData.dyn = true; g.userData.z0 = base[j] + (last ? aisle : 0);
-    // long carriages ship in two sections, drive shaft already in each; they splice together on the rails
+    const g = group(root, 0, 0, base[j]), fixed = j === 0 || j === depths.length - 1, last = j === depths.length - 1;
+    g.userData.dyn = true; g.userData.z0 = base[j] + (last ? aisle : 0); g.userData.fixed = fixed; g.userData.base = base[j];
     const half = L / 2 - 1.5, c = group(g), c2 = group(g);
     bx(c, half, cH, dd, M.dark, 0, 0, 0); bx(c2, half, cH, dd, M.dark, L - half, 0, 0);
     for (const rx of rails) cyl(rx < L / 2 ? c : c2, 2, 1.4, black, rx, 1.6, dd / 2, 16, 'x');
@@ -1704,70 +1755,115 @@ def('install', 'Mobile Storage Install, Step by Step', 'From bare slab to workin
       return s;
     };
     parts.frame.push(shelves(null)); parts.loaded.push(shelves('boxes'));
-    const p = group(g);
-    bx(p, 1.6, h + cH + 1, dd - 0.3, panel, L + 1.6, 0, 0.15); bx(p, 1.6, h + cH + 1, dd - 0.3, panel, -1.6, 0, 0.15);
+    // end panels: the handle end has a grommeted hole for the handle shaft
+    const p = group(g), PH = h + cH + 1, px = L + 1.6, hz = dd / 2, r0 = 1.6;
+    bx(p, 1.6, PH, dd - 0.3, panel, -1.6, 0, 0.15);
+    if (fixed) bx(p, 1.6, PH, dd - 0.3, panel, px, 0, 0.15);
+    else {
+      bx(p, 1.6, TAKE1 - r0, dd - 0.3, panel, px, 0, 0.15); bx(p, 1.6, PH - TAKE1 - r0, dd - 0.3, panel, px, TAKE1 + r0, 0.15);
+      bx(p, 1.6, 2 * r0, hz - r0 - 0.15, panel, px, TAKE1 - r0, 0.15); bx(p, 1.6, 2 * r0, dd - 0.15 - hz - r0, panel, px, TAKE1 - r0, hz + r0);
+      const gr = new THREE.Mesh(new THREE.TorusGeometry(r0, 0.25, 8, 24), black); gr.rotation.y = Math.PI / 2; gr.position.set(px + 1.65, TAKE1, hz); p.add(gr);
+    }
     parts.panels.push(p);
     if (!fixed) {
-      // chain box: drive sprocket on the shaft, take-up sprocket with the handle shaft, chain between; it starts slack
+      // chain box: drive sprocket on the shaft, take-up sprocket with the handle shaft, chain around both
       const cb = group(g);
-      bx(cb, 0.3, 52, 5.8, black, L, 0.2, dd / 2 - 2.9);
-      cyl(cb, 2.2, 0.9, alu, L + 0.75, 2.5, dd / 2, 20, 'x');
+      bx(cb, 0.3, 52, 5.8, black, L, 0.2, hz - 2.9);
+      cyl(cb, 2.2, 0.9, alu, L + 0.75, 2.5, hz, 20, 'x');
+      const arcB = new THREE.Mesh(new THREE.TorusGeometry(2.2, 0.22, 6, 20, Math.PI), chainM); arcB.rotation.set(0, Math.PI / 2, Math.PI); arcB.position.set(L + 0.75, 2.5, hz); cb.add(arcB);
       const take = group(cb, 0, TAKE0, 0); take.userData.dyn = true;
-      cyl(take, 2.2, 0.9, alu, L + 0.75, 0, dd / 2, 20, 'x'); cyl(take, 0.7, 5, alu, L + 2.5, 0, dd / 2, 12, 'x');
-      for (const dz of [-2.8, 2.5]) bx(take, 1, 3, 0.3, M.steel, L + 0.3, -1.5, dd / 2 + dz);
-      const strands = [-2.2, 2.2].map(dz => { const st = bx(cb, 0.5, 1, 0.35, chainM, L + 0.5, 0, dd / 2 + dz - 0.175); st.userData.dyn = true; st.userData.z = st.position.z; return st; });
+      cyl(take, 2.2, 0.9, alu, L + 0.75, 0, hz, 20, 'x'); cyl(take, 0.7, 5, alu, L + 2.5, 0, hz, 12, 'x');
+      const arcT = new THREE.Mesh(new THREE.TorusGeometry(2.2, 0.22, 6, 20, Math.PI), chainM); arcT.rotation.set(0, Math.PI / 2, 0); arcT.position.set(L + 0.75, 0, hz); take.add(arcT);
+      for (const dz of [-2.8, 2.5]) bx(take, 1, 3, 0.3, M.steel, L + 0.3, -1.5, hz + dz);
+      const strands = [-2.2, 2.2].map(dz => { const st = bx(cb, 0.45, 1, 0.45, chainM, L + 0.53, 0, hz + dz - 0.225); st.userData.dyn = true; st.userData.z = st.position.z; return st; });
       cb.userData.take = take; cb.userData.strands = strands; parts.chain.push(cb);
-      const cov = group(g); bx(cov, 0.3, 52, 5.8, black, L + 1.25, 0.2, dd / 2 - 2.9); for (const zz of [dd / 2 - 2.9, dd / 2 + 2.6]) bx(cov, 1.25, 52, 0.3, black, L, 0.2, zz); parts.covers.push(cov);
-      const key = group(g); bx(key, 1.4, 0.35, 0.35, keyM, L + 3.4, TAKE1 + 0.62, dd / 2 - 0.175); parts.keys.push(key);
-      const hub = group(g, L + 3.4, TAKE1, dd / 2); cyl(hub, 2.6, 2, black, 1, 0, 0, 28, 'x'); cyl(hub, 1.6, 0.4, alu, 2.1, 0, 0, 24, 'x');
+      const cov = group(g); bx(cov, 0.3, 52, 5.8, black, L + 1.25, 0.2, hz - 2.9); for (const zz of [hz - 2.9, hz + 2.6]) bx(cov, 1.25, 52, 0.3, black, L, 0.2, zz); parts.covers.push(cov);
+      const key = group(g); bx(key, 1.4, 0.35, 0.35, keyM, L + 3.4, TAKE1 + 0.62, hz - 0.175); parts.keys.push(key);
+      const hub = group(g, L + 3.4, TAKE1, hz); cyl(hub, 2.6, 2, black, 1, 0, 0, 28, 'x'); cyl(hub, 1.6, 0.4, alu, 2.1, 0, 0, 24, 'x');
       for (let q = 0; q < 3; q++) { const arm = new THREE.Group(); arm.rotation.x = (q * Math.PI * 2) / 3; hub.add(arm); const a = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 1.1, 8.4, 16), black); a.position.set(1.2, 4.6, 0); arm.add(a); const ball = new THREE.Mesh(new THREE.SphereGeometry(1.4, 20, 14), black); ball.position.set(1.2, 9.4, 0); arm.add(ball); }
-      parts.handles.push(hub);
+      parts.handles.push(hub); g.userData.hub = hub;
     }
     for (const o of g.children) o.userData.dyn = true;
     return g;
   });
-  const staged = [lines, ...railG, shims, groutG, ...mason, ...plyG, saw, stack, drill, ramps, ...parts.carriage, ...parts.splice, ...parts.frame, ...parts.loaded, ...parts.chain, ...parts.covers, ...parts.panels, ...parts.keys, ...parts.handles];
-  // chain state: slack (take-up low, return strand sagging in) or tight
-  const chainAt = (cb, top, sag) => { cb.userData.take.position.y = top; cb.userData.strands.forEach((st, i) => { st.scale.y = top - 2.5; st.position.y = (top + 2.5) / 2; st.position.z = st.userData.z + (i ? -sag : 0); }); };
+  const staged = [lines, saw, ...plugs, kerfs, ...railsR, shimsR, groutR, ...mason, ...plyG, ...vctR, stack, drill, ramps, ...railsF, shimsF, ...fill, ...vctF, ...Object.values(parts).flat()];
   staged.forEach(o => { o.userData.home = o.position.clone(); });
+  const chainAt = (cb, top, sag) => { cb.userData.take.position.y = top; cb.userData.strands.forEach((st, i) => { st.scale.y = top - 2.5; st.position.y = (top + 2.5) / 2; st.position.z = st.userData.z + (i ? -sag : 0); }); };
+  const show = (list) => list.forEach(o => { o.visible = true; });
   const drop = async (list, from, ms, gap) => { for (const o of list) { o.visible = true; o.position.y = o.userData.home.y + from; tween(o.position, 'y', o.userData.home.y, ms, 'out'); await wait(gap); } await wait(ms); };
-  const STEPS = [
+  const sawRun = async (y) => { saw.visible = true; for (const rx of rails) for (const sx of [-TW / 2, TW / 2]) { saw.position.set(rx + sx, y, z0); await tween(saw.position, 'z', z1, 520, 'lin'); } saw.visible = false; };
+  // the floor steps for each method, then the steps every system shares
+  const RAISED = [
     ['Lay out', 'Snap chalk lines for every rail', async () => { lines.visible = true; lines.scale.z = 0.01; await tween(lines.scale, 'z', 1, 900, 'out'); }],
-    ['Rails', 'Set the rails on the slab', async () => { await drop(railG, 14, 700, 160); }],
-    ['Level', 'Shim each rail dead level', async () => { shims.visible = true; railG.forEach(g => { g.position.y = -0.25; }); await wait(250); for (const g of railG) { tween(g.position, 'y', 0, 600, 'out'); await wait(120); } await wait(600); }],
-    ['Grout', 'Grout under the rails', async () => { groutG.visible = true; groutG.scale.z = 0.01; await tween(groutG.scale, 'z', 1, 1100); }],
-    ['Underlayment', 'Lay masonite between the rails', async () => { await drop(mason, 6, 450, 45); }],
+    ['Rails', 'Set the rails on the slab', async () => { await drop(railsR, 14, 700, 160); }],
+    ['Level', 'Shim each rail dead level', async () => { shimsR.visible = true; railsR.forEach(g => { g.position.y = -0.25; }); await wait(250); for (const g of railsR) { tween(g.position, 'y', 0, 600, 'out'); await wait(120); } await wait(600); }],
+    ['Grout', 'Grout under the rails', async () => { groutR.visible = true; groutR.scale.z = 0.01; await tween(groutR.scale, 'z', 1, 1100); }],
+    ['Underlayment', 'Lay masonite between the rails', async () => { await drop(mason, 6, 500, 90); }],
     ['Cut to fit', 'Cut plywood to size between the track', async () => { stack.visible = true; saw.visible = true; saw.position.set(x1 + 44, 4, 20); await tween(saw.position, 'z', 116, 1200, 'lin'); saw.visible = false; }],
-    ['Deck', 'Set the plywood flush with the rails', async () => { stack.visible = false; await drop(plyG, 8, 450, 45); }],
-    ['Drill', 'Hammer drill through the plywood into the slab', async () => { drill.visible = true; const rows = [...new Set(pts.map(p => p[1]))]; let n = 0; for (const z of rows) { const idx = pts.findIndex(p => p[1] === z); drill.position.set(pts[idx][0], 0, z); n = pts.filter(p => p[1] <= z).length; holes.count = n; wake(); await wait(110); } drill.visible = false; }],
-    ['Fasten', 'Drive Tapcon screws into the concrete', async () => { for (let n = 0; n <= pts.length; n += 6) { screws.count = Math.min(n, pts.length); wake(); await wait(40); } screws.count = pts.length; wake(); }],
+    ['Deck', 'Set the plywood flush with the rails', async () => { stack.visible = false; await drop(plyG, 8, 500, 90); }],
+    ['Drill', 'Hammer drill through the plywood into the slab', async () => { drill.visible = true; const rows = [...new Set(pts.map(p => p[1]))]; for (const z of rows) { const idx = pts.findIndex(p => p[1] === z); drill.position.set(pts[idx][0], 0, z); holes.count = pts.filter(p => p[1] <= z).length; wake(); await wait(110); } drill.visible = false; }],
+    ['Fasten', 'Drive Tapcon screws into the concrete', async () => { for (let n = 0; n <= pts.length; n += 8) { screws.count = Math.min(n, pts.length); wake(); await wait(40); } screws.count = pts.length; wake(); }],
     ['Edges', 'Aluminum ramp edges on the open sides', async () => { ramps.visible = true; ramps.position.y = 6; await tween(ramps.position, 'y', 0, 700, 'out'); }],
-    ['Carriages', 'Set the carriages on the rails', async () => { await drop(parts.carriage, 30, 800, 140); }],
+  ];
+  const INFLOOR = [
+    ['Rails', 'Set the rails in the troughs', async () => { await drop(railsF, 14, 700, 160); }],
+    ['Level', 'Shim the rails level and flush with the floor', async () => { shimsF.visible = true; railsF.forEach(g => { g.position.y = -0.6; }); await wait(250); for (const g of railsF) { tween(g.position, 'y', 0, 600, 'out'); await wait(120); } await wait(600); }],
+    ['Pour', 'Pour self-leveling fill around the rails', async () => { for (const g of fill) { g.visible = true; g.scale.y = 0.01; tween(g.scale, 'y', 1, 1100, 'out'); await wait(200); } await wait(1100); shimsF.visible = false; }],
+  ];
+  const FORMED = [['Troughs', 'Slab poured with an 8" trough at every rail', async () => { lines.visible = true; await wait(900); }], ...INFLOOR];
+  const CUT = [
+    ['Lay out', 'Snap chalk lines for every trough', async () => { lines.visible = true; lines.scale.z = 0.01; await tween(lines.scale, 'z', 1, 900, 'out'); }],
+    ['Saw cut', 'Saw cut both edges of each trough', async () => { await sawRun(0.2); kerfs.visible = true; wake(); }],
+    ['Chip out', 'Chip out the troughs and clean them', async () => { for (const g of plugs) { tween(g.position, 'y', 8, 600, 'out'); await wait(160); } await wait(650); plugs.forEach(g => { g.visible = false; }); kerfs.visible = false; }],
+    ...INFLOOR,
+  ];
+  const TILE_R = ['Floor finish', 'VCT tile over the deck', async () => { await drop(vctR, 3, 450, 80); }];
+  const TILE_F = ['Floor finish', 'VCT tile up to the rails', async () => { await drop(vctF, 3, 450, 100); }];
+  const COMMON = [
+    ['Carriages', 'Set the carriages, drive shafts already in', async () => { await drop(parts.carriage, 30, 800, 110); }],
     ['Splice', 'Bolt the carriage sections and couple the drive shafts', async () => { await drop(parts.splice, 10, 500, 120); }],
     ['Shelving', 'Build the shelving on the carriages', async () => { for (const s of parts.frame) { s.visible = true; s.scale.y = 0.01; tween(s.scale, 'y', 1, 900, 'out'); await wait(150); } await wait(800); }],
-    ['Chain drive', 'Mount the chain boxes at the aisle end', async () => { await drop(parts.chain, 24, 650, 150); }],
+    ['Chain drive', 'Mount the chain boxes and run the chains', async () => { await drop(parts.chain, 24, 650, 150); }],
     ['Tension', 'Tension each chain, then close the chain box', async () => {
       for (const cb of parts.chain) { const [a, b] = cb.userData.strands, ms = 800; tween(cb.userData.take.position, 'y', TAKE1, ms, 'out'); for (const st of [a, b]) { tween(st.scale, 'y', TAKE1 - 2.5, ms, 'out'); tween(st.position, 'y', (TAKE1 + 2.5) / 2, ms, 'out'); } tween(b.position, 'z', b.userData.z, ms, 'out'); await wait(160); }
-      await wait(800); await drop(parts.covers, 0.01, 1, 60);
+      await wait(800); show(parts.covers); wake();
     }],
     ['End panels', 'Hang the end panels', async () => { for (const p of parts.panels) { p.visible = true; p.position.x = 30; tween(p.position, 'x', 0, 700, 'out'); await wait(120); } await wait(600); }],
     ['Keyways', 'Set the keys in the handle shafts', async () => { for (const kk of parts.keys) { kk.visible = true; kk.position.x = kk.userData.home.x + 8; tween(kk.position, 'x', kk.userData.home.x, 450, 'out'); await wait(120); } await wait(450); }],
     ['Handles', 'Fit the three-arm handles', async () => { for (const hb of parts.handles) { hb.visible = true; hb.position.x = hb.userData.home.x + 14; hb.rotation.x = -2.2; tween(hb.position, 'x', hb.userData.home.x, 650, 'out'); tween(hb.rotation, 'x', 0, 650, 'out'); await wait(150); } await wait(650); }],
-    ['Turnover', 'Loaded, tested, first aisle opened', async () => { parts.loaded.forEach((s, i) => { s.visible = true; parts.frame[i].visible = false; }); wake(); await wait(400); for (let j = 2; j < depths.length - 1; j++) tween(ranges[j].position, 'z', base[j] + aisle, 1500); await wait(1500); }],
+    ['Turnover', 'Loaded and tested: tap a carriage to open its aisle', async () => { parts.loaded.forEach((s, i) => { s.visible = true; parts.frame[i].visible = false; }); wake(); await wait(300); open = 1; move(); await wait(1500); done = true; }],
   ];
-  let at = 0, busy = false;
-  const reset = () => { at = 0; staged.forEach(o => { o.visible = false; o.position.copy(o.userData.home); o.scale.set(1, 1, 1); o.rotation.x = 0; }); ranges.forEach(g => { g.position.z = g.userData.z0; }); holes.count = 0; screws.count = 0; parts.chain.forEach(cb => chainAt(cb, TAKE0, 0.9)); say('Install sequence', 'Press Next step to start'); };
-  const next = async () => { if (busy || at >= STEPS.length) return; busy = true; const [a, b, fn] = STEPS[at]; at++; say('Step ' + at + ' of ' + STEPS.length + ' · ' + a, b); await fn(); busy = false; };
+  let STEPS = [], at = 0, busy = false, done = false, open = N;
+  const move = () => ranges.forEach((g, j) => {
+    if (g.userData.fixed) return;
+    const to = g.userData.base + (j > open ? aisle : 0), dz = to - g.position.z; if (Math.abs(dz) < 0.1) return;
+    const ms = 700 + Math.abs(dz) * 14; tween(g.position, 'z', to, ms); if (g.userData.hub) tween(g.userData.hub.rotation, 'x', g.userData.hub.rotation.x + dz * 0.16, ms);
+  });
+  ranges.forEach((g, j) => { if (!g.userData.fixed) g.userData.onClick = () => { if (!done) return; open = open === j - 1 ? j : j - 1; move(); }; });
+  const reset = () => {
+    at = 0; done = false; open = N;
+    staged.forEach(o => { o.visible = false; o.position.copy(o.userData.home); o.scale.set(1, 1, 1); o.rotation.x = 0; });
+    const inFloor = method > 0, top = inFloor ? 0.05 : 1.25;
+    plugs.forEach(g => { g.visible = method !== 1; });
+    ranges.forEach(g => { g.position.set(0, top, g.userData.z0); });
+    holes.count = 0; screws.count = 0; parts.chain.forEach(cb => chainAt(cb, TAKE0, 0.9));
+    STEPS = [...(method === 0 ? RAISED : method === 1 ? FORMED : CUT), ...(finish ? [method === 0 ? TILE_R : TILE_F] : []), ...COMMON];
+    say('Install sequence: ' + METHODS[method].toLowerCase(), 'Press Next step or Play the whole install'); refresh?.();
+  };
+  const next = async () => { if (busy || at >= STEPS.length) return; busy = true; const [a, b, fn] = STEPS[at]; at++; say('Step ' + at + ' of ' + STEPS.length + ' · ' + a, b); await fn(); busy = false; refresh?.(); };
   reset();
   return {
     group: root, view: [1.45, 0.62, 0.62],
     actions: [
-      { label: 'Next step', run: () => { next(); return at >= STEPS.length ? 'Done' : 'Next step'; } },
-      { label: 'Play the whole install', run: async () => { if (busy) return; if (at >= STEPS.length) reset(); while (at < STEPS.length) { await next(); await wait(500); } } },
+      { label: 'Floor', options: METHODS, get: () => method, set: n => { if (!busy) { method = n; reset(); } } },
+      { label: 'Finish', options: FINISH, get: () => finish, set: n => { if (!busy) { finish = n; reset(); } } },
+      { label: 'Next step', when: () => at < STEPS.length, run: () => { next(); } },
+      { label: 'Play the whole install', when: () => at < STEPS.length, run: async () => { if (busy) return; while (at < STEPS.length) { await next(); await wait(400); } } },
+      { label: 'Open next aisle', when: () => done, run: () => { open = (open + 1) % (N + 1); move(); } },
       { label: 'Start over', run: () => { if (!busy) reset(); } },
     ],
   };
 });
 
-const SHORT = { 'four-post': '4-post', 'bin-shelving': 'Bin shelving', 'wire-shelving': 'Wire', library: 'Library', 'hd-mobile': 'Mobile', lockers: 'Lockers', 'evidence-lockers': 'Evidence', 'flat-files': 'Flat files', rotary: 'Rotary', 'museum-cabinet': 'Museum cabinet', 'art-screens': 'Art screens', 'pallet-rack': 'Pallet rack', mezzanine: 'Mezzanine', vlm: 'VLM', casework: 'Casework', 'wire-cage': 'Wire cage', athletic: 'Athletic', 'mail-sorter': 'Mail sorter', weapons: 'Weapons', 'tire-rack': 'Tire rack', 'wire-track': 'Wire on track', 'ss-table': 'Stainless tables', install: 'Install steps', 'hd-mobile-open': 'Mobile shelving', 'hd-mobile-tire': 'Mobile tires', 'hd-mobile-grow': 'Mobile grow racks', 'hd-mobile-flat': 'Mobile flat files', workstation: 'Workstation', fireproof: 'Fireproof', 'wall-art': 'Wall art screens', 'textile-rack': 'Textile racks' };
+const SHORT = { 'four-post': '4-post', 'bin-shelving': 'Bin shelving', 'wire-shelving': 'Wire', library: 'Library', 'hd-mobile': 'Mobile', lockers: 'Lockers', 'evidence-lockers': 'Evidence', 'flat-files': 'Flat files', rotary: 'Rotary', 'museum-cabinet': 'Museum cabinet', 'art-screens': 'Art screens', 'pallet-rack': 'Pallet rack', mezzanine: 'Mezzanine', vlm: 'VLM', casework: 'Casework', 'wire-cage': 'Wire cage', athletic: 'Athletic', 'mail-sorter': 'Mail sorter', weapons: 'Weapons', 'tire-rack': 'Tire rack', 'wire-track': 'Wire on track', 'ss-table': 'Stainless tables', install: 'Install steps', 'hd-mobile-open': 'Mobile shelving', 'hd-mobile-tire': 'Mobile tires', 'hd-mobile-grow': 'Mobile grow racks', 'hd-mobile-flat': 'Mobile flat files', 'hd-mobile-museum': 'Mobile cabinets', workstation: 'Workstation', fireproof: 'Fireproof', 'wall-art': 'Wall art screens', 'textile-rack': 'Textile racks' };
 for (const [id, s] of Object.entries(SHORT)) if (MODELS[id]) MODELS[id].short = s;
