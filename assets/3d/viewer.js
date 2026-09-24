@@ -115,7 +115,8 @@ function viewer(el) {
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
   const sun = new THREE.DirectionalLight(0xffffff, 1.6);
   sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.6;
-  scene.add(sun, sun.target, new THREE.HemisphereLight(0xffffff, 0xdfe7e7, 0.35));
+  const hemi = new THREE.HemisphereLight(0xffffff, 0xdfe7e7, 0.35), fill = new THREE.DirectionalLight(0xffffff, 0);
+  scene.add(sun, sun.target, hemi, fill, fill.target);
   const ground = new THREE.Mesh(new THREE.CircleGeometry(1, 64), new THREE.ShadowMaterial({ opacity: 0.16 }));
   ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
 
@@ -138,7 +139,7 @@ function viewer(el) {
   const wait = ms => tween({ t: 0 }, 't', 1, ms, 'lin');
 
   let current = null, frame = 0, dirty = true, home = null, clickables = [], slow = 0, pr = Math.min(devicePixelRatio, 2), last = 0;
-  let lastDraw = 0, sceneDirty = true, lowRes = false, heavy = false, measured = false, shadowTick = 0;
+  let lastDraw = 0, wasActive = false, sceneDirty = true, lowRes = false, heavy = false, measured = false, shadowTick = 0;
   const wake = () => { dirty = true; if (!frame) frame = requestAnimationFrame(loop); };
   const modelWake = () => { sceneDirty = true; wake(); };
   // while anything moves, render a little softer; one crisp frame when it settles
@@ -172,8 +173,21 @@ function viewer(el) {
   const lookDir = () => new THREE.Vector3(-Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch));
   const applyLook = () => { const t = camera.position.clone().add(lookDir().multiplyScalar(8)); controls.target.copy(t); camera.lookAt(t); };
   // glide the camera to a point and look at another
+  // at eye level you stand in the carriages' shade: lift the fill, soften the shadows, and fit the shadow map around you
+  let shadowAt = null;
+  const walkLight = (on) => {
+    hemi.intensity = on ? 0.8 : 0.35; fill.intensity = on ? 0.55 : 0; sun.shadow.intensity = on ? 0.55 : 1; renderer.toneMappingExposure = on ? 1.18 : 1.05;
+    if (!on && home) { fit.sun?.(); shadowAt = null; }
+    renderer.shadowMap.needsUpdate = true;
+  };
+  const shadowAround = (p, force) => {
+    if (!force && shadowAt && Math.hypot(p.x - shadowAt.x, p.z - shadowAt.z) < 36) return;
+    shadowAt = p.clone(); const R = 260, s2 = sun.shadow.camera;
+    sun.target.position.set(p.x, walkB ? walkB.floor : p.y - 64, p.z); sun.position.copy(sun.target.position).add(new THREE.Vector3(R * 0.6, R * 1.4, R * 0.9));
+    s2.left = s2.bottom = -R; s2.right = s2.top = R; s2.near = 10; s2.far = R * 4; s2.updateProjectionMatrix(); renderer.shadowMap.needsUpdate = true;
+  };
   const fly = (pos, target, ms = 800) => {
-    walking = true; flying = true; controls.enabled = false; controls.autoRotate = false; tween(camera, 'fov', 96, ms);
+    walking = true; walkLight(true); shadowAround(pos, true); flying = true; controls.enabled = false; controls.autoRotate = false; tween(camera, 'fov', 96, ms);
     const d = target.clone().sub(pos).normalize(); yaw = Math.atan2(-d.x, -d.z); pitch = Math.asin(Math.max(-1, Math.min(1, d.y)));
     const t8 = pos.clone().add(d.multiplyScalar(8));
     ['x', 'y', 'z'].forEach(a => { tween(camera.position, a, pos[a], ms, 'out'); tween(controls.target, a, t8[a], ms, 'out'); });
@@ -181,7 +195,7 @@ function viewer(el) {
     el.querySelector('.v3d-main').classList.add('v3d-walk');
   };
   const overview = (ms = 700) => {
-    if (!home) return; walking = false; flying = false; walkB = null; keys.clear(); if (rings) { scene.remove(rings); rings = null; } if (walkFloor) { scene.remove(walkFloor); walkFloor = null; }
+    if (!home) return; walking = false; flying = false; walkB = null; walkLight(false); keys.clear(); if (rings) { scene.remove(rings); rings = null; } if (walkFloor) { scene.remove(walkFloor); walkFloor = null; }
     controls.enabled = true; controls.minDistance = home.r * 0.6; controls.maxDistance = home.r * 4; tween(camera, 'fov', 32, ms);
     walkbar.hidden = true; peg.hidden = !current;
     ['x', 'y', 'z'].forEach(a => { tween(camera.position, a, home.pos[a], ms, 'out'); tween(controls.target, a, home.target[a], ms, 'out'); });
@@ -311,7 +325,8 @@ function viewer(el) {
     controls.minDistance = r * 0.6; controls.maxDistance = r * 4; home.r = r; walking = false; flying = false; controls.enabled = true;
     ground.scale.setScalar(r * 3); ground.position.set(c.x, box.min.y + 0.05, c.z);
     sun.position.set(c.x + r * 1.2, c.y + r * 2.4, c.z + r * 1.6); sun.target.position.copy(c);
-    const s = sun.shadow.camera; s.left = s.bottom = -r * 1.6; s.right = s.top = r * 1.6; s.near = r * 0.2; s.far = r * 6; s.updateProjectionMatrix();
+    fit.sun = () => { sun.position.set(c.x + r * 1.2, c.y + r * 2.4, c.z + r * 1.6); sun.target.position.copy(c); const s = sun.shadow.camera; s.left = s.bottom = -r * 1.6; s.right = s.top = r * 1.6; s.near = r * 0.2; s.far = r * 6; s.updateProjectionMatrix(); };
+    fit.sun();
     controls.update();
   }
 
@@ -392,10 +407,12 @@ function viewer(el) {
     if (stepped) { current?.tick?.(); camera.updateProjectionMatrix(); }
     let stepping = false; try { stepping = walkKeys(now); } catch (err) { console.error('walk', err.message, String(err.stack).slice(0, 300)); keys.clear(); }
     const moving = walking ? false : controls.update(); if (walking && !flying) applyLook(); else if (walking) camera.lookAt(controls.target);
+    if (walking) { fill.position.copy(camera.position); fill.target.position.copy(controls.target); fill.target.updateMatrixWorld(); if (!flying) shadowAround(camera.position); }
     const busy = active || moving || controls.autoRotate || stepping;
     if (busy) setRes(true);
     // moving parts refresh shadows every few frames; a settled frame always gets a fresh shadow map
-    if (sceneDirty || (active && !walking && ++shadowTick % (heavy ? 8 : 4) === 0)) { renderer.shadowMap.needsUpdate = true; sceneDirty = false; }
+    if (sceneDirty || (active && ++shadowTick % (heavy ? 6 : 3) === 0) || (wasActive && !active)) { renderer.shadowMap.needsUpdate = true; sceneDirty = false; }
+    wasActive = active;
     const idleSpin = demoOn && !active && !stepping && !dirty && now - lastDraw < 32;
     if ((dirty || busy) && !idleSpin) { lastDraw = now; renderer.render(scene, camera); dirty = false; if (!measured) { measured = true; heavy = renderer.info.render.calls > 110; } }
     if (busy) frame = requestAnimationFrame(loop);
