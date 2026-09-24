@@ -501,7 +501,7 @@ function hdMobile(id, name, dims, start, opts = {}) {
     const gWhite = k.std(0xf1f2f0, 0.4, 0.25), wire = k.meshMat(144, 26, 1.5, '#e9ecee', 0.6), trayM = k.std(0x1c1d1f, 0.7, 0.05), leaf = k.std(0xffffff, 0.7, 0), led = k.std(0xffffff, 0.3, 0, { emissive: 0xfff8e8, emissiveIntensity: 1.1 });
     const tBlue = k.std(0x1f5fb0, 0.45, 0.35), tBlueP = k.postMat(tBlue), bumperM = k.std(0x111213, 0.9, 0);
     const black = k.std(0x1c1e20, 0.45, 0.15), red = k.std(0xc4241c, 0.4, 0.1), go = k.std(0x39d353, 0.3, 0, { emissive: 0x1f8a33, emissiveIntensity: 0.9 }), stop = k.std(0xc92a2a, 0.35, 0.1, { emissive: 0x5a1414, emissiveIntensity: 0.5 });
-    let kind = start, electric = !!opts.electric, open = 2, unit, ranges = [], C, panelsOn = null, closedShelf = true, binDoors = true, binDoorsList = [], loadColor = {}, openParts = new Set(), aisleW = null, twoLevel = !!opts.twoLevel, open2 = 1, ranges2 = [], arms = [];
+    let kind = start, electric = !!opts.electric, open = 2, unit, ranges = [], C, panelsOn = null, closedShelf = true, binDoors = true, binDoorsList = [], safety = 3, safeties = [], sweeps = [], loadColor = {}, openParts = new Set(), aisleW = null, twoLevel = !!opts.twoLevel, open2 = 1, ranges2 = [], arms = [];
     const armM = k.std(0x3a3f44, 0.5, 0.5), mzDeck = k.std(0x5d6468, 0.75, 0.4), railY = k.std(0xe0a526, 0.45, 0.35), steelM = k.std(0x4b5a63, 0.5, 0.5);
     const lPost = k.postMat(paint), tFrame = k.std(0x3a3f44, 0.45, 0.35), tTube = k.std(0xf6f7f5, 0.35, 0.1), aWhite = k.std(0xf3f4f2, 0.45, 0.25), gilt = k.std(0xa6832f, 0.35, 0.7);
     const tWraps = [k.std(0xe3e7ea, 0.3, 0.35), k.std(0xeceeee, 0.55, 0.1)], tBare = [k.std(0x9b2226, 0.85, 0), k.std(0x7a5230, 0.9, 0), k.std(0x3d5a7a, 0.85, 0), k.std(0x5e4a7a, 0.85, 0)];
@@ -591,7 +591,7 @@ function hdMobile(id, name, dims, start, opts = {}) {
     const mWhite = k.std(0xf1f2f0, 0.38, 0.2), mPlate = k.std(0xd7dbde, 0.25, 0.85), mObj = [0xb56f4a, 0x6b8f71, 0xc9a227, 0x3d5a7a].map(c => k.std(c, 0.6, 0.05));
     // museum cabinet pair: white case, glass double doors with latch plates, drawers low and shelves high behind the glass
     // one cabinet case with a pair of swinging doors; each pair opens together when you click it
-    const doorPair = (p, x, cw, y0, H, fz, dir, glass, frameM) => {
+    const doorPair = (p, x, cw, y0, H, fz, dir, glass, frameM, first) => {
       const doors = [];
       for (const side of [0, 1]) {
         const pv = group(p, side ? x + cw : x, y0, fz), dw = cw / 2 - 0.1, sx = side ? -dw : 0; pv.userData.dyn = true;
@@ -600,19 +600,25 @@ function hdMobile(id, name, dims, start, opts = {}) {
         bx(pv, 1, 7, 0.8, M.chrome, side ? -dw + 1.2 : dw - 2.2, H / 2 - 3.5, dir > 0 ? 0.9 : -0.8);
         doors.push(pv);
       }
-      const shut = () => { doors.forEach(d => { d.userData.open = false; tween(d.rotation, 'y', 0, 650, 'out'); }); openParts.delete(shut); };
-      const toggle = () => { const o = !doors[0].userData.open; if (!o) return shut(); doors.forEach((d, n) => { d.userData.open = true; tween(d.rotation, 'y', (n ? 1 : -1) * dir * 1.9, 800, 'out'); }); openParts.add(shut); };
-      doors.forEach(d => { d.userData.onClick = toggle; });
+      const api = { busy: false, isOpen: () => !!doors[0].userData.open };
+      // close anything inside first, then swing the doors shut
+      const shut = () => { if (!api.isOpen() || api.busy) return 0; api.busy = true; const w = first?.() ? 650 : 0; setTimeout(() => { doors.forEach(d => { d.userData.open = false; tween(d.rotation, 'y', 0, 650, 'out'); }); setTimeout(() => { api.busy = false; }, 660); }, w); openParts.delete(shut); return w + 650; };
+      const openUp = () => { if (api.isOpen() || api.busy) return; api.busy = true; doors.forEach((d, n) => { d.userData.open = true; tween(d.rotation, 'y', (n ? 1 : -1) * dir * 1.9, 800, 'out'); }); setTimeout(() => { api.busy = false; }, 800); openParts.add(shut); };
+      api.open = openUp; api.shut = shut;
+      doors.forEach(d => { d.userData.onClick = () => (api.isOpen() ? shut() : openUp()); });
+      return api;
     };
     const museumFace = (p, y0, z0, dir) => {
       const D = C.d, H = C.h, fz = dir > 0 ? z0 + D : z0 - 0.9, back = dir > 0 ? z0 : z0 + D - 1;
       for (let u = 0; u < 3; u++) {
         const x = u * 49;
         bx(p, 48, 1, D, mWhite, x, y0, z0); bx(p, 48, 1, D, mWhite, x, y0 + H - 1, z0); bx(p, 1, H, D, mWhite, x, y0, z0); bx(p, 1, H, D, mWhite, x + 47, y0, z0); bx(p, 48, H, 1, mWhite, x, y0, back);
-        const dz = dir > 0 ? z0 + D - 3 : z0 + 2.5, bank = group(p), pulled = {};
+        const dz = dir > 0 ? z0 + D - 3 : z0 + 2.5, bank = group(p), pulled = {}; let dp = null;
         for (let i = 0; i < 5; i++) bx(bank, 44, 5.4, 0.5, mWhite, x + 2, y0 + 2 + i * 6.2, dz);
         bank.userData.onClick = (hit) => {
-          if (!hit) return; const q = bank.worldToLocal(hit.point.clone()), i = Math.max(0, Math.min(4, Math.floor((q.y - y0 - 2) / 6.2)));
+          if (!hit || !dp || dp.busy) return; const q = bank.worldToLocal(hit.point.clone()), i = Math.max(0, Math.min(4, Math.floor((q.y - y0 - 2) / 6.2)));
+          // the glass doors come first: a click behind closed doors opens them
+          if (!dp.isOpen()) { dp.open(); return; }
           if (pulled[i]) { pulled[i].userData.close(); return; }
           const dr = group(p); dr.userData.dyn = true; const yy = y0 + 2 + i * 6.2;
           bx(dr, 44, 5.4, 0.5, mWhite, x + 2, yy, dz); k.tray(dr, 43, 3.6, D - 7, ffIn, x + 2.5, yy + 0.4, dir > 0 ? dz - (D - 7) : dz + 0.5, 0.15);
@@ -620,10 +626,10 @@ function hdMobile(id, name, dims, start, opts = {}) {
           const gap = bx(bank, 43.6, 5, 0.05, ffGap, x + 2.2, yy + 0.2, dir > 0 ? dz + 0.52 : dz - 0.07);
           pulled[i] = dr; tween(dr.position, 'z', dir * 20, 700, 'out');
           dr.userData.close = () => { if (pulled[i] !== dr) return; delete pulled[i]; openParts.delete(dr.userData.close); tween(dr.position, 'z', 0, 600, 'out').then(() => { bank.remove(gap); p.remove(dr); wake(); }); };
-          openParts.add(dr.userData.close); wake();
+          wake();
         };
         for (const sy of [42, 56]) { bx(p, 46, 0.6, D - 4, mWhite, x + 1, y0 + sy, z0 + 2); bx(p, 8, 5, 8, mObj[(u + sy) % 4], x + 6, y0 + sy + 0.6, z0 + D / 2 - 4); bx(p, 10, 4, 7, mObj[(u + sy + 1) % 4], x + 28, y0 + sy + 0.6, z0 + D / 2 - 3); }
-        doorPair(p, x, 48, y0, H, dir > 0 ? fz : fz + 0.9 - 0.9, dir, true, mWhite);
+        dp = doorPair(p, x, 48, y0, H, fz, dir, true, mWhite, () => { const n = Object.keys(pulled).length; Object.values(pulled).forEach(d => d.userData.close()); return n; });
       }
     };
     // gear storage: open steel sections fitted with the accessories that hold each kind of equipment
@@ -879,6 +885,20 @@ function hdMobile(id, name, dims, start, opts = {}) {
         ag.visible = electric;
         arms.push({ a, b, top, len, lA, lB, knee, pa, pb, g: ag, x: L + 0.8 });
       }
+      // aisle safety, electric only: a sweep along each carriage base, photo-eye beams across the aisle entrance,
+      // and a light carpet that lights the open aisle floor from a scanner on the end panel
+      safeties = []; sweeps = [];
+      const sweepM = k.std(0x1b1c1e, 0.7, 0.1), edgeM = k.std(0xf2c230, 0.5, 0.2), beamM = new THREE.MeshBasicMaterial({ color: 0xff3b30, transparent: true, opacity: 0.55, depthWrite: false, toneMapped: false }), carpetM = new THREE.MeshBasicMaterial({ color: 0x39d0a0, transparent: true, opacity: 0.22, depthWrite: false, toneMapped: false });
+      for (const [list, yb] of [[ranges, 0], ...(twoLevel ? [[ranges2, MZ - deck]] : [])]) {
+        list.forEach((g, j) => { if (g.userData.fixed && j === 0) return; const sw = group(g); sw.userData.dyn = true; for (const z of j === 0 ? [g.userData.dd] : [-0.6, g.userData.dd]) { bx(sw, L - 2, 1.6, 0.6, sweepM, 1, 0.3, z); bx(sw, L - 2, 0.3, 0.62, edgeM, 1, 1.6, z); } sweeps.push(sw); });
+        for (let j = 0; j + 1 < list.length; j++) {
+          const a = list[j], b = list[j + 1], y0 = yb + deck + 0.35, sg = group(unit); sg.userData.dyn = true;
+          const beams = [6, 30].map(yy => { const m = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.25, 1), beamM); m.position.set(L + 2.2, y0 + yy, 0); m.userData.noShadow = true; sg.add(m); return m; });
+          const carpet = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), carpetM); carpet.rotation.x = -Math.PI / 2; carpet.userData.noShadow = true; sg.add(carpet);
+          const eye = bx(null, 1.6, 2, 2.4, M.black, 0, 0, 0); eye.userData.dyn = true; b.add(eye); eye.position.set(L + 2.2, cH + h + 2, 1.2);
+          safeties.push({ a, b, y0, beams, carpet, eye, g: sg });
+        }
+      }
       tick(); paintLoad();
       unit.traverse(o => { if (o.isMesh) { o.castShadow = o.receiveShadow = true; } });
       bake?.(unit); wake();
@@ -899,10 +919,18 @@ function hdMobile(id, name, dims, start, opts = {}) {
       open2 = open;
       const go = () => { moveList(ranges, open); moveList(ranges2, open2); };
       if (!openParts.size) return go();
-      [...openParts].forEach(f => f()); openParts.clear(); setTimeout(go, 750);
+      let w = 750; [...openParts].forEach(f => { const t = f(); if (typeof t === 'number') w = Math.max(w, t + 100); }); openParts.clear(); setTimeout(go, w);
     };
     // each frame, fold or stretch the cable arms to the gap between their two carriages
     const tick = () => {
+      const on = electric;
+      sweeps.forEach(sw => { sw.visible = on && (safety === 1 || safety === 3); });
+      for (const q of safeties) {
+        const z0 = q.a.position.z + q.a.userData.dd + 0.3, z1 = q.b.position.z - 0.3, gap = z1 - z0, openA = gap > 8;
+        q.g.visible = on; q.eye.visible = on && (safety === 2 || safety === 3);
+        q.beams.forEach(m => { m.visible = on && (safety === 2 || safety === 3) && gap > 1; m.scale.z = Math.max(0.1, gap); m.position.z = (z0 + z1) / 2; });
+        q.carpet.visible = on && safety === 3 && openA; q.carpet.scale.set(C.L - 4, Math.max(0.1, gap - 2), 1); q.carpet.position.set(C.L / 2, q.y0 + 0.08, (z0 + z1) / 2);
+      }
       binDoorsList.forEach(d => { d.tex.repeat.y = Math.max(0.2, (d.h0 * d.cur.scale.y) / 3); });
       for (const q of arms) {
         if (!q.g.visible) continue;
@@ -940,6 +968,7 @@ function hdMobile(id, name, dims, start, opts = {}) {
           setTimeout(() => fly?.([C.L - 10, deckY + 64, zc], [C.L * 0.3, deckY + 56, zc]), openParts.size ? 800 : 50);
         } },
         { label: 'Back to overview', when: () => !!isWalking?.(), run: () => { overview?.(); } },
+        { label: 'Aisle safety', when: () => electric, options: ['None shown', 'Safety sweeps', 'Photo-eye light curtain', 'Sweeps, photo eyes and light carpet'], get: () => safety, set: n => { safety = n; tick(); wake(); } },
         { label: 'Electric', toggle: true, when: () => !C.electricOnly && !C.noElectric, get: () => electric, set: v => { electric = v; [...ranges, ...ranges2].forEach(g => { if (g.userData.fixed) return; g.userData.wheel.visible = !electric; g.userData.pad.visible = electric; }); arms.forEach(q => { q.g.visible = electric; }); tick(); wake(); } },
         { label: 'End panels', toggle: true, when: () => kind !== 'pallet', get: () => panelsOn ?? (kind !== 'art' && !!C.panels), set: v => { panelsOn = v; make(); } },
         { label: 'Roll-up doors', toggle: true, when: () => kind === 'bins', get: () => binDoors, set: v => { binDoors = v; make(); } },
@@ -1030,7 +1059,7 @@ def('lockers', 'Steel Lockers', '72" H lockers: one to four tiers, single or dou
         doors.push(pivot);
       }
     }
-    const bench = group(bank, 4, 0, 30); bench.visible = benchOn;
+    const bench = group(bank, 4, 0, 30); bench.visible = benchOn; bench.userData.dyn = true;
     bx(bench, 40, 1.5, 9.5, k.std(0xc79a66, 0.65, 0), 0, 16, 0);
     for (const x of [3, 34]) bx(bench, 3, 16, 3, M.dark, x, 0, 3.2);
     bank.traverse(o => { if (o.isMesh) { o.castShadow = o.receiveShadow = true; } }); bank.userData.dyn = true; bake?.(bank); wake();
@@ -1040,8 +1069,7 @@ def('lockers', 'Steel Lockers', '72" H lockers: one to four tiers, single or dou
     group: root, finishes: k.FIN.lockers, setFinish: k.finisher(paint),
     actions: [
       { label: 'Open all doors', run: () => { const o = !doors.every(p => p.userData.open); doors.forEach((p, i) => { p.userData.open = o; setTimeout(() => tween(p.rotation, 'y', o ? (p.userData.right ? 1.9 : -1.9) : 0, 650, 'out'), i * 40); }); return o ? 'Close all doors' : 'Open all doors'; } },
-      { label: 'Tiers', options: ['1', '2', '3', '4'], get: () => (double ? Math.min(tiers, 2) : tiers) - 1, set: n => { tiers = n + 1; if (tiers > 2) double = false; make(); } },
-      { label: 'Doors', options: ['Single', 'Double'], get: () => (double ? 1 : 0), set: n => { double = n === 1; if (double && tiers > 2) tiers = 2; make(); } },
+      { label: 'Tiers', options: ['1', '2', '3', '4'], get: () => (double ? Math.min(tiers, 2) : tiers) - 1, set: n => { tiers = n + 1; make(); } },
       { label: 'Lock', options: ['Lift handle', 'Padlock', 'Combination', 'Keypad'], get: () => LOCKS.indexOf(lock), set: n => { lock = LOCKS[n]; make(); } },
       { label: 'Top', options: ['Sloped', 'Flat'], get: () => (sloped ? 0 : 1), set: n => { sloped = n === 0; make(); } },
       { label: 'Base', options: ['Closed base', 'Legs'], get: () => (legs ? 1 : 0), set: n => { legs = n === 1; make(); } },
