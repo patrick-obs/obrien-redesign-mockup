@@ -684,7 +684,7 @@ def('bin-shelving', 'Bin & Parts Storage', 'Shelf bins on closed or open shelvin
 /* ---------------- 3. wire shelving ---------------- */
 // chrome wire: one builder for a pair, a wall run, L and U room layouts, and a top-track front row
 function wireModel(id, name, dims0, start, layouts) {
-  def(id, name, dims0, ({ THREE, tween, wake, bake, refit }) => {
+  def(id, name, dims0, ({ THREE, tween, wake, bake, refit, isWalking }) => {
     const k = kit(THREE), { M, bx, cyl, group, many } = k, root = new THREE.Group();
     const w = 48, d = 18, h = 74, lift = 5.5, pitch = w + 1, navy = k.std(0x243447, 0.5, 0.2);
     const LAYOUTS = { pair: 'Layout: pair', wall: 'Layout: wall run', L: 'Layout: L-shaped room', U: 'Layout: walk-in (U)', track: 'Layout: top-track mobile' };
@@ -720,7 +720,15 @@ function wireModel(id, name, dims0, start, layouts) {
         let xx = 1;
         while (xx < uw - 8) { const bw = 7 + Math.floor(r() * 3) * 3; if (r() > 0.25) items.push({ x: xx, y: y + 0.2, z: 1.5, w: bw - 0.6, h: 6 + r() * 7, d: ud - 3, color: cols[Math.floor(r() * cols.length)] }); xx += bw; }
       });
-      many(g, wires, M.chrome); many(g, items, k.std(0xffffff, 0.7, 0));
+      many(g, wires, M.chrome);
+      // any carton or tote slides off its shelf toward you; on the rolling track units it comes out the side you reach from
+      const side = ud > uw, reach = side ? Math.min(uw * 0.7, 14) : Math.min(ud * 0.65, 12);
+      k.pullMany(g, items, k.std(0xffffff, 0.7, 0), {
+        one: true, ms: 700, gate: side ? () => !!isWalking?.() : null,
+        spawn: (b) => { const q = group(null); bx(q, b.w, b.h, b.d, k.std(new THREE.Color(b.color).getHex(), 0.7, 0), b.x, b.y, b.z); q.traverse(o => { if (o.isMesh) o.castShadow = o.receiveShadow = true; }); return q; },
+        show: (q) => tween(q.position, 'y', 0.4, 150, 'out').then(() => tween(q.position, side ? 'x' : 'z', reach, 650, 'out')),
+        hide: (q) => tween(q.position, side ? 'x' : 'z', 0, 550, 'out').then(() => tween(q.position, 'y', 0, 120)),
+      });
       g.userData.ys = ys; g.userData.lf = lf; g.userData.uw = uw; g.userData.ud = ud; g.userData.ph = ph;
       return g;
     };
@@ -901,15 +909,43 @@ function tireParts(THREE) {
   TIRE = { geo, mat: new THREE.MeshStandardMaterial({ map: t, roughness: 0.88, metalness: 0.04 }), label: new THREE.MeshStandardMaterial({ color: 0xf4f4f0, roughness: 0.7 }) };
   return TIRE;
 }
-function tireMesh(THREE, parent, list) {
+function tireMesh(THREE, parent, list, opts = null) {
   if (!list.length) return;
   const { geo, mat, label } = tireParts(THREE), im = new THREE.InstancedMesh(geo, mat, list.length), o = new THREE.Object3D();
   list.forEach((t, i) => { o.position.set(t.x, t.y, t.z); o.rotation.set(t.spin || 0, 0, Math.PI / 2); o.scale.set(1, 1, 1); o.updateMatrix(); im.setMatrixAt(i, o.matrix); });
   im.instanceMatrix.needsUpdate = true; parent.add(im);
-  const tagged = list.filter(t => t.label); if (!tagged.length) return;
-  const lm = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), label, tagged.length);
-  tagged.forEach((t, i) => { o.position.set(t.x, t.y, t.z + 13.62); o.rotation.set(0, 0, 0); o.scale.set(3.4, 5.6, 0.08); o.updateMatrix(); lm.setMatrixAt(i, o.matrix); });
-  lm.instanceMatrix.needsUpdate = true; parent.add(lm);
+  const tagged = list.map((t, i) => [t, i]).filter(([t]) => t.label), tagOf = new Map(tagged.map(([, i], j) => [i, j]));
+  let lm = null;
+  if (tagged.length) {
+    lm = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), label, tagged.length);
+    tagged.forEach(([t], j) => { o.position.set(t.x, t.y, t.z + (t.dir || 1) * 13.62); o.rotation.set(0, 0, 0); o.scale.set(3.4, 5.6, 0.08); o.updateMatrix(); lm.setMatrixAt(j, o.matrix); });
+    lm.instanceMatrix.needsUpdate = true; parent.add(lm);
+  }
+  if (!opts?.tween) return;
+  // tap a tire: it rolls forward off the beams (turning as it goes), tap again and it rolls back
+  const { tween, gate, wake = () => {} } = opts, zero = new THREE.Matrix4().makeScale(0, 0, 0), keep = new THREE.Matrix4(), out = new Map();
+  const click = (hit) => {
+    if (gate && !gate()) { let q = im.parent; while (q && !q.userData.onClick) q = q.parent; return q?.userData.onClick(hit); }
+    const i = hit?.instanceId; if (i == null || !list[i]) return;
+    if (out.has(i)) return out.get(i)();
+    const t = list[i], dir = t.dir || 1, j = tagOf.get(i), g = new THREE.Group(); g.userData.dyn = true; g.position.set(t.x, t.y, t.z);
+    const spin = new THREE.Group(); g.add(spin); const tm = new THREE.Mesh(geo, mat); tm.rotation.set(0, 0, Math.PI / 2); spin.add(tm); spin.rotation.x = t.spin || 0;
+    if (j != null) { const lb = new THREE.Mesh(new THREE.BoxGeometry(3.4, 5.6, 0.08), label); lb.position.z = dir * 13.62; g.add(lb); }
+    g.traverse(q => { if (q.isMesh) q.castShadow = q.receiveShadow = true; }); parent.add(g);
+    im.getMatrixAt(i, keep); const saved = [keep.clone()]; im.setMatrixAt(i, zero); im.instanceMatrix.needsUpdate = true;
+    let savedL = null; if (j != null) { lm.getMatrixAt(j, keep); savedL = keep.clone(); lm.setMatrixAt(j, zero); lm.instanceMatrix.needsUpdate = true; }
+    const roll = 26;
+    tween(g.position, 'y', t.y + 2, 250, 'out').then(() => { tween(g.position, 'z', t.z + dir * roll, 900, 'out'); tween(spin.rotation, 'x', spin.rotation.x - dir * roll / 13.6, 900, 'out'); });
+    let busy = false;
+    const close = () => { if (busy) return 0; busy = true; out.delete(i); opts.reg?.delete(close);
+      tween(spin.rotation, 'x', t.spin || 0, 800); tween(g.position, 'z', t.z, 800).then(() => tween(g.position, 'y', t.y, 200)).then(() => { parent.remove(g); im.setMatrixAt(i, saved[0]); im.instanceMatrix.needsUpdate = true; if (savedL) { lm.setMatrixAt(j, savedL); lm.instanceMatrix.needsUpdate = true; } wake(); }); return 1100; };
+    g.userData.onClick = () => close(); out.set(i, close); opts.reg?.add(close); wake();
+  };
+  // keep the matrix read straight: getMatrixAt returns nothing, so save a copy first
+  im.userData.onClick = click;
+  if (lm) lm.userData.onClick = (hit) => { const e = tagged[hit?.instanceId]; if (e) im.userData.onClick({ ...hit, instanceId: e[1] }); };
+  im.userData.pullAny = () => im.userData.onClick({ instanceId: Math.floor(list.length / 2) });
+  return im;
 }
 function hdMobile(id, name, dims, start, opts = {}) {
   def(id, name, dims, ({ THREE, tween, wake, bake, refit, overview, isWalking, playerPos, lite, toast }) => {
@@ -1095,14 +1131,15 @@ function hdMobile(id, name, dims, start, opts = {}) {
     };
     const binSlat = (() => { const c = document.createElement('canvas'); c.width = 16; c.height = 32; const g = c.getContext('2d'); g.fillStyle = '#f4f5f3'; g.fillRect(0, 0, 16, 32); g.fillStyle = '#d6d9d8'; g.fillRect(0, 26, 16, 3); g.fillStyle = '#ffffff'; g.fillRect(0, 2, 16, 4); return c; })();
     const hoodM = k.std(0xf1f2f0, 0.35, 0.3), guideM = k.std(0xdfe2e4, 0.35, 0.5), frameMs = [0xa6832f, 0x6b4428, 0x2b2d2f, 0xc9b79a].map(c => k.std(c, 0.55, 0.2));
+    const FRAME_HEX = ['#a6832f', '#6b4428', '#2b2d2f', '#c9b79a'];
     const binsFace = (p, y0, z0, dir, r) => {
-      const D = C.d, H = C.h, sec = 48, fz = dir > 0 ? z0 + D : z0;
+      const D = C.d, H = C.h, sec = 48, fz = dir > 0 ? z0 + D : z0, arts = [], secDoor = {};
       bx(p, C.L, 0.6, D, paint, 0, y0 + 2, z0); bx(p, C.L, 0.6, D, paint, 0, y0 + H - 0.6, z0); bx(p, C.L, H, 0.1, paint, 0, y0, dir > 0 ? z0 : z0 + D - 0.1);
       for (let s2 = 0; s2 < C.L / sec; s2++) {
         const x0 = s2 * sec;
         for (const xx of [x0, x0 + sec - 1.25]) for (const zz of [z0, z0 + D - 1.25]) { bx(p, 1.25, H, 1.25, paint, xx, y0, zz); k.slots(p, lPost, xx === x0 ? xx + 1.25 : xx, y0, zz, 1.25, H, xx === x0 ? 1 : -1); }
         for (let dx = 12; dx < sec - 1; dx += 12) bx(p, 0.12, H - 3.2, D - 3, paint, x0 + dx, y0 + 2.6, z0 + 1.5);
-        for (let slot = 0; slot < 4; slot++) { let x = x0 + slot * 12 + 1.4; const n = 1 + Math.floor(r() * 3); for (let q = 0; q < n && x < x0 + slot * 12 + 10.5; q++) { const t2 = 1.8 + r() * 1.4, ph = 20 + r() * 50, pd = 16 + r() * (D - 22); bx(p, t2, ph, pd, frameMs[Math.floor(r() * 4)], x, y0 + 2.6, dir > 0 ? z0 + D - 3 - pd : z0 + 3); x += t2 + 0.6; } }
+        for (let slot = 0; slot < 4; slot++) { let x = x0 + slot * 12 + 1.4; const n = 1 + Math.floor(r() * 3); for (let q = 0; q < n && x < x0 + slot * 12 + 10.5; q++) { const t2 = 1.8 + r() * 1.4, pt = painting(THREE); let iw = Math.min(D - 9, 16 + r() * (D - 22)), ih = iw / pt.a; if (ih > H - 10) { ih = H - 10; iw = ih * pt.a; } const pd = iw + 3, ph = ih + 3; arts.push({ x, y: y0 + 2.6, z: dir > 0 ? z0 + D - 3 - pd : z0 + 3, w: t2, h: ph, d: pd, sec: s2, pm: pt.m, color: FRAME_HEX[Math.floor(r() * 4)] }); x += t2 + 0.6; } }
         if (!binDoors) continue;
         for (const gx of [x0 + 0.1, x0 + sec - 1.6]) bx(p, 1.5, H - 1, 1.6, guideM, gx, y0, dir > 0 ? fz - 1.7 : fz + 0.1);
         const tex = new THREE.CanvasTexture(binSlat); tex.colorSpace = THREE.SRGBColorSpace; tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(1, (H - 1) / 3);
@@ -1112,9 +1149,22 @@ function hdMobile(id, name, dims, start, opts = {}) {
         const d = { cur, tex, open: false, h0: H - 1, click: null, g: p, dir };
         d.click = () => { d.open = !d.open; tween(cur.scale, 'y', d.open ? 0.04 : 1, 1400); if (d.open) openParts.add(d.shut); else openParts.delete(d.shut); };
         d.shut = () => { if (d.open) { d.open = false; tween(cur.scale, 'y', 1, 1000); } openParts.delete(d.shut); };
-        cur.userData.onClick = d.click;
+        cur.userData.onClick = d.click; secDoor[s2] = d;
         binDoorsList.push(d);
       }
+      // from inside the aisle, any framed work slides out face first; a closed bay rolls its door up first
+      const im = k.pullMany(p, arts, k.std(0xffffff, 0.6, 0.1), {
+        reg: openParts, ms: 900,
+        spawn: (b) => { const q = group(null), iw = b.d - 3, ih = b.h - 3; bx(q, b.w, b.h, b.d, k.std(new THREE.Color(b.color).getHex(), 0.5, 0.25), b.x, b.y, b.z); bx(q, 0.05, ih, iw, b.pm, b.x + b.w, b.y + 1.5, b.z + 1.5); bx(q, 0.05, ih, iw, b.pm, b.x - 0.05, b.y + 1.5, b.z + 1.5); q.traverse(o => { if (o.isMesh) o.castShadow = o.receiveShadow = true; }); return q; },
+        show: (q, b) => tween(q.position, 'z', dir * (b.d + 6), 900, 'out'),
+        hide: (q) => tween(q.position, 'z', 0, 700, 'out'),
+      });
+      if (im) { const pull = im.userData.onClick; im.userData.onClick = (hit) => {
+        if (!isWalking?.()) { let q = im.parent; while (q && !q.userData.onClick) q = q.parent; return q?.userData.onClick(hit); }
+        const b = arts[hit?.instanceId]; if (!b) return; const d = secDoor[b.sec];
+        if (binDoors && d && !d.open) { d.click(); return; }
+        pull(hit);
+      }; }
     };
     // wardrobe cabinets: steel cases, solid double doors, hat shelf and hanging rod inside
     const wardM = k.std(0xb5babd, 0.45, 0.35);
@@ -1198,7 +1248,7 @@ function hdMobile(id, name, dims, start, opts = {}) {
         for (const lv of [4, 34, 64]) for (let b = 0; b < bays; b++) {
           const x0 = b * 48 + 2;
           for (const bz of [z0 + D / 2 - 11.5, z0 + D / 2 + 10]) bx(p, 46, 3, 1.5, bmM, x0, y0 + lv, bz);
-          for (let x = x0 + 4.4; x < x0 + 43; x += 8.2) if (r() > 0.1) list.push({ x, y: y0 + lv + 12.1, z: z0 + D / 2, label: r() > 0.45, spin: r() * 6 });
+          for (let x = x0 + 4.4; x < x0 + 43; x += 8.2) if (r() > 0.1) list.push({ x, y: y0 + lv + 12.1, z: z0 + D / 2, label: r() > 0.45, spin: r() * 6, dir });
         }
       } else {
         for (const lv of [6, 38, 70]) for (let b = 0; b < bays; b++) {
@@ -1266,7 +1316,7 @@ function hdMobile(id, name, dims, start, opts = {}) {
           const loads = []; palletFace(g, cH, 0.5, loads, r); if (!fixed) palletFace(g, cH, d + 2.5, loads, r); many(g, loads, M.kraft);
         } else {
           const list = []; for (const [z, dir] of faces) frameFace(g, cH, z, dir, list, r);
-          if (kind === 'open') many(g, list, M.kraft); else if (kind === 'tire') tireMesh(THREE, g, list); else plants(g, list);
+          if (kind === 'open') many(g, list, M.kraft); else if (kind === 'tire') tireMesh(THREE, g, list, { tween, wake, gate: () => !!isWalking?.(), reg: openParts }); else plants(g, list);
         }
         if ((panelsOn ?? !!C.panels) && kind !== 'art') {
           bx(g, 1.6, h + cH + 1, dd - 0.3, panel, L, 0, 0.15); bx(g, 1.6, h + cH + 1, dd - 0.3, panel, -1.6, 0, 0.15);
@@ -2638,7 +2688,7 @@ def('textile-rack', 'Rolled Textile Storage', '12 ft double-sided cantilever rac
 });
 
 /* ---------------- 24. tire rack ---------------- */
-def('tire-rack', 'Tire Storage Rack', 'Two 48" bays, three levels: tires cradled between front and back beams, tread out', ({ THREE, wake }) => {
+def('tire-rack', 'Tire Storage Rack', 'Two 48" bays, three levels: tires cradled between front and back beams, tread out', ({ THREE, wake, tween }) => {
   const k = kit(THREE), { M, bx, cyl, group } = k, root = new THREE.Group();
   const blue = k.std(0x1f5fb0, 0.45, 0.35), up = k.postMat(blue), rimM = k.std(0xc9ced2, 0.25, 0.9), r = rng(40);
   const bays = 2, D = 24, H = 94, W = bays * 48, levels = [3, 33, 63], tires = [];
@@ -2652,15 +2702,15 @@ def('tire-rack', 'Tire Storage Rack', 'Two 48" bays, three levels: tires cradled
     for (const bz of [0.5, D - 2]) bx(root, 46, 3, 1.5, blue, x0, lv, bz);
     for (let x = x0 + 4.4; x < x0 + 43; x += 8.2) if (r() > 0.08) tires.push({ x, y: lv + 3 + 9, z: D / 2, label: r() > 0.4, spin: r() * 6 });
   }
-  tireMesh(THREE, root, tires);
+  const tireIm = tireMesh(THREE, root, tires, { tween, wake });
   const rims = group(root); rims.userData.dyn = true; rims.visible = false;
   const im = new THREE.InstancedMesh(new THREE.CylinderGeometry(8.7, 8.7, 6, 28), rimM, tires.length), o = new THREE.Object3D();
   tires.forEach((t, i) => { o.position.set(t.x, t.y, t.z); o.rotation.set(0, 0, Math.PI / 2); o.updateMatrix(); im.setMatrixAt(i, o.matrix); });
   im.instanceMatrix.needsUpdate = true; rims.add(im);
   return {
-    group: root, view: [0.6, 0.35, 1.3],
+    group: root, view: [0.6, 0.35, 1.3], prompt: 'Tap a tire to roll it off the rack',
     finishes: [{ name: 'Blue', swatch: '#1f5fb0', color: 0x1f5fb0 }, { name: 'Safety orange', swatch: '#e3671c', color: 0xe3671c }, { name: 'Gray', swatch: '#8f969a', color: 0x8f969a }, { name: 'Black', swatch: '#2c2f31', color: 0x2c2f31 }], setFinish: k.finisher(blue, up),
-    actions: [{ label: 'Wheel and tire sets', run: () => { rims.visible = !rims.visible; wake(); return rims.visible ? 'Tires only' : 'Wheel and tire sets'; } }],
+    actions: [{ label: 'Roll a tire off', run: () => { tireIm?.userData.pullAny(); } }, { label: 'Wheel and tire sets', run: () => { rims.visible = !rims.visible; wake(); return rims.visible ? 'Tires only' : 'Wheel and tire sets'; } }],
   };
 });
 

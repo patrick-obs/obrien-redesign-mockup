@@ -309,6 +309,7 @@ function viewer(el) {
     demoT = setTimeout(() => { if (!demoOn) return; try { o.userData.onClick(h); modelWake(); } catch (err) { /* skip */ } demoT = setTimeout(demoStep, 1800); }, 2800);
   };
   const startDemo = () => { if (reduce || touched || window.V3D_NODEMO) return; demoOn = true; controls.autoRotate = true; controls.autoRotateSpeed = 0.6; el.querySelector('[data-v=spin]')?.setAttribute('aria-pressed', 'true'); clearTimeout(demoT); demoT = setTimeout(demoStep, 2400); wake(); };
+  function stopDemoTimers() { clearTimeout(demoT); }
   function stopDemo() { if (touched) return; touched = true; demoOn = false; clearTimeout(demoT); controls.autoRotate = false; controls.autoRotateSpeed = 1.2; el.querySelector('[data-v=spin]')?.setAttribute('aria-pressed', 'false'); }
   ['pointerdown', 'wheel', 'keydown', 'touchstart'].forEach(t => el.addEventListener(t, stopDemo, { capture: true, passive: true }));
   new IntersectionObserver(es => es.forEach(e => { demoVisible = e.isIntersecting; if (demoVisible && demoOn) wake(); })).observe(el);
@@ -330,14 +331,31 @@ function viewer(el) {
     controls.update();
   }
 
-  function load(id) {
-    closePanel();
-    if (current) { scene.remove(current.group); current.group.traverse(o => { o.geometry?.dispose?.(); }); }
+  // quick clicks through the menu collapse into one load; the model builds after the clicking stops,
+  // its shaders compile in the background, and the model it replaces gives back its GPU memory
+  let loadT = 0, loadTok = 0;
+  const request = (id) => {
+    if (!MODELS[id]) return; curId = id; clearTimeout(loadT);
+    el.querySelector('.v3d-title b').textContent = MODELS[id].name; el.querySelector('.v3d-title span').textContent = MODELS[id].dims || '';
+    el.querySelectorAll('[data-id]').forEach(x => x.setAttribute('aria-selected', String(x.dataset.id === id)));
+    el.querySelector('.v3d-load').hidden = false;
+    loadT = setTimeout(() => load(id), current ? 160 : 0);
+  };
+  const release = (g) => g.traverse(o => { o.geometry?.dispose?.(); for (const m of [].concat(o.material || [])) { if (!m) continue; for (const k of ['map', 'alphaMap', 'normalMap']) m[k]?.dispose?.(); m.dispose?.(); } });
+  async function load(id) {
+    const tok = ++loadTok;
+    closePanel(); stopDemoTimers();
+    if (walking) overview(1);
+    if (current) { scene.remove(current.group); release(current.group); current = null; clickables = []; }
+    await new Promise(r => requestAnimationFrame(r)); if (tok !== loadTok) return;
     const def = MODELS[id];
     current = def.build({ THREE, tween, wait, wake: modelWake, bake: g => bake(THREE, g), panel, toast, lite: el.dataset.lite === '1', fly: (p, t) => { const m = current.group.matrixWorld; fly(new THREE.Vector3(...p).applyMatrix4(m), new THREE.Vector3(...t).applyMatrix4(m)); }, overview: () => overview(), isWalking: () => walking, playerPos: () => (walking ? toLocal() : null), refresh: () => { syncActs(); showActs(); }, refit: () => { if (current) { if (walking) overview(1); fit(current.group, current.view); wake(); } } });
     scan();
     current.group.traverse(o => { if (o.isMesh && !o.userData.noShadow) { o.castShadow = true; o.receiveShadow = true; } });
     bake(THREE, current.group);
+    const built = current;
+    try { await renderer.compileAsync(built.group, camera, scene); } catch (err) { /* older browsers compile on first draw */ }
+    if (tok !== loadTok || current !== built) { release(built.group); return; }
     scene.add(current.group);
     fit(current.group, current.view);
     curId = id; el.querySelectorAll('.v3d-side details').forEach(d => { if (d.querySelector('[data-id="' + id + '"]')) d.open = true; });
@@ -467,18 +485,18 @@ function viewer(el) {
     if (document.fullscreenElement) document.exitFullscreen(); else (box.requestFullscreen || box.webkitRequestFullscreen)?.call(box);
   });
   canvas.addEventListener('pointerdown', () => el.querySelector('.v3d-hint')?.classList.add('gone'), { once: true });
-  el.querySelectorAll('[data-id]').forEach(b => b.addEventListener('click', () => load(b.dataset.id)));
+  el.querySelectorAll('[data-id]').forEach(b => b.addEventListener('click', () => request(b.dataset.id)));
   let curId = null, wheelTip = 0;
   canvas.addEventListener('pointerdown', () => { controls.enableZoom = true; el.querySelector('.v3d-wheel').hidden = true; });
   el.querySelector('.v3d-main').addEventListener('pointerleave', () => { controls.enableZoom = false; });
   canvas.addEventListener('wheel', () => { if (controls.enableZoom) return; const w = el.querySelector('.v3d-wheel'); w.hidden = false; clearTimeout(wheelTip); wheelTip = setTimeout(() => { w.hidden = true; }, 1600); }, { passive: true });
-  el.querySelectorAll('.v3d-step').forEach(b => b.addEventListener('click', () => { const i = ids.indexOf(curId); load(ids[(i + +b.dataset.step + ids.length) % ids.length]); }));
+  el.querySelectorAll('.v3d-step').forEach(b => b.addEventListener('click', () => { const i = ids.indexOf(curId); request(ids[(i + +b.dataset.step + ids.length) % ids.length]); }));
   const find = el.querySelector('.v3d-find');
   find?.addEventListener('input', () => { const q = find.value.trim().toLowerCase(); el.querySelectorAll('.v3d-side details').forEach(d => { let n = 0; d.querySelectorAll('button').forEach(b => { const hit = !q || b.textContent.toLowerCase().includes(q); b.hidden = !hit; n += hit; }); d.hidden = !n; if (q && n) d.open = true; }); });
-  el.querySelector('.v3d-pick select')?.addEventListener('change', e => load(e.target.value));
+  el.querySelector('.v3d-pick select')?.addEventListener('change', e => request(e.target.value));
   const want = new URLSearchParams(location.search).get('model');
   const first = want && ids.includes(want) ? want : ids[0];
-  resize(); load(first);
+  resize(); curId = first; load(first);
 }
 
 // start each viewer only when it scrolls near the screen
