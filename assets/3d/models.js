@@ -570,11 +570,12 @@ def('lockers', 'Steel Lockers', '72" H lockers: one to four tiers, single or dou
     return new THREE.Mesh(new THREE.PlaneGeometry(2.6, 1.3), numTex[n]);
   };
   const hardware = (door, dw, dh, right) => {
-    const hx = right ? 1.6 : dw - 2.6, hy = dh / 2 - Math.min(6, dh / 3) / 2;
-    if (lock === 'keypad') { bx(door, 1.8, 2.8, 0.5, M.black, right ? 1 : dw - 2.8, dh / 2 - 1, 0.35); bx(door, 1, 0.3, 0.1, lit, right ? 1.4 : dw - 2.4, dh / 2 + 1.4, 0.86); return; }
-    if (lock === 'combo') { cyl(door, 1, 0.5, M.chrome, right ? 2.2 : dw - 2.2, dh / 2 + 1, 0.6, 24, 'z'); cyl(door, 0.8, 0.3, M.black, right ? 2.2 : dw - 2.2, dh / 2 + 1, 0.95, 24, 'z'); bx(door, 0.6, 3, 0.8, M.chrome, right ? 1.9 : dw - 2.5, dh / 2 - 3.2, 0.3); return; }
-    bx(door, 1, Math.min(6, dh / 3), 0.9, M.chrome, hx, hy, 0.3);
-    if (lock === 'padlock') { bx(door, 1.4, 1.7, 0.7, brass, hx - 0.2, hy + 0.4, 1.2); const s = new THREE.Mesh(new THREE.TorusGeometry(0.45, 0.13, 8, 16, Math.PI), M.chrome); s.position.set(hx + 0.5, hy + 2.1, 1.55); door.add(s); }
+    const ex = right ? 1.1 : dw - 2.1, mid = dh / 2;
+    if (lock === 'keypad') { bx(door, 1.8, 2.8, 0.45, M.black, ex - 0.4, mid - 1.4, 0.35); bx(door, 1.1, 0.35, 0.05, lit, ex - 0.05, mid + 0.8, 0.8); bx(door, 0.6, 2.2, 0.7, M.chrome, ex + 0.2, mid - 4.4, 0.35); return; }
+    if (lock === 'combo') { cyl(door, 1.05, 0.45, M.chrome, ex + 0.5, mid + 0.8, 0.57, 24, 'z'); cyl(door, 0.8, 0.3, M.black, ex + 0.5, mid + 0.8, 0.9, 24, 'z'); bx(door, 0.6, 2.4, 0.7, M.chrome, ex + 0.2, mid - 2.6, 0.35); return; }
+    const hh = Math.min(6, dh / 3);
+    bx(door, 1, hh, 0.9, M.chrome, ex, mid - hh / 2, 0.35);
+    if (lock === 'padlock') { bx(door, 1.3, 1.6, 0.6, brass, ex - 0.15, mid - hh / 2 - 2.6, 0.8); const sh = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.12, 8, 16, Math.PI), M.chrome); sh.position.set(ex + 0.5, mid - hh / 2 - 1, 1.1); door.add(sh); }
   };
   const make = () => {
     if (bank) root.remove(bank);
@@ -592,7 +593,7 @@ def('lockers', 'Steel Lockers', '72" H lockers: one to four tiers, single or dou
     bx(bank, n * w, h, 0.3, paint, 0, baseH, 0);
     let num = 101;
     for (let i = 0; i < n; i++) for (let t = 0; t < tr; t++) {
-      const y0 = baseH + t * dh, x0 = i * w;
+      const y0 = baseH + t * dh, x0 = i * w; num = 101 + i * tr + (tr - 1 - t);
       if (t > 0) bx(bank, w, 0.3, d, paint, x0, y0, 0);
       // interior: hat shelf, coat hooks, and a rod in full-height doubles
       if (interior && dh >= 30) {
@@ -606,18 +607,19 @@ def('lockers', 'Steel Lockers', '72" H lockers: one to four tiers, single or dou
         const dw = double ? w / 2 - 0.45 : w - 0.6;
         const pivot = group(bank, px, y0 + 0.25, d), door = group(pivot, right ? -dw : 0, 0, 0);
         bx(door, dw, dh - 0.5, 0.35, paint, 0, 0, 0);
-        const vents = tr >= 3 ? [dh - 3] : [dh - 5, 3 + 5 * 0.9];
-        for (const vy of vents) for (let v = 0; v < (tr >= 3 ? 4 : 6); v++) bx(door, dw - 4.5, 0.3, 0.25, paint, 2.2, vy - v * 0.9, 0.3);
+        const nv = tr >= 3 ? 4 : 6, top = dh - 3, vw = dw - 5, vx = right ? 3 : 2;
+        for (let v = 0; v < nv; v++) bx(door, vw, 0.3, 0.25, paint, vx, top - v * 0.9, 0.3);
+        if (tr <= 2) for (let v = 0; v < nv; v++) bx(door, vw, 0.3, 0.25, paint, vx, 3 + v * 0.9, 0.3);
         if (!double || right) hardware(door, dw, dh, right);
-        if (!right) {
-          if (numbers) { const p = plate(num); p.position.set(dw / 2, tr >= 3 ? 2.2 : dh - 6.8, 0.37); door.add(p); }
-          else bx(door, 2.2, 1, 0.1, M.label, dw / 2 - 1.1, tr >= 3 ? 1.5 : dh - 7.5, 0.36);
+        const py = top - nv * 0.9 - 1.6, pcx = Math.min(dw / 2, dw - 4.6);
+        if (!double || !right) {
+          if (numbers) { const p = plate(num); p.position.set(pcx, py, 0.37); door.add(p); }
+          else bx(door, 2.2, 1, 0.1, M.label, pcx - 1.1, py - 0.5, 0.36);
         }
         pivot.userData.onClick = () => { pivot.userData.open = !pivot.userData.open; tween(pivot.rotation, 'y', pivot.userData.open ? (right ? 1.9 : -1.9) : 0, 650, 'out'); };
         pivot.userData.right = right;
         doors.push(pivot);
       }
-      num++;
     }
     const bench = group(bank, 4, 0, 30);
     bx(bench, 40, 1.5, 9.5, k.std(0xc79a66, 0.65, 0), 0, 16, 0);
@@ -629,13 +631,13 @@ def('lockers', 'Steel Lockers', '72" H lockers: one to four tiers, single or dou
     group: root, finishes: k.FIN.lockers, setFinish: k.finisher(paint),
     actions: [
       { label: 'Open all doors', run: () => { const o = !doors.every(p => p.userData.open); doors.forEach((p, i) => { p.userData.open = o; setTimeout(() => tween(p.rotation, 'y', o ? (p.userData.right ? 1.9 : -1.9) : 0, 650, 'out'), i * 40); }); return o ? 'Close all doors' : 'Open all doors'; } },
-      { label: 'Tiers: 2', run: () => { tiers = tiers % 4 + 1; if (double && tiers > 2) tiers = 1; make(); return `Tiers: ${double ? Math.min(tiers, 2) : tiers}`; } },
-      { label: 'Double door', run: () => { double = !double; make(); return double ? 'Single door' : 'Double door'; } },
-      { label: LOCKNAME.handle, run: () => { lock = LOCKS[(LOCKS.indexOf(lock) + 1) % LOCKS.length]; make(); return LOCKNAME[lock]; } },
-      { label: 'Number plates', run: () => { numbers = !numbers; make(); return numbers ? 'Plain labels' : 'Number plates'; } },
-      { label: 'Empty inside', run: () => { interior = !interior; make(); return interior ? 'Empty inside' : 'Hooks and shelf'; } },
-      { label: 'On legs', run: () => { legs = !legs; make(); return legs ? 'Closed base' : 'On legs'; } },
-      { label: 'Flat top', run: () => { sloped = !sloped; make(); return sloped ? 'Flat top' : 'Sloped top'; } },
+      { label: 'Tiers', options: ['1', '2', '3', '4'], get: () => (double ? Math.min(tiers, 2) : tiers) - 1, set: n => { tiers = n + 1; if (tiers > 2) double = false; make(); } },
+      { label: 'Doors', options: ['Single', 'Double'], get: () => (double ? 1 : 0), set: n => { double = n === 1; if (double && tiers > 2) tiers = 2; make(); } },
+      { label: 'Lock', options: ['Lift handle', 'Padlock', 'Combination', 'Keypad'], get: () => LOCKS.indexOf(lock), set: n => { lock = LOCKS[n]; make(); } },
+      { label: 'Top', options: ['Sloped', 'Flat'], get: () => (sloped ? 0 : 1), set: n => { sloped = n === 0; make(); } },
+      { label: 'Base', options: ['Closed base', 'Legs'], get: () => (legs ? 1 : 0), set: n => { legs = n === 1; make(); } },
+      { label: 'Number plates', toggle: true, get: () => numbers, set: v => { numbers = v; make(); } },
+      { label: 'Hooks and shelf', toggle: true, get: () => interior, set: v => { interior = v; make(); } },
     ],
   };
 });

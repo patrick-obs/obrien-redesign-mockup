@@ -142,7 +142,8 @@ function viewer(el) {
     stage.appendChild(ov); ov.querySelector('.v3d-ov-x').addEventListener('click', closePanel);
     ovClean = build(ov.querySelector('.v3d-ov-b'), closePanel) || null;
   };
-  const showActs = () => el.querySelectorAll('.v3d-acts button').forEach(b => { b.hidden = !!(b._act?.when && !b._act.when()); });
+  const showActs = () => el.querySelectorAll('.v3d-acts > *').forEach(b => { b.hidden = !!(b._act?.when && !b._act.when()); });
+  const syncActs = () => el.querySelectorAll('.v3d-acts > *').forEach(b => b._sync?.());
   const scan = () => { clickables = []; current?.group.traverse(o => { if (o.userData.onClick) clickables.push(o); }); };
   function fit(group, view) {
     const box = new THREE.Box3().setFromObject(group), size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
@@ -174,12 +175,30 @@ function viewer(el) {
     el.querySelectorAll('[data-id]').forEach(x => x.setAttribute('aria-selected', String(x.dataset.id === id)));
     const sel = el.querySelector('.v3d-pick select'); if (sel) sel.value = id;
     const acts = el.querySelector('.v3d-acts');
+    const after = () => { scan(); syncActs(); showActs(); modelWake(); };
     acts.replaceChildren(...(current.actions || []).map(a => {
-      const b = document.createElement('button'); b.type = 'button'; b.textContent = a.label;
-      b.addEventListener('click', () => { const r = a.run(); if (typeof r === 'string') b.textContent = r; scan(); showActs(); modelWake(); });
-      b._act = a;
-      return b;
+      let node;
+      if (a.options) {
+        node = document.createElement('label'); node.className = 'v3d-opt';
+        const sel = document.createElement('select'); sel.setAttribute('aria-label', a.label);
+        a.options.forEach((o, i) => sel.add(new Option(o, i)));
+        sel.addEventListener('change', () => { a.set(+sel.value); after(); });
+        node.append(Object.assign(document.createElement('span'), { textContent: a.label }), sel);
+        node._sync = () => { sel.value = String(a.get()); };
+      } else if (a.toggle) {
+        node = document.createElement('label'); node.className = 'v3d-chk';
+        const cb = document.createElement('input'); cb.type = 'checkbox';
+        cb.addEventListener('change', () => { a.set(cb.checked); after(); });
+        node.append(cb, document.createTextNode(a.label));
+        node._sync = () => { cb.checked = !!a.get(); };
+      } else {
+        node = document.createElement('button'); node.type = 'button'; node.textContent = a.label;
+        node.addEventListener('click', () => { const r = a.run(); if (typeof r === 'string') node.textContent = r; after(); });
+      }
+      node._act = a;
+      return node;
     }));
+    syncActs();
     showActs();
     const fin = el.querySelector('.v3d-fin');
     const swatches = (current.finishes || []).map((f, i) => {
