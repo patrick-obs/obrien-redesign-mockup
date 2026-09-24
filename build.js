@@ -128,7 +128,7 @@ const IMGS = {
   svc3: img('235ee-system.jpg'),
   svcMain: img('89080-services.jpg'),
   // round 4: visually-picked replacements
-  musApp: img('3e210-museum-storage-application.jpg'),
+  musApp: '/assets/media/mfr/museums--2.jpg',
   storAisle: img('fe96a-storage.jpg'),
   banHome2: img('e381e-homepage-background-2.jpg'),
   hamilton: img('c4d30-hamilton-2048x1536.jpg'),

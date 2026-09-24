@@ -40,13 +40,14 @@ function bake(THREE, root) {
 }
 
 const GROUPS = [
-  { name: 'Mobile & automated', ids: ['hd-mobile', 'vlm', 'rotary'] },
-  { name: 'Shelving', ids: ['four-post', 'bin-shelving', 'wire-shelving', 'library'] },
-  { name: 'Lockers & security', ids: ['lockers', 'athletic', 'evidence-lockers'] },
+  { name: 'Mobile & automated', ids: ['hd-mobile', 'wire-track', 'vlm', 'rotary'] },
+  { name: 'Shelving & racks', ids: ['four-post', 'bin-shelving', 'wire-shelving', 'library', 'tire-rack'] },
+  { name: 'Lockers & security', ids: ['lockers', 'athletic', 'evidence-lockers', 'weapons'] },
   { name: 'Cabinets', ids: ['flat-files', 'fireproof', 'museum-cabinet'] },
   { name: 'Museum & art', ids: ['art-screens', 'wall-art', 'textile-rack'] },
-  { name: 'Workspace', ids: ['casework', 'workstation', 'mail-sorter'] },
+  { name: 'Workspace', ids: ['casework', 'workstation', 'ss-table', 'mail-sorter'] },
   { name: 'Industrial', ids: ['pallet-rack', 'mezzanine', 'wire-cage'] },
+  { name: 'For architects & GCs', ids: ['install'] },
 ];
 
 function viewer(el) {
