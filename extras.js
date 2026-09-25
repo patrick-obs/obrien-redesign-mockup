@@ -321,16 +321,16 @@ function photos(file, html) {
 // which interactive models appear on which page (ids live in assets/3d/models.js)
 const VIEW3D = {
   'four-post-shelving': 'four-post', 'bin-storage': 'bin-shelving', 'wire-shelving': 'wire-shelving,wire-track', 'cantilever-shelving': 'library,hd-mobile-library',
-  'static-shelving': 'four-post,bin-shelving,wire-shelving,library,tire-rack', 'high-density-mobile-storage': 'hd-mobile,hd-mobile-museum,hd-mobile-flat,hd-mobile-artrack,hd-mobile-pallet,hd-mobile-mezz,wire-track', 'lockers': 'lockers,athletic,evidence-lockers,weapons', 'evidence-lockers': 'evidence-lockers',
+  'static-shelving': 'four-post,bin-shelving,wire-shelving,library,tire-rack', 'high-density-mobile-storage': 'hd-mobile,hd-mobile-museum,hd-mobile-flat,hd-mobile-artrack,hd-mobile-pallet,hd-mobile-mezz,wire-track', 'lockers': 'lockers,smart-lockers,athletic,evidence-lockers,weapons', 'evidence-lockers': 'evidence-lockers',
   'cabinets': 'flat-files,fireproof,rotary,museum-cabinet', 'rotary-cabinets': 'rotary', 'museum-cabinets': 'museum-cabinet,hd-mobile-museum,four-post-solander,textile-rack,hd-mobile-textile', 'art-screens': 'art-screens,wall-art,hd-mobile-art,painting-bins,hd-mobile-bins,wall-etrack',
-  'pallet-rack': 'pallet-rack,hd-mobile-pallet', 'mezzanines': 'mezzanine,hd-mobile-mezz', 'lifts-carousels': 'vlm', 'modular-casework': 'casework,ss-table', 'wire-partitions': 'wire-cage,bike-storage',
+  'pallet-rack': 'pallet-rack,hd-mobile-pallet', 'mezzanines': 'mezzanine,hd-mobile-mezz', 'lifts-carousels': 'vlm,vertical-carousel', 'modular-casework': 'casework,ss-table', 'wire-partitions': 'wire-cage,bike-storage',
   'weapons-storage': 'weapons,hd-mobile-weapons', 'athletic-storage': 'athletic,hd-mobile-gear,lockers', 'athletics': 'athletic,hd-mobile-gear,hd-mobile-golf,lockers', 'mail-sorters': 'mail-sorter', 'fireproof-cabinets': 'fireproof', 'wardrobe-cabinets': 'wardrobe,hd-mobile-wardrobe',
   'military': 'weapons,hd-mobile-weapons,pallet-rack,hd-mobile-pallet', 'museums': 'four-post-solander,painting-bins,hd-mobile-bins,art-screens,wall-art,hd-mobile-art,hd-mobile-artrack,wall-etrack,museum-cabinet,hd-mobile-museum,textile-rack,hd-mobile-textile', 'libraries': 'library,hd-mobile-library', 'material-handling-warehouse': 'hd-mobile-open,hd-mobile-pallet,hd-mobile-mezz,pallet-rack,mezzanine,vlm,bin-shelving,workstation,wire-cage,wall-etrack',
-  'vertical-farming': 'hd-mobile-grow,ss-table,wire-track', 'pharmaceutical-healthcare': 'casework,ss-table,wire-track,hd-mobile', 'education': 'lockers,bike-storage,athletic,hd-mobile-gear,hd-mobile-instruments,library,hd-mobile,mail-sorter', 'government-public-safety': 'evidence-lockers,weapons,hd-mobile-weapons,hd-mobile,wire-cage',
+  'vertical-farming': 'hd-mobile-grow,ss-table,wire-track', 'pharmaceutical-healthcare': 'casework,ss-table,vertical-carousel,wire-track,hd-mobile', 'education': 'lockers,smart-lockers,bike-storage,athletic,hd-mobile-gear,hd-mobile-instruments,library,hd-mobile,mail-sorter', 'government-public-safety': 'evidence-lockers,weapons,hd-mobile-weapons,hd-mobile,wire-cage',
   'corporate-legal': 'hd-mobile,rotary,fireproof,hd-mobile-flat,mail-sorter', 'automotive': 'tire-rack,hd-mobile-tire,bin-shelving,workstation,pallet-rack,vlm', 'retail': 'hd-mobile,four-post,bin-shelving,wire-track',
   'general-contractors': 'install,hd-mobile,mezzanine', 'design-specify': 'install,hd-mobile',
 };
-const ALL3D = 'hd-mobile,wire-track,vlm,rotary,four-post,bin-shelving,wire-shelving,library,tire-rack,lockers,athletic,evidence-lockers,weapons,flat-files,fireproof,museum-cabinet,wardrobe,art-screens,wall-art,textile-rack,painting-bins,wall-etrack,casework,workstation,ss-table,mail-sorter,pallet-rack,pallet-museum,mezzanine,wire-cage,install,bike-storage';
+const ALL3D = 'hd-mobile,wire-track,vlm,vertical-carousel,rotary,four-post,bin-shelving,wire-shelving,library,tire-rack,lockers,smart-lockers,athletic,evidence-lockers,weapons,flat-files,fireproof,museum-cabinet,wardrobe,art-screens,wall-art,textile-rack,painting-bins,wall-etrack,casework,workstation,ss-table,mail-sorter,pallet-rack,pallet-museum,mezzanine,wire-cage,install,bike-storage';
 const viewer3d = (slug, name) => VIEW3D[slug] ? `
 <section class="v3d-sec">
   <div class="wrap">
@@ -519,9 +519,9 @@ module.exports = { viewer3d, home3d, showroomPage, with3d, CSS3D, photos, specPa
 /* customer presentations: a clean page for one customer, and the builder that makes its link or a single-file download */
 const PRESENT_GROUPS = [
   ['Mobile systems', ['hd-mobile', 'hd-mobile-open', 'hd-mobile-library', 'hd-mobile-flat', 'hd-mobile-museum', 'hd-mobile-bins', 'hd-mobile-art', 'hd-mobile-artrack', 'hd-mobile-textile', 'hd-mobile-wardrobe', 'hd-mobile-gear', 'hd-mobile-golf', 'hd-mobile-instruments', 'hd-mobile-weapons', 'hd-mobile-tire', 'hd-mobile-grow', 'hd-mobile-pallet', 'hd-mobile-mezz', 'wire-track']],
-  ['Automated', ['vlm', 'rotary']],
+  ['Automated', ['vlm', 'vertical-carousel', 'rotary']],
   ['Shelving & racks', ['four-post', 'four-post-solander', 'bin-shelving', 'wire-shelving', 'library', 'tire-rack', 'pallet-rack', 'pallet-museum']],
-  ['Lockers & security', ['lockers', 'athletic', 'evidence-lockers', 'weapons']],
+  ['Lockers & security', ['lockers', 'smart-lockers', 'athletic', 'evidence-lockers', 'weapons']],
   ['Cabinets', ['flat-files', 'fireproof', 'museum-cabinet', 'wardrobe']],
   ['Museum & art', ['art-screens', 'wall-art', 'painting-bins', 'textile-rack', 'wall-etrack']],
   ['Workspace', ['casework', 'workstation', 'ss-table', 'mail-sorter']],

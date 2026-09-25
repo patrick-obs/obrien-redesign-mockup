@@ -117,21 +117,29 @@ function artMat(THREE, i) {
 // real public-domain paintings packed in one atlas: [u, v, w, h, aspect]; each call hands out the next one,
 // so a wall of screens shows different works before anything repeats
 const PAINT_R = [[0.0, 0.85243, 0.14286, 0.12847, 1.294], [0.15402, 0.83333, 0.12054, 0.16667, 0.844], [0.28571, 0.86111, 0.14286, 0.11198, 1.486], [0.42857, 0.86111, 0.14286, 0.11111, 1.5], [0.57143, 0.85243, 0.14286, 0.12934, 1.289], [0.71429, 0.86111, 0.14286, 0.11111, 1.5], [0.85714, 0.83333, 0.14211, 0.16667, 0.997], [0.0, 0.69618, 0.14286, 0.10764, 1.549], [0.14286, 0.68229, 0.14286, 0.13628, 1.227], [0.3006, 0.66667, 0.11235, 0.16667, 0.786], [0.43601, 0.66667, 0.12723, 0.16667, 0.892], [0.57143, 0.68837, 0.14286, 0.12413, 1.347], [0.71429, 0.69271, 0.14286, 0.11545, 1.447], [0.87277, 0.66667, 0.11161, 0.16667, 0.78], [0.0, 0.5217, 0.14286, 0.12326, 1.352], [0.14286, 0.5217, 0.14286, 0.12413, 1.341], [0.28571, 0.51736, 0.14286, 0.13194, 1.26], [0.43601, 0.5, 0.12798, 0.16667, 0.897], [0.57143, 0.50955, 0.14286, 0.14844, 1.122], [0.74851, 0.5, 0.07366, 0.16667, 0.515], [0.85714, 0.53385, 0.14286, 0.09983, 1.667], [0.0, 0.35764, 0.14286, 0.11892, 1.404], [0.1622, 0.33333, 0.10417, 0.16667, 0.732], [0.30878, 0.33333, 0.09598, 0.16667, 0.671], [0.45238, 0.33333, 0.09449, 0.16667, 0.66], [0.57143, 0.34809, 0.14286, 0.13802, 1.209], [0.73884, 0.33333, 0.09375, 0.16667, 0.655], [0.85714, 0.35243, 0.14286, 0.12847, 1.294], [0.01339, 0.16667, 0.11533, 0.16667, 0.805], [0.14286, 0.20052, 0.14286, 0.09983, 1.675], [0.28571, 0.19358, 0.14286, 0.11285, 1.473], [0.42857, 0.19358, 0.14286, 0.11372, 1.467], [0.58482, 0.16667, 0.11533, 0.16667, 0.805], [0.71429, 0.19531, 0.14286, 0.11024, 1.507], [0.87277, 0.16667, 0.11161, 0.16667, 0.782], [0.0, 0.02083, 0.14286, 0.12587, 1.32]];
-let PAINT_TEX = null, paintSeq = 0; const PAINT_M = [], PAINT_CLONES = [];
+let PAINT_TEX = null, PAINT_SHARED = null, paintSeq = 0; const PAINT_M = [], TILE_GEO = new Map();
 const paintReset = (n = 0) => { paintSeq = n; };
+// every painting is a tile of one shared material: its crop lives in the box's UVs, so a whole wall of art draws in one call
 function painting(THREE) {
   const i = paintSeq++ % PAINT_R.length, [u, v, w, h, a] = PAINT_R[i];
   if (!PAINT_M[i]) {
     if (PAINT_TEX === null) {
       try {
-        PAINT_TEX = new THREE.TextureLoader().load(new URL('./paintings.jpg', import.meta.url).href, () => { PAINT_CLONES.forEach(t => { t.image = PAINT_TEX.image; t.needsUpdate = true; }); if (typeof window !== 'undefined') window.dispatchEvent(new Event('v3d-tex')); });
-        PAINT_TEX.colorSpace = THREE.SRGBColorSpace; PAINT_TEX.userData.keep = true;
+        PAINT_TEX = new THREE.TextureLoader().load(new URL('./paintings.jpg', import.meta.url).href, () => { if (typeof window !== 'undefined') window.dispatchEvent(new Event('v3d-tex')); });
+        PAINT_TEX.colorSpace = THREE.SRGBColorSpace; PAINT_TEX.anisotropy = 4; PAINT_TEX.userData.keep = true;
+        PAINT_SHARED = new THREE.MeshStandardMaterial({ map: PAINT_TEX, roughness: 0.75 });
       } catch { PAINT_TEX = false; }
     }
-    if (!PAINT_TEX) PAINT_M[i] = artMat(THREE, i);
-    else { const t = PAINT_TEX.clone(); t.userData = { keep: true }; t.offset.set(u, v); t.repeat.set(w, h); t.anisotropy = 4; PAINT_CLONES.push(t); PAINT_M[i] = new THREE.MeshStandardMaterial({ map: t, roughness: 0.75 }); }
+    PAINT_M[i] = PAINT_TEX ? { isAtlasTile: true, rect: [u, v, w, h], shared: PAINT_SHARED } : artMat(THREE, i);
   }
   return { m: PAINT_M[i], a };
+}
+// a unit box whose every face shows one tile of the atlas
+function tileGeo(THREE, tile) {
+  const key = tile.rect.join(',');
+  let g = TILE_GEO.get(key);
+  if (!g) { g = new THREE.BoxGeometry(1, 1, 1); const uv = g.attributes.uv, [u, v, w, h] = tile.rect; for (let i = 0; i < uv.count; i++) uv.setXY(i, u + uv.getX(i) * w, v + uv.getY(i) * h); TILE_GEO.set(key, g); }
+  return g;
 }
 
 // rolled textiles: quilts, rugs, flags, kilims and runners as canvas patterns, shared by every textile rack
@@ -264,7 +272,7 @@ function kit(THREE) {
   const geo = new THREE.BoxGeometry(1, 1, 1);
   // box by its minimum corner (x, y, z) and size (w, h, d)
   const bx = (parent, w, h, d, m, x = 0, y = 0, z = 0) => {
-    const me = new THREE.Mesh(geo, m); me.scale.set(w, h, d); me.position.set(x + w / 2, y + h / 2, z + d / 2);
+    const me = m && m.isAtlasTile ? new THREE.Mesh(tileGeo(THREE, m), m.shared) : new THREE.Mesh(geo, m); me.scale.set(w, h, d); me.position.set(x + w / 2, y + h / 2, z + d / 2);
     parent && parent.add(me); return me;
   };
   const cyl = (parent, r, h, m, x, y, z, seg = 20, axis = 'y') => {
@@ -1534,12 +1542,17 @@ hdMobile('hd-mobile-pallet', 'Mobile Pallet Rack', 'Pallet rack on electric carr
 hdMobile('hd-mobile-mezz', 'Two-Level Mobile Storage', 'Electric mobile shelving under and on top of a structural mezzanine, with aisles on both levels', 'shelving', { twoLevel: true, electric: true });
 
 /* ---------------- 6. lockers ---------------- */
-def('lockers', 'Steel Lockers', '72" H lockers: one to four tiers, single or double door, base or legs, locks, plates, interiors', ({ THREE, tween, wake, bake }) => {
+def('lockers', 'Lockers', '72" H lockers in painted steel, wood laminate or solid phenolic: one to four tiers, locks, plates, interiors', ({ THREE, tween, wake, bake }) => {
   const k = kit(THREE), { M, bx, cyl, group } = k, root = new THREE.Group();
   const paint = k.std(0xb5babd, 0.45, 0.35), brass = k.std(0xc9a227, 0.3, 0.8), plateM = k.std(0xd7dbde, 0.3, 0.85);
   const lit = k.std(0x39d353, 0.3, 0, { emissive: 0x1f8a33, emissiveIntensity: 0.8 });
   const LOCKS = ['handle', 'padlock', 'combo', 'keypad'], LOCKNAME = { handle: 'Lock: lift handle', padlock: 'Lock: padlock hasp', combo: 'Lock: built-in combination', keypad: 'Lock: digital keypad' };
-  let tiers = 2, sloped = true, legs = false, double = false, lock = 'handle', numbers = false, interior = true, benchOn = true, bank, doors = [];
+  let tiers = 2, sloped = true, legs = false, double = false, lock = 'handle', numbers = false, interior = true, benchOn = true, bank, doors = [], mat = 0, wood = null;
+  const FINS = [k.FIN.lockers,
+    [{ name: 'Maple', swatch: '#d9b27c', color: 0xffffff }, { name: 'Cherry', swatch: '#a8603a', color: 0xc98a66 }, { name: 'Walnut', swatch: '#6b4428', color: 0x8a6a52 }, { name: 'Gray oak', swatch: '#9a948a', color: 0xb8b3ad }],
+    [{ name: 'Slate', swatch: '#4a6178', color: 0x4a6178 }, { name: 'Fog', swatch: '#c9cdcf', color: 0xc9cdcf }, { name: 'Team red', swatch: '#8c1d2c', color: 0x8c1d2c }, { name: 'Forest', swatch: '#2f5a3e', color: 0x2f5a3e }, { name: 'Charcoal', swatch: '#2c2f31', color: 0x2c2f31 }]];
+  // wood grain for laminate doors: long streaks with a few darker bands
+  const woodTex = () => { if (wood) return wood; const c = document.createElement('canvas'); c.width = 64; c.height = 256; const g = c.getContext('2d'); g.fillStyle = '#d9b27c'; g.fillRect(0, 0, 64, 256); const q = rng(8); for (let i = 0; i < 90; i++) { g.strokeStyle = 'rgba(120,78,40,' + (0.08 + q() * 0.2) + ')'; g.lineWidth = 0.5 + q() * 1.6; const x = q() * 64; g.beginPath(); g.moveTo(x, 0); g.bezierCurveTo(x + q() * 6 - 3, 90, x + q() * 6 - 3, 170, x + q() * 4 - 2, 256); g.stroke(); } wood = new THREE.CanvasTexture(c); wood.colorSpace = THREE.SRGBColorSpace; wood.wrapS = wood.wrapT = THREE.RepeatWrapping; wood.anisotropy = 8; return wood; };
   const numTex = {};
   const plate = (n) => {
     if (!numTex[n]) { const c = document.createElement('canvas'); c.width = 128; c.height = 64; const g = c.getContext('2d'); g.fillStyle = '#d7dbde'; g.fillRect(0, 0, 128, 64); g.fillStyle = '#1b1d1f'; g.font = 'bold 44px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(String(n), 64, 35); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; numTex[n] = new THREE.MeshStandardMaterial({ map: t, roughness: 0.35, metalness: 0.6 }); }
@@ -1584,8 +1597,8 @@ def('lockers', 'Steel Lockers', '72" H lockers: one to four tiers, single or dou
         const pivot = group(bank, px, y0 + 0.25, d), door = group(pivot, right ? -dw : 0, 0, 0);
         bx(door, dw, dh - 0.5, 0.35, paint, 0, 0, 0);
         const nv = tr >= 3 ? 4 : 6, top = dh - 3, vw = dw - 5, vx = right ? 3 : 2;
-        for (let v = 0; v < nv; v++) bx(door, vw, 0.3, 0.25, paint, vx, top - v * 0.9, 0.3);
-        if (tr <= 2) for (let v = 0; v < nv; v++) bx(door, vw, 0.3, 0.25, paint, vx, 3 + v * 0.9, 0.3);
+        // louvers are a steel-locker thing; laminate and phenolic doors are flat with a finger pull
+        if (mat === 0) { for (let v = 0; v < nv; v++) bx(door, vw, 0.3, 0.25, paint, vx, top - v * 0.9, 0.3); if (tr <= 2) for (let v = 0; v < nv; v++) bx(door, vw, 0.3, 0.25, paint, vx, 3 + v * 0.9, 0.3); }
         if (!double || right) hardware(door, dw, dh, right);
         const py = top - nv * 0.9 - 1.6, pcx = Math.min(dw / 2, dw - 4.6);
         if (!double || !right) {
@@ -1604,8 +1617,12 @@ def('lockers', 'Steel Lockers', '72" H lockers: one to four tiers, single or dou
   };
   make();
   return {
-    group: root, finishes: k.FIN.lockers, setFinish: k.finisher(paint),
+    group: root,
+    // painted steel, wood laminate (grain) or solid phenolic; each has its own finishes
+    get finishes() { return FINS[mat]; },
+    setFinish: f => { paint.color.setHex(f.color); wake(); },
     actions: [
+      { label: 'Material', options: ['Painted steel', 'Wood laminate', 'Solid phenolic'], get: () => mat, set: n => { mat = n; paint.map = n === 1 ? woodTex() : null; paint.metalness = n === 0 ? 0.35 : 0; paint.roughness = n === 0 ? 0.45 : n === 1 ? 0.6 : 0.4; paint.color.setHex(FINS[n][0].color); paint.needsUpdate = true; make(); } },
       { label: 'Open all doors', run: () => { const o = !doors.every(p => p.userData.open); doors.forEach((p, i) => { p.userData.open = o; setTimeout(() => tween(p.rotation, 'y', o ? (p.userData.right ? 1.9 : -1.9) : 0, 650, 'out'), i * 40); }); return o ? 'Close all doors' : 'Open all doors'; } },
       { label: 'Tiers', options: ['1', '2', '3', '4'], get: () => (double ? Math.min(tiers, 2) : tiers) - 1, set: n => { tiers = n + 1; make(); } },
       { label: 'Lock', options: ['Lift handle', 'Padlock', 'Combination', 'Keypad'], get: () => LOCKS.indexOf(lock), set: n => { lock = LOCKS[n]; make(); } },
@@ -3179,6 +3196,165 @@ def('wall-etrack', 'Wall E-Track Restraints', '16 ft wall with rows of E-track: 
   };
 });
 
+/* ---------------- 33. smart package lockers ---------------- */
+// a bank of mixed-size doors around a touchscreen kiosk: pick up a package (the kiosk scans, a door pops open) or load a delivery
+def('smart-lockers', 'Smart Package Lockers', 'Touchscreen kiosk with a bank of small, medium and large doors: residents, staff or students pick up with a code', ({ THREE, tween, wake }) => {
+  const k = kit(THREE), { M, bx, cyl, group, many } = k, root = new THREE.Group();
+  const shell = k.std(0x2c2f31, 0.45, 0.35), door = k.std(0xe9ebec, 0.35, 0.3), ledG = k.std(0x39d353, 0.3, 0, { emissive: 0x1f8a33, emissiveIntensity: 1 }), ledO = k.std(0x30363a, 0.4, 0.2);
+  const CW = 16, D = 20, BASE = 4, H = 72, COLS = 7, KIOSK = 3, r = rng(77);
+  const SIZES = [[6, 'S'], [12, 'M'], [18, 'L']];
+  // kiosk screen: a canvas that shows what is happening
+  const cv = document.createElement('canvas'); cv.width = 256; cv.height = 360; const g2 = cv.getContext('2d');
+  const scrTex = new THREE.CanvasTexture(cv); scrTex.colorSpace = THREE.SRGBColorSpace;
+  const screen = (title, line, accent = '#0f7377') => {
+    g2.fillStyle = '#0b1b1c'; g2.fillRect(0, 0, 256, 360); g2.fillStyle = accent; g2.fillRect(0, 0, 256, 54);
+    g2.fillStyle = '#ffffff'; g2.font = 'bold 26px system-ui, sans-serif'; g2.textAlign = 'center'; g2.fillText('Package Pickup', 128, 36);
+    g2.font = 'bold 30px system-ui, sans-serif'; g2.fillText(title, 128, 150); g2.font = '20px system-ui, sans-serif'; g2.fillStyle = '#cfe3e3';
+    String(line).split('\n').forEach((t, i) => g2.fillText(t, 128, 196 + i * 28));
+    g2.fillStyle = '#1f2d2e'; for (let q = 0; q < 3; q++) { g2.fillRect(28 + q * 72, 290, 56, 40); } g2.fillStyle = '#9fd3d5'; g2.font = 'bold 18px system-ui'; ['Pick up', 'Deliver', 'Help'].forEach((t, q) => g2.fillText(t, 56 + q * 72, 316));
+    scrTex.needsUpdate = true; wake();
+  };
+  screen('Welcome', 'Tap to scan your code\nor enter it on screen');
+  const make = () => {
+    const unit = group(root); unit.userData.dyn = true;
+    bx(unit, COLS * CW + 1, BASE, D - 2, M.dark, -0.5, 0, 1);
+    bx(unit, COLS * CW + 1, H + 1, 0.8, shell, -0.5, BASE, 0); bx(unit, COLS * CW + 1, 1.2, D, shell, -0.5, BASE + H, 0);
+    for (let c = 0; c <= COLS; c++) bx(unit, 0.8, H, D, shell, c * CW - 0.4, BASE, 0);
+    const doors = [], leds = [], boxes = [], slots = [];
+    for (let c = 0; c < COLS; c++) {
+      const x0 = c * CW + 0.4, w = CW - 0.8;
+      if (c === KIOSK) {
+        // the kiosk: a touchscreen, a scanner and a small shelf, with storage above and below
+        bx(unit, w, 30, 0.8, shell, x0, BASE + 24, D - 0.8);
+        const kiosk = group(unit); kiosk.userData.onClick = () => pickup();
+        const scr = new THREE.Mesh(new THREE.PlaneGeometry(w - 3, (w - 3) * 1.4), new THREE.MeshBasicMaterial({ map: scrTex, toneMapped: false })); scr.position.set(x0 + w / 2, BASE + 40, D + 0.02); kiosk.add(scr);
+        bx(unit, 5, 2, 1.2, M.black, x0 + w / 2 - 2.5, BASE + 27, D - 0.2); bx(unit, 3.5, 0.3, 0.1, ledG, x0 + w / 2 - 1.75, BASE + 28, D + 1.01);
+        bx(unit, w, 0.8, 6, shell, x0, BASE + 22, D);
+        for (const [y, h] of [[0, 22], [56, 16]]) slots.push({ c, x0, w, y: BASE + y, h });
+        continue;
+      }
+      let y = 0; while (y < H - 5) { const [h] = SIZES[Math.floor(r() * 3)]; const hh = Math.min(h, H - y); slots.push({ c, x0, w, y: BASE + y, h: hh }); y += hh; }
+    }
+    // shelves between the doors, door fronts (instanced), an LED on each, a package in most
+    for (const s2 of slots) {
+      bx(unit, s2.w, 0.3, D - 1, shell, s2.x0, s2.y, 0.5);
+      doors.push({ x: s2.x0 + 0.15, y: s2.y + 0.2, z: D - 0.6, w: s2.w - 0.3, h: s2.h - 0.4, d: 0.6, color: '#ffffff' });
+      leds.push({ x: s2.x0 + s2.w - 2.2, y: s2.y + s2.h - 1.6, z: D, w: 1, h: 0.5, d: 0.1, color: '#ffffff' });
+      s2.full = r() > 0.35;
+      const bw = Math.min(s2.w - 2, 6 + r() * 7), bh = Math.min(s2.h - 1.2, 3 + r() * (s2.h - 3)), bd = 8 + r() * 8;
+      s2.box = { x: s2.x0 + (s2.w - bw) / 2, y: s2.y + 0.3, z: D - 2 - bd, w: bw, h: s2.full ? bh : 0, d: bd, color: KRAFT[Math.floor(r() * 3)] };
+      boxes.push(s2.box);
+    }
+    const boxIm = many(unit, boxes, M.kraft), ledIm = many(unit, leds, ledO);
+    const openNow = new Set();
+    const doorIm = k.pullMany(unit, doors, door, {
+      also: [ledIm], ms: 700,
+      spawn: (b, i) => { const s2 = slots[i], pv = group(null, s2.x0 + 0.15, 0, D - 0.6); bx(pv, b.w, b.h, 0.6, door, 0, b.y, 0); bx(pv, 1, b.h * 0.5, 0.7, M.chrome, b.w - 1.8, b.y + b.h * 0.25, 0.1); bx(pv, 1, 0.5, 0.1, openNow.has(i) ? ledG : ledG, b.w - 2.35, b.y + b.h - 1.4, 0.62); pv.traverse(o => { if (o.isMesh) o.castShadow = o.receiveShadow = true; }); return pv; },
+      show: (pv) => tween(pv.rotation, 'y', -1.7, 600, 'out'),
+      hide: (pv) => tween(pv.rotation, 'y', 0, 500),
+    });
+    return { unit, slots, doorIm, boxIm, boxes };
+  };
+  let bank = make(), busy = false;
+  const setBox = (i, show) => { const b = bank.boxes[i], o = new THREE.Object3D(); o.position.set(b.x + b.w / 2, b.y + (show ? (b.h0 || b.h) : 0) / 2, b.z + b.d / 2); o.scale.set(b.w, show ? (b.h0 || b.h) || 0.001 : 0.0001, b.d); o.updateMatrix(); bank.boxIm.setMatrixAt(i, o.matrix); bank.boxIm.instanceMatrix.needsUpdate = true; };
+  const openDoor = (i) => bank.doorIm.userData.onClick({ instanceId: i });
+  const pickup = async () => {
+    if (busy) return; busy = true;
+    const full = bank.slots.map((s2, i) => [s2, i]).filter(([s2]) => s2.full);
+    if (!full.length) { screen('All picked up', 'No packages waiting'); busy = false; return; }
+    const [s2, i] = full[Math.floor(Math.random() * full.length)];
+    screen('Scanning...', 'Hold your code\nunder the scanner', '#e0a300'); await new Promise(res => setTimeout(res, 900));
+    screen('Door ' + (i + 1) + ' is open', 'Take your package\nand close the door', '#1b7a3a'); openDoor(i);
+    await new Promise(res => setTimeout(res, 1400)); s2.box.h0 = s2.box.h0 || s2.box.h; s2.full = false; setBox(i, false);
+    setTimeout(() => { openDoor(i); screen('Welcome', 'Tap to scan your code\nor enter it on screen'); busy = false; }, 1600);
+  };
+  const deliver = async () => {
+    if (busy) return; busy = true;
+    const empty = bank.slots.map((s2, i) => [s2, i]).filter(([s2]) => !s2.full && s2.box.w > 0);
+    if (!empty.length) { screen('Bank is full', 'Try the next bank'); busy = false; return; }
+    const [s2, i] = empty[Math.floor(Math.random() * empty.length)];
+    screen('Deliver', 'Door ' + (i + 1) + ' fits this size', '#2d7fe0'); openDoor(i);
+    await new Promise(res => setTimeout(res, 800)); s2.box.h0 = s2.box.h0 || Math.max(3, s2.h - 4); s2.full = true; setBox(i, true);
+    setTimeout(() => { openDoor(i); screen('Delivered', 'Resident notified\nby text and email', '#1b7a3a'); setTimeout(() => { screen('Welcome', 'Tap to scan your code\nor enter it on screen'); busy = false; }, 1500); }, 1200);
+  };
+  return {
+    group: root, view: [0.35, 0.3, 1.4], prompt: 'Tap the kiosk screen to pick up a package, or tap any door',
+    finishes: [{ name: 'Charcoal and white', swatch: 'linear-gradient(90deg,#2c2f31 50%,#e9ebec 50%)', a: 0x2c2f31, b: 0xe9ebec }, { name: 'All charcoal', swatch: '#2c2f31', a: 0x2c2f31, b: 0x3a3f44 }, { name: 'White and teal', swatch: 'linear-gradient(90deg,#f1f2f0 50%,#0f7377 50%)', a: 0xf1f2f0, b: 0x0f7377 }, { name: 'Silver', swatch: '#c9ced2', a: 0x9aa1a6, b: 0xc9ced2 }],
+    setFinish: f => { shell.color.setHex(f.a); door.color.setHex(f.b); },
+    actions: [
+      { label: 'Pick up a package', run: () => { pickup(); } },
+      { label: 'Load a delivery', run: () => { deliver(); } },
+    ],
+  };
+});
+
+/* ---------------- 34. vertical carousel ---------------- */
+// carriers of bins ride a vertical loop inside a tall cabinet and stay level; call one and it rides to the counter-height window
+def('vertical-carousel', 'Vertical Carousel', 'About 9 ft W x 5 ft D x 12 ft H: carriers ride a vertical loop to a counter-height window, the item comes to you', ({ THREE, tween, wake }) => {
+  const k = kit(THREE), { M, bx, cyl, group, many } = k, root = new THREE.Group();
+  const shell = k.std(0xf2f3f1, 0.45, 0.2), trim = k.std(0x0f7377, 0.45, 0.3), carrierM = k.std(0x9aa1a6, 0.4, 0.6), binCols = ['#2f6fb3', '#c4382c', '#e8b923', '#2f8a4f'];
+  const W = 104, D = 60, H = 144, N = 14, WIN = 38, R = 16, CW = W - 14, CD = 20;
+  // the loop: two straight runs joined by half circles, front run at z = D/2 + R, back run at z = D/2 - R
+  const straight = H - 2 * R - 24, per = 2 * straight + 2 * Math.PI * R, zc = D / 2, yLow = 12 + R;
+  const at = (t) => { let d = ((t % 1) + 1) % 1 * per;
+    if (d < straight) return [yLow + d, zc + R];
+    d -= straight; if (d < Math.PI * R) { const a = d / R; return [yLow + straight + Math.sin(a) * R, zc + Math.cos(a) * R]; }
+    d -= Math.PI * R; if (d < straight) return [yLow + straight - d, zc - R];
+    d -= straight; const a = d / R; return [yLow - Math.sin(a) * R, zc - Math.cos(a) * R]; };
+  // cabinet: back and sides, top, a front with the work window and a keypad
+  bx(root, W, 4, D, M.dark, 0, 0, 0);
+  bx(root, W, H, 1, shell, 0, 4, 0); bx(root, 1, H, D, shell, 0, 4, 0);
+  const side = bx(root, 1, H, D, shell, W - 1, 4, 0); side.userData.dyn = true;
+  bx(root, W, 2, D, shell, 0, H + 4, 0);
+  const winY = 4 + WIN, winH = 22;
+  const front = group(root); front.userData.dyn = true;
+  bx(front, W, winY, 1, shell, 0, 4, D - 1); bx(front, W, H - winY - winH + 4, 1, shell, 0, winY + winH, D - 1); bx(front, 6, winH, 1, shell, 0, winY, D - 1); bx(front, 6, winH, 1, shell, W - 6, winY, D - 1);
+  bx(front, W - 12, 1.2, 10, trim, 6, winY - 1.2, D - 1); bx(front, W, 2, 1.1, trim, 0, winY + winH, D - 1.05);
+  // keypad and a small screen beside the window
+  const pad = group(root, W - 5.5, winY + 4, D); bx(pad, 5, 14, 0.8, M.dark, 0, 0, 0);
+  const cv = document.createElement('canvas'); cv.width = 128; cv.height = 64; const g2 = cv.getContext('2d'), tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+  const show = (t) => { g2.fillStyle = '#062a2c'; g2.fillRect(0, 0, 128, 64); g2.fillStyle = '#8ef0c8'; g2.font = 'bold 26px monospace'; g2.textAlign = 'center'; g2.fillText(t, 64, 42); tex.needsUpdate = true; wake(); };
+  const scr = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 2.1), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false })); scr.position.set(2.5, 11.5, 0.82); pad.add(scr);
+  for (let q = 0; q < 9; q++) bx(pad, 1, 0.8, 0.3, M.chrome, 0.6 + (q % 3) * 1.35, 2 + Math.floor(q / 3) * 1.4, 0.8);
+  // the carriers: a steel tray hung from its pivot, with bins of parts; each stays level as it rides the loop
+  const carriers = [], r = rng(5);
+  for (let i = 0; i < N; i++) {
+    const c = group(root); c.userData.dyn = true;
+    bx(c, CW, 0.5, CD, carrierM, -CW / 2, -9, -CD / 2); bx(c, CW, 3, 0.4, carrierM, -CW / 2, -9, CD / 2 - 0.4); bx(c, CW, 6, 0.4, carrierM, -CW / 2, -9, -CD / 2);
+    for (const sx of [-CW / 2, CW / 2 - 0.5]) bx(c, 0.5, 9, CD, carrierM, sx, -9, -CD / 2);
+    const bins = []; let x = -CW / 2 + 1; const col = binCols[i % 4];
+    while (x < CW / 2 - 7) { const w = [6, 8, 12][Math.floor(r() * 3)]; if (x + w > CW / 2 - 1) break; bins.push({ x, y: -8.5, z: -CD / 2 + 1, w: w - 0.4, h: 5, d: CD - 2, color: col }); x += w; }
+    many(c, bins, k.std(0xffffff, 0.45, 0.05));
+    const tag = bx(c, 3, 1.4, 0.05, M.label, -1.5, -7, CD / 2 + 0.02);
+    c.userData.i = i; c.userData.onClick = () => call(i);
+    carriers.push(c);
+  }
+  // guide tracks at both ends of the carriers
+  for (const x of [5, W - 5]) { const pts = []; for (let q = 0; q <= 64; q++) { const [y, z] = at(q / 64); pts.push(new THREE.Vector3(x, y, z)); } const tube = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, true), 128, 0.8, 8, true), k.std(0x3a3f44, 0.4, 0.6)); root.add(tube); }
+  const state = { phase: 0 }; let target = 0, busy = false;
+  const place = () => carriers.forEach((c, i) => { const [y, z] = at(state.phase + i / N); c.position.set(W / 2, 4 + y, z); });
+  place();
+  // bring carrier i to the window: the window sits on the front run at counter height
+  const winT = (winY + 12 - 4 - yLow) / per;
+  const call = async (i) => {
+    if (busy) return; busy = true; show('CALL ' + String(i + 1).padStart(2, '0'));
+    let to = winT - i / N; while (to < state.phase) to += 1; if (to - state.phase > 0.5) to -= 1; // shortest way round
+    await tween(state, 'phase', to, 900 + Math.abs(to - state.phase) * 5200);
+    show('READY ' + String(i + 1).padStart(2, '0')); busy = false; target = i;
+  };
+  show('READY 01'); state.phase = winT; place();
+  let open = true;
+  return {
+    group: root, view: [0.8, 0.45, 1.3], tick: place, prompt: 'Tap any carrier to bring it to the window',
+    finishes: [{ name: 'White and teal', swatch: 'linear-gradient(90deg,#f2f3f1 50%,#0f7377 50%)', a: 0xf2f3f1, b: 0x0f7377 }, { name: 'Light gray and blue', swatch: 'linear-gradient(90deg,#c9cdcf 50%,#2d7fe0 50%)', a: 0xc9cdcf, b: 0x2d7fe0 }, { name: 'Gray and black', swatch: 'linear-gradient(90deg,#8f969a 50%,#2c2f31 50%)', a: 0x8f969a, b: 0x2c2f31 }],
+    setFinish: f => { shell.color.setHex(f.a); trim.color.setHex(f.b); },
+    actions: [
+      { label: 'Call the next carrier', run: () => { call((target + 1) % N); } },
+      { label: 'Cutaway view', toggle: true, get: () => !open, set: v => { open = !v; side.visible = open; front.visible = true; wake(); } },
+    ],
+  };
+});
+
 /* ---------------- 29. bike storage ---------------- */
 // a simple bike: wheels, frame tubes, bars and seat
 function bikeMesh(THREE, k, color) {
@@ -3258,5 +3434,5 @@ def('bike-storage', 'Bike Room Storage', 'Apartment and campus bike rooms: two-t
   };
 });
 
-const SHORT = { 'four-post': '4-post', 'bin-shelving': 'Bin shelving', 'wire-shelving': 'Wire', library: 'Library', 'hd-mobile': 'Mobile', lockers: 'Lockers', 'evidence-lockers': 'Evidence', 'flat-files': 'Flat files', rotary: 'Rotary', 'museum-cabinet': 'Museum cabinet', 'art-screens': 'Art screens', 'pallet-rack': 'Pallet rack', mezzanine: 'Mezzanine', vlm: 'VLM', casework: 'Casework', 'wire-cage': 'Wire cage', athletic: 'Athletic', 'mail-sorter': 'Mail sorter', weapons: 'Weapons', 'tire-rack': 'Tire rack', 'wire-track': 'Wire on track', 'ss-table': 'Stainless tables', install: 'Install steps', 'hd-mobile-open': 'Mobile shelving', 'hd-mobile-tire': 'Mobile tires', 'hd-mobile-grow': 'Mobile grow racks', 'hd-mobile-flat': 'Mobile flat files', 'hd-mobile-museum': 'Mobile cabinets', 'hd-mobile-library': 'Mobile library', 'hd-mobile-textile': 'Mobile textiles', 'hd-mobile-art': 'Mobile art screens', 'hd-mobile-mezz': 'Two-level mobile', 'pallet-museum': 'Object rack, stationary', 'hd-mobile-artrack': 'Object rack, mobile', 'hd-mobile-wardrobe': 'Mobile wardrobes', 'hd-mobile-gear': 'Mobile athletic', 'hd-mobile-golf': 'Mobile golf', 'hd-mobile-instruments': 'Mobile instruments', 'hd-mobile-bins': 'Mobile painting bins', 'bike-storage': 'Bike rooms', 'painting-bins': 'Painting bins', 'four-post-solander': 'Solander boxes', workstation: 'Workstation', fireproof: 'Fireproof', 'wall-art': 'Stationary screens', 'textile-rack': 'Textile racks', 'hd-mobile-weapons': 'Mobile weapons', 'hd-mobile-pallet': 'Mobile pallet rack', wardrobe: 'Wardrobes', 'wall-etrack': 'Wall E-track' };
+const SHORT = { 'four-post': '4-post', 'bin-shelving': 'Bin shelving', 'wire-shelving': 'Wire', library: 'Library', 'hd-mobile': 'Mobile', lockers: 'Lockers', 'evidence-lockers': 'Evidence', 'flat-files': 'Flat files', rotary: 'Rotary', 'museum-cabinet': 'Museum cabinet', 'art-screens': 'Art screens', 'pallet-rack': 'Pallet rack', mezzanine: 'Mezzanine', vlm: 'VLM', casework: 'Casework', 'wire-cage': 'Wire cage', athletic: 'Athletic', 'mail-sorter': 'Mail sorter', weapons: 'Weapons', 'tire-rack': 'Tire rack', 'wire-track': 'Wire on track', 'ss-table': 'Stainless tables', install: 'Install steps', 'hd-mobile-open': 'Mobile shelving', 'hd-mobile-tire': 'Mobile tires', 'hd-mobile-grow': 'Mobile grow racks', 'hd-mobile-flat': 'Mobile flat files', 'hd-mobile-museum': 'Mobile cabinets', 'hd-mobile-library': 'Mobile library', 'hd-mobile-textile': 'Mobile textiles', 'hd-mobile-art': 'Mobile art screens', 'hd-mobile-mezz': 'Two-level mobile', 'pallet-museum': 'Object rack, stationary', 'hd-mobile-artrack': 'Object rack, mobile', 'hd-mobile-wardrobe': 'Mobile wardrobes', 'hd-mobile-gear': 'Mobile athletic', 'hd-mobile-golf': 'Mobile golf', 'hd-mobile-instruments': 'Mobile instruments', 'hd-mobile-bins': 'Mobile painting bins', 'bike-storage': 'Bike rooms', 'painting-bins': 'Painting bins', 'four-post-solander': 'Solander boxes', workstation: 'Workstation', fireproof: 'Fireproof', 'wall-art': 'Stationary screens', 'textile-rack': 'Textile racks', 'hd-mobile-weapons': 'Mobile weapons', 'hd-mobile-pallet': 'Mobile pallet rack', wardrobe: 'Wardrobes', 'wall-etrack': 'Wall E-track', 'smart-lockers': 'Smart lockers', 'vertical-carousel': 'Carousel' };
 for (const [id, s] of Object.entries(SHORT)) if (MODELS[id]) MODELS[id].short = s;
