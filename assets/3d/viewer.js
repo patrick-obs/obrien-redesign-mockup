@@ -182,6 +182,9 @@ function viewer(el) {
   const applyLook = () => { const t = camera.position.clone().add(lookDir().multiplyScalar(8)); controls.target.copy(t); camera.lookAt(t); };
   // glide the camera to a point and look at another
   // at eye level you stand in the carriages' shade: lift the fill, soften the shadows, and fit the shadow map around you
+  // the tour floor is built per model and freed on the way out (no GPU memory left behind)
+  const dropFloor = () => { if (!walkFloor) return; scene.remove(walkFloor); walkFloor.traverse(o => o.geometry?.dispose()); walkFloor = null; };
+  let floorMat = null;
   let shadowAt = null;
   const walkLight = (on) => {
     hemi.intensity = on ? HEMI * 1.6 : HEMI; fill.intensity = on ? 0.55 : 0; sun.shadow.intensity = on ? 0.55 : 1; renderer.toneMappingExposure = on ? 1.18 : 1.05;
@@ -205,7 +208,7 @@ function viewer(el) {
     el.querySelector('.v3d-main').classList.add('v3d-walk');
   };
   const overview = (ms = 700) => {
-    if (!home) return; walking = false; flying = false; walkB = null; walkLight(false); floorDisc.visible = true; keys.clear(); if (rings) { scene.remove(rings); rings = null; } if (walkFloor) { scene.remove(walkFloor); walkFloor = null; }
+    if (!home) return; walking = false; flying = false; walkB = null; walkLight(false); floorDisc.visible = true; keys.clear(); if (rings) { scene.remove(rings); rings = null; } dropFloor();
     controls.enabled = true; if (walkNear) { camera.near = walkNear; walkNear = 0; camera.updateProjectionMatrix(); } controls.minDistance = home.r * 0.6; controls.maxDistance = home.r * 4; tween(camera, 'fov', 32, ms);
     walkbar.hidden = true; peg.hidden = !current;
     ['x', 'y', 'z'].forEach(a => { tween(camera.position, a, home.pos[a], ms, 'out'); tween(controls.target, a, home.target[a], ms, 'out'); });
@@ -237,7 +240,7 @@ function viewer(el) {
     tourBar.replaceChildren(...stops.map((q, n) => { const b2 = document.createElement('button'); b2.type = 'button'; b2.textContent = q.label; b2.addEventListener('click', () => goStop(n)); return b2; }));
     // a real floor to stand on, with a faint grid
     const fw = box.max.x - box.min.x + 400, fd = box.max.z - box.min.z + 400;
-    const fl = new THREE.Mesh(new THREE.PlaneGeometry(fw, fd), new THREE.MeshLambertMaterial({ color: 0xd3d7d6 })); fl.rotation.x = -Math.PI / 2;
+    const fl = new THREE.Mesh(new THREE.PlaneGeometry(fw, fd), floorMat || (floorMat = new THREE.MeshLambertMaterial({ color: 0xd3d7d6 }))); fl.rotation.x = -Math.PI / 2;
     const grid = new THREE.GridHelper(Math.max(fw, fd), Math.round(Math.max(fw, fd) / 24), 0xbfc5c4, 0xc7cccb); grid.position.y = 0.02;
     floorDisc.visible = false; walkFloor = new THREE.Group(); walkFloor.add(fl, grid); walkFloor.position.set((box.min.x + box.max.x) / 2, floor - 0.08, (box.min.z + box.max.z) / 2); scene.add(walkFloor);
     goStop(0);
@@ -316,7 +319,7 @@ function viewer(el) {
     el.querySelector('.v3d-title b').textContent = MODELS[id].name; el.querySelector('.v3d-title span').textContent = MODELS[id].dims || '';
     el.querySelectorAll('[data-id]').forEach(x => x.setAttribute('aria-selected', String(x.dataset.id === id)));
     el.querySelector('.v3d-load').hidden = false;
-    loadT = setTimeout(() => load(id), current ? 160 : 0);
+    loadT = setTimeout(() => load(id), current ? 100 : 0);
   };
   // geometry and one-off textures go; materials stay, so their compiled shaders are reused by the next model (no recompile hitch)
   let finPick = 0, finKey = '';
@@ -401,7 +404,7 @@ function viewer(el) {
       node._act = a; node.classList.add('v3d-ctl');
       (a.options || a.toggle ? setGrid : btnRow).appendChild(node);
     });
-    peg.hidden = false; walkbar.hidden = true; if (rings) { scene.remove(rings); rings = null; } if (walkFloor) { scene.remove(walkFloor); walkFloor = null; } walkB = null;
+    peg.hidden = false; walkbar.hidden = true; if (rings) { scene.remove(rings); rings = null; } dropFloor(); walkB = null;
     const pr = el.querySelector('.v3d-presets'), pl = el.dataset.lite === '1' ? [] : current.presets || [];
     pr.hidden = !pl.length; pr.replaceChildren(...(pl.length ? [Object.assign(document.createElement('span'), { textContent: 'Start from' })] : []), ...pl.map(p => { const b = document.createElement('button'); b.type = 'button'; b.textContent = p.label; b.addEventListener('click', () => { exitWalk(); pr.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); p.run(); after(); }); return b; }));
     syncActs(); showActs(); setPanel(panelOpen && !el.querySelector('.v3d-cust').hidden);
