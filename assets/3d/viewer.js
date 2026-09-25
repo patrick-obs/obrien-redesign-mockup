@@ -354,7 +354,8 @@ function viewer(el) {
     if (walking) overview(1);
     // a model whose shaders are still compiling is released only after the compile settles (never mid-compile)
     if (current) { if (current._compiling) current._stale = true; else park(current); current = null; clickables = []; }
-    await new Promise(r => requestAnimationFrame(r)); if (tok !== loadTok) return;
+    // yield with a plain task, not a frame: frames stop while the GPU is busy or the tab is hidden, and a load must never wait on one
+    await new Promise(r => setTimeout(r, 0)); if (tok !== loadTok) return;
     const def = MODELS[id], T0 = performance.now(), hit = cache.get(id); if (hit) cache.delete(id);
     current = hit || def.build({ THREE, tween, wait, wake: modelWake, bake: g => bake(THREE, g), panel, toast, lite: el.dataset.lite === '1', fly: (p, t) => { const m = current.group.matrixWorld; fly(new THREE.Vector3(...p).applyMatrix4(m), new THREE.Vector3(...t).applyMatrix4(m)); }, overview: () => overview(), isWalking: () => walking, playerPos: () => (walking ? toLocal() : null), refresh: () => { syncActs(); showActs(); }, refit: () => { if (current) { if (walking) overview(1); fit(current.group, current.view); wake(); } } });
     current._id = id; scan();
@@ -364,7 +365,8 @@ function viewer(el) {
     const sph = new THREE.Sphere();
     if (!hit) current.group.traverse(o => { if (!o.isMesh || o.userData.noShadow) return; if (o.isInstancedMesh) { o.castShadow = false; return; } if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere(); sph.copy(o.geometry.boundingSphere); o.castShadow = sph.radius * Math.max(o.scale.x, o.scale.y, o.scale.z) > 5; });
     const built = current; built._compiling = true;
-    try { await renderer.compileAsync(built.group, camera, scene); } catch (err) { /* older browsers compile on first draw */ }
+    // the model waits for its shaders at most 2.5 s; after that it shows anyway and the driver finishes on first draw
+    try { await Promise.race([renderer.compileAsync(built.group, camera, scene), new Promise(r => setTimeout(r, 2500))]); } catch (err) { /* older browsers compile on first draw */ }
     built._compiling = false;
     // a load that was overtaken keeps its model in the cache (it is built now); the one on screen swaps out the same way
     if (built._stale || tok !== loadTok || current !== built) { park(built); return; }
