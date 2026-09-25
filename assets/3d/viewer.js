@@ -121,6 +121,8 @@ function viewer(el) {
   scene.add(sun, sun.target, hemi, fill, fill.target);
   const ground = new THREE.Mesh(new THREE.CircleGeometry(1, 64), new THREE.ShadowMaterial({ opacity: 0.16 }));
   ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+  // a soft floor that fades out under the model, so it sits on something instead of floating (one draw call)
+  const floorDisc = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'), gr = g.createRadialGradient(64, 64, 8, 64, 64, 64); gr.addColorStop(0, 'rgba(206,214,214,0.95)'); gr.addColorStop(0.55, 'rgba(214,221,221,0.55)'); gr.addColorStop(1, 'rgba(222,228,228,0)'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; const m = new THREE.Mesh(new THREE.CircleGeometry(1, 48), new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, toneMapped: false })); m.rotation.x = -Math.PI / 2; m.renderOrder = -1; scene.add(m); return m; })();
 
   const camera = new THREE.PerspectiveCamera(32, 1, 1, 20000);
   const controls = new OrbitControls(camera, canvas);
@@ -201,7 +203,7 @@ function viewer(el) {
     el.querySelector('.v3d-main').classList.add('v3d-walk');
   };
   const overview = (ms = 700) => {
-    if (!home) return; walking = false; flying = false; walkB = null; walkLight(false); keys.clear(); if (rings) { scene.remove(rings); rings = null; } if (walkFloor) { scene.remove(walkFloor); walkFloor = null; }
+    if (!home) return; walking = false; flying = false; walkB = null; walkLight(false); floorDisc.visible = true; keys.clear(); if (rings) { scene.remove(rings); rings = null; } if (walkFloor) { scene.remove(walkFloor); walkFloor = null; }
     controls.enabled = true; if (walkNear) { camera.near = walkNear; walkNear = 0; camera.updateProjectionMatrix(); } controls.minDistance = home.r * 0.6; controls.maxDistance = home.r * 4; tween(camera, 'fov', 32, ms);
     walkbar.hidden = true; peg.hidden = !current;
     ['x', 'y', 'z'].forEach(a => { tween(camera.position, a, home.pos[a], ms, 'out'); tween(controls.target, a, home.target[a], ms, 'out'); });
@@ -235,7 +237,7 @@ function viewer(el) {
     const fw = box.max.x - box.min.x + 400, fd = box.max.z - box.min.z + 400;
     const fl = new THREE.Mesh(new THREE.PlaneGeometry(fw, fd), new THREE.MeshLambertMaterial({ color: 0xd3d7d6 })); fl.rotation.x = -Math.PI / 2;
     const grid = new THREE.GridHelper(Math.max(fw, fd), Math.round(Math.max(fw, fd) / 24), 0xbfc5c4, 0xc7cccb); grid.position.y = 0.02;
-    walkFloor = new THREE.Group(); walkFloor.add(fl, grid); walkFloor.position.set((box.min.x + box.max.x) / 2, floor - 0.08, (box.min.z + box.max.z) / 2); scene.add(walkFloor);
+    floorDisc.visible = false; walkFloor = new THREE.Group(); walkFloor.add(fl, grid); walkFloor.position.set((box.min.x + box.max.x) / 2, floor - 0.08, (box.min.z + box.max.z) / 2); scene.add(walkFloor);
     goStop(0);
     peg.hidden = true; walkbar.hidden = false; walkbar.classList.remove('quiet'); clearTimeout(walkbar._t); walkbar._t = setTimeout(() => walkbar.classList.add('quiet'), 4500);
     el.querySelector('.v3d-prompt')?.classList.add('gone'); el.focus({ preventScroll: true }); modelWake();
@@ -294,6 +296,7 @@ function viewer(el) {
     camera.position.copy(home.pos); controls.target.copy(home.target);
     controls.minDistance = r * 0.6; controls.maxDistance = r * 4; home.r = r; walking = false; flying = false; controls.enabled = true;
     ground.scale.setScalar(r * 3); ground.position.set(c.x, box.min.y + 0.05, c.z);
+    floorDisc.scale.setScalar(r * 1.35); floorDisc.position.set(c.x, box.min.y + 0.02, c.z); floorDisc.visible = true;
     sun.position.set(c.x + r * 1.2, c.y + r * 2.4, c.z + r * 1.6); sun.target.position.copy(c);
     fit.sun = () => { sun.position.set(c.x + r * 1.2, c.y + r * 2.4, c.z + r * 1.6); sun.target.position.copy(c); const s = sun.shadow.camera; s.left = s.bottom = -r * 1.6; s.right = s.top = r * 1.6; s.near = r * 0.2; s.far = r * 6; s.updateProjectionMatrix(); };
     fit.sun();

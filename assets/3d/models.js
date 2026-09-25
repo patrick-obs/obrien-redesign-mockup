@@ -16,10 +16,10 @@ function rng(seed) { return () => { seed |= 0; seed = (seed + 0x6d2b79f5) | 0; l
 // football helmet: shell with a raised back, ear hole, a gray face mask and a center stripe; faces +z
 function footballHelmet(THREE, shellM, x, y, z, rotY = 0, s = 1) {
   const g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = rotY; g.scale.setScalar(s);
-  const shell = new THREE.Mesh(GEO(THREE, 'SphereGeometry', 5, 22, 16, 0, Math.PI * 2, 0, Math.PI * 0.6), shellM); shell.scale.set(0.92, 1, 1.12); shell.position.y = 1.2; g.add(shell);
-  const cheek = new THREE.Mesh(GEO(THREE, 'SphereGeometry', 4.2, 16, 10, 0, Math.PI * 2, Math.PI * 0.5, Math.PI * 0.25), shellM); cheek.scale.set(1, 0.9, 1.1); cheek.position.y = 1.4; g.add(cheek);
+  const shell = new THREE.Mesh(GEO(THREE, 'SphereGeometry', 5, 14, 9, 0, Math.PI * 2, 0, Math.PI * 0.6), shellM); shell.scale.set(0.92, 1, 1.12); shell.position.y = 1.2; g.add(shell);
+  const cheek = new THREE.Mesh(GEO(THREE, 'SphereGeometry', 4.2, 12, 4, 0, Math.PI * 2, Math.PI * 0.5, Math.PI * 0.25), shellM); cheek.scale.set(1, 0.9, 1.1); cheek.position.y = 1.4; g.add(cheek);
   const mask = FB_MASK || (FB_MASK = new THREE.MeshStandardMaterial({ color: 0x9aa1a6, roughness: 0.35, metalness: 0.6 })), white = FB_WHITE || (FB_WHITE = new THREE.MeshStandardMaterial({ color: 0xf4f4f0, roughness: 0.5 })), dark = FB_DARK || (FB_DARK = new THREE.MeshStandardMaterial({ color: 0x151617, roughness: 0.8 }));
-  for (const [yy, rr] of [[-0.6, 4.6], [1.2, 4.9], [-2.4, 4.1]]) { const bar = new THREE.Mesh(GEO(THREE, 'TorusGeometry', rr, 0.28, 6, 18, Math.PI * 0.9), mask); bar.rotation.set(Math.PI / 2, 0, Math.PI * 0.05); bar.position.set(0, yy, 1.4); g.add(bar); }
+  for (const [yy, rr] of [[-0.6, 4.6], [1.2, 4.9], [-2.4, 4.1]]) { const bar = new THREE.Mesh(GEO(THREE, 'TorusGeometry', rr, 0.28, 4, 12, Math.PI * 0.9), mask); bar.rotation.set(Math.PI / 2, 0, Math.PI * 0.05); bar.position.set(0, yy, 1.4); g.add(bar); }
   const post = new THREE.Mesh(GEO(THREE, 'CylinderGeometry', 0.25, 0.25, 4.4, 6), mask); post.position.set(0, -0.6, 6.1); g.add(post);
   const stripe = new THREE.Mesh(GEO(THREE, 'SphereGeometry', 5.05, 8, 12, -0.12, 0.24, 0.05, Math.PI * 0.52), white); stripe.scale.set(0.92, 1, 1.12); stripe.position.y = 1.2; stripe.rotation.y = Math.PI / 2; g.add(stripe);
   for (const sx of [-1, 1]) { const ear = new THREE.Mesh(GEO(THREE, 'CylinderGeometry', 0.9, 0.9, 0.3, 12), dark); ear.rotation.z = Math.PI / 2; ear.position.set(sx * 4.6, 0.6, 0.6); g.add(ear); }
@@ -67,7 +67,7 @@ function shoulderPads(THREE, parent, x, y, z, rotY = 0) {
 }
 // a football with laces, long axis along x
 function football(THREE, parent, x, y, z, rot = 0) {
-  const G = gearKit(THREE), b = new THREE.Mesh(GEO(THREE, 'SphereGeometry', 3.4, 20, 14), G.football); b.scale.set(1.6, 1, 1); b.position.set(x, y, z); b.rotation.y = rot; parent.add(b);
+  const G = gearKit(THREE), b = new THREE.Mesh(GEO(THREE, 'SphereGeometry', 3.4, 12, 9), G.football); b.scale.set(1.6, 1, 1); b.position.set(x, y, z); b.rotation.y = rot; parent.add(b);
   const l = new THREE.Mesh(GEO(THREE, 'BoxGeometry', 2.6, 0.2, 0.5), G.lace); l.position.set(0, 3.35, 0); b.add(l);
   return b;
 }
@@ -75,7 +75,7 @@ function football(THREE, parent, x, y, z, rot = 0) {
 function golfBag(THREE, parent, x, y, z, i, h = 34, lean = 0) {
   const G = gearKit(THREE), g = new THREE.Group(); g.position.set(x, y, z); g.rotation.x = lean; parent.add(g);
   const m = G.bag[i % G.bag.length], trim = G.trim[(i + 1) % 3];
-  const cyl = (r1, r2, hh, mm, py, seg = 20) => { const me = new THREE.Mesh(GEO(THREE, 'CylinderGeometry', r1, r2, hh, seg), mm); me.position.y = py; g.add(me); return me; };
+  const cyl = (r1, r2, hh, mm, py, seg = 14) => { const me = new THREE.Mesh(GEO(THREE, 'CylinderGeometry', r1, r2, hh, seg), mm); me.position.y = py; g.add(me); return me; };
   cyl(4.3, 4.3, 2.2, G.trim[0], 1.1); cyl(4.2, 4.4, h - 5.5, m, 2.2 + (h - 5.5) / 2); cyl(4.6, 4.3, 3.3, trim, h - 1.65);
   const pocket = new THREE.Mesh(GEO(THREE, 'BoxGeometry', 5.5, h * 0.42, 2.2), trim); pocket.position.set(0, h * 0.38, 4.2); g.add(pocket);
   const zip = new THREE.Mesh(GEO(THREE, 'BoxGeometry', 0.25, h * 0.4, 0.2), G.hanger); zip.position.set(2.2, h * 0.38, 5.35); g.add(zip);
@@ -1103,7 +1103,7 @@ function hdMobile(id, name, dims, start, opts = {}) {
     const museumFace = (p, y0, z0, dir) => {
       for (let u = 0; u < 3; u++) {
         const g = group(p);
-        museumCabinet(THREE, k, g, { tween, wake, paint: mWhite, base: 0, seed: 20 + u * 3 + (dir > 0 ? 0 : 1), reg: openParts, lazy: true });
+        museumCabinet(THREE, k, g, { tween, wake, paint: mWhite, plate: mPlate, label: mPlate, base: 0, seed: 20 + u * 3 + (dir > 0 ? 0 : 1), reg: openParts, lazy: true });
         if (dir > 0) g.position.set(u * 49, y0, z0 + 0.5); else { g.rotation.y = Math.PI; g.position.set(u * 49 + 48, y0, z0 + C.d - 0.5); }
       }
     };
@@ -1807,8 +1807,9 @@ def('rotary', 'Rotary File Cabinet', '46" W x 41" D x 84" H: the shelving unit t
 // Built facing +z with its min corner at the group origin. opts: { tween, wake, paint, base, seed, reg }
 function museumCabinet(THREE, k, parent, opts) {
   const { M, bx, cyl, group } = k, { tween, wake = () => {}, reg = null } = opts;
-  const paint = opts.paint || k.std(0xf1f2f0, 0.38, 0.2), tray = k.std(0xe6e8e6, 0.5, 0.2), plate = k.std(0xd7dbde, 0.25, 0.85);
+  const paint = opts.paint || k.std(0xf1f2f0, 0.38, 0.2), tray = k.std(0xe6e8e6, 0.5, 0.2), plate = opts.plate || k.std(0xd7dbde, 0.25, 0.85);
   const W = 48, D = 30, H = 84, base = opts.base ?? 4, t = 1, r = rng(opts.seed || 12), root = group(parent);
+  const lite = !!opts.lazy, labelM = lite ? (opts.label || M.label) : M.label, knobM = lite ? plate : M.dark, leverM = lite ? plate : M.chrome, grooveM = lite ? plate : M.dark;
   if (base) bx(root, W - 3, base, D - 4, paint, 1.5, 0, 1.5);
   const y0 = base;
   bx(root, W, t, D, paint, 0, y0 + H - t, 0); bx(root, t, H, D, paint, 0, y0, 0); bx(root, t, H, D, paint, W - t, y0, 0); bx(root, W, H, t, paint, 0, y0, 0); bx(root, W, t, D, paint, 0, y0, 0);
@@ -1822,7 +1823,7 @@ function museumCabinet(THREE, k, parent, opts) {
   const drawerIsOut = () => (lazy ? Object.keys(out).length > 0 : api.drawers.some(d => d.userData.open));
   const slide = (dr, o) => { dr.userData.open = o; return tween(dr.position, 'z', o ? 24 : 0, o ? 750 : 600, 'out'); };
   const dy = i => y0 + 1.6 + i * 6.3;
-  const front = (g, y) => { bx(g, W - 4, 6.2, 0.6, paint, 2, y - 0.05, D - 3.4); bx(g, W - 4, 0.1, 0.02, M.dark, 2, y + 6.1, D - 2.79); bx(g, 3.6, 2, 0.15, plate, W / 2 - 1.8, y + 3.2, D - 2.8); bx(g, 3, 1.4, 0.05, M.label, W / 2 - 1.5, y + 3.5, D - 2.62); bx(g, 8, 0.7, 0.6, plate, W / 2 - 4, y + 1.2, D - 2.8); };
+  const front = (g, y) => { bx(g, W - 4, 6.2, 0.6, paint, 2, y - 0.05, D - 3.4); bx(g, W - 4, 0.1, 0.02, grooveM, 2, y + 6.1, D - 2.79); bx(g, 3.6, 2, 0.15, plate, W / 2 - 1.8, y + 3.2, D - 2.8); bx(g, 3, 1.4, 0.05, labelM, W / 2 - 1.5, y + 3.5, D - 2.62); bx(g, 8, 0.7, 0.6, plate, W / 2 - 4, y + 1.2, D - 2.8); };
   // a whole drawer: box, front with label holder and pull, and specimen trays a hair above the floor so they never flicker
   const drawer = (i) => { const y = dy(i), dr = group(root); k.tray(dr, W - 5, 3.6, D - 5, tray, 2.5, y + 0.3, 1.5, 0.2); front(dr, y); smallThings(THREE, dr, 3, y + 0.54, 3, W - 7, D - 9, rng((opts.seed || 12) * 10 + i), 3, true); return dr; };
   if (!lazy) {
@@ -1861,10 +1862,10 @@ function museumCabinet(THREE, k, parent, opts) {
       // latch plate on the meeting stile: label card up top, round twist handle below
       const px = side ? -dw + 0.6 : dw - 3.6;
       bx(pv, 3, 11, 0.25, plate, px, dh / 2 - 6, 0);
-      bx(pv, 2.4, 3.2, 0.1, M.label, px + 0.3, dh / 2 + 1.2, 0.25);
+      bx(pv, 2.4, 3.2, 0.1, labelM, px + 0.3, dh / 2 + 1.2, 0.25);
       cyl(pv, 1.25, 0.35, plate, px + 1.5, dh / 2 - 2.8, 0.3, 28, 'z');
       const lv = group(pv, px + 1.5, dh / 2 - 2.8, 0.55);
-      cyl(lv, 1, 0.25, M.dark, 0, 0, 0, 24, 'z'); bx(lv, 0.55, 2.1, 0.5, M.chrome, -0.275, -1.05, 0);
+      cyl(lv, 1, 0.25, knobM, 0, 0, 0, 24, 'z'); bx(lv, 0.55, 2.1, 0.5, leverM, -0.275, -1.05, 0);
       lv.rotation.z = api.open ? -Math.PI / 2 : 0; if (!lazy) { lv.userData.dyn = true; levers.push(lv); }
       if (api.open) pv.rotation.y = side ? 1.95 : -1.95;
       pv.userData.onClick = () => api.toggle();
