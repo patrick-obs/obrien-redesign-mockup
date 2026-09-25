@@ -488,6 +488,7 @@ button.btn{font:inherit;font-weight:700;cursor:pointer}
 .v3d-stops{display:flex;gap:6px;flex-wrap:wrap}.v3d-stops button{border:0;border-radius:999px;padding:6px 12px;background:rgba(255,255,255,.16);color:#fff;font-weight:700;font-size:.82rem;cursor:pointer;white-space:nowrap}.v3d-stops button:hover{background:rgba(255,255,255,.28)}.v3d-stops button[aria-pressed=true]{background:#fff;color:#0b1b1c}
 .v3d-walkbar{flex-wrap:wrap}.v3d-walkbar>span{flex:1;min-width:80px;text-align:right;opacity:.7}
 @media (max-width:640px){.v3d-stops{overflow-x:auto;flex-wrap:nowrap;max-width:100%}.v3d-walkbar>span{display:none}}
+.v3d-tip{position:absolute;z-index:6;pointer-events:none;padding:4px 9px;border-radius:7px;background:rgba(11,27,28,.86);color:#fff;font-size:.78rem;font-weight:600;white-space:nowrap}.v3d-tip[hidden]{display:none}@media (hover:none){.v3d-tip{display:none}}
 .v3d-toast{position:absolute;left:50%;top:56px;transform:translateX(-50%);max-width:calc(100% - 24px);padding:9px 14px;border-radius:10px;background:#1b1c1e;color:#fff;font-size:.85rem;z-index:5;text-align:center}
 @keyframes v3dPing{0%{box-shadow:0 0 0 0 rgba(255,255,255,.8)}100%{box-shadow:0 0 0 10px rgba(255,255,255,0)}}
 .v3d-bar .v3d-fin{order:1}
@@ -534,8 +535,8 @@ button.btn{font:inherit;font-weight:700;cursor:pointer}
 .v3d-panel .v3d-presets{padding:0 0 12px;margin-bottom:12px;border-bottom:1px solid var(--line)}.v3d-panel .v3d-presets[hidden]{display:none}
 .v3d-panel .v3d-set{grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px 18px}
 .v3d-choice{display:flex;flex-direction:column;gap:6px;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
-.v3d-pills{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}
-.v3d-pills button{flex:1 1 auto;border:0;border-right:1px solid var(--line);background:#fff;padding:8px 10px;font:inherit;font-size:.84rem;font-weight:600;text-transform:none;letter-spacing:0;color:var(--ink);cursor:pointer;white-space:nowrap}
+.v3d-pills{display:flex;flex-wrap:wrap;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}
+.v3d-pills button{flex:1 1 auto;min-width:0;border:0;border-right:1px solid var(--line);background:#fff;padding:8px 10px;font:inherit;font-size:.84rem;font-weight:600;text-transform:none;letter-spacing:0;color:var(--ink);cursor:pointer;white-space:normal;line-height:1.2}
 .v3d-pills button:last-child{border-right:0}.v3d-pills button:hover{background:#eef5f5}.v3d-pills button[aria-checked=true]{background:var(--teal);color:#fff}
 .v3d-switch{position:relative;display:flex;align-items:center;gap:10px;font-size:.9rem;font-weight:600;color:var(--ink);cursor:pointer;align-self:end;min-height:38px}
 .v3d-switch input{position:absolute;opacity:0;pointer-events:none}

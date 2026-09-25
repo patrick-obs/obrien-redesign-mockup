@@ -7,9 +7,23 @@ export const MODELS = {};
 const def = (id, name, dims, build) => { MODELS[id] = { name, dims, build }; };
 
 
+
+// light, fast shading: matte parts are Lambert, metal and glass are Phong with a highlight. They compile in a fraction
+// of the time of physically based materials (on Windows the graphics driver compiles each new shader while the page waits)
+// and draw faster on laptops and phones. window.V3D_PBR = 1 brings the physically based look back for comparison.
+// every material carries a texture (a shared 1x1 white one when it has none), so textured and plain parts share a shader
+let WHITE_PX = null;
+const whitePx = (THREE) => { if (!WHITE_PX) { WHITE_PX = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1); WHITE_PX.colorSpace = THREE.SRGBColorSpace; WHITE_PX.needsUpdate = true; WHITE_PX.userData.keep = true; } return WHITE_PX; };
+function MAT(THREE, p = {}) {
+  if (typeof window !== 'undefined' && window.V3D_PBR) return new THREE.MeshStandardMaterial(p);
+  const { roughness = 0.6, metalness = 0.2, envMapIntensity, ...rest } = p;
+  if (!rest.map) rest.map = whitePx(THREE);
+  if (metalness >= 0.55) return new THREE.MeshPhongMaterial({ shininess: Math.round(18 + (1 - roughness) * 90), specular: new THREE.Color(0.5, 0.52, 0.55), ...rest });
+  return new THREE.MeshLambertMaterial(rest);
+}
 // identical shapes are built once and shared: helmets, jerseys, bags, sculpture and specimen parts
 const GEOC = new Map();
-function GEO(THREE, type, ...a) { const key = type + JSON.stringify(a); let g = GEOC.get(key); if (!g) { g = new THREE[type](...a); GEOC.set(key, g); } return g; }
+function GEO(THREE, type, ...a) { const key = type + JSON.stringify(a); let g = GEOC.get(key); if (!g) { g = new THREE[type](...a); g.userData.keep = true; GEOC.set(key, g); } return g; }
 /* ---------------- shared kit ---------------- */
 function rng(seed) { return () => { seed |= 0; seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 
@@ -18,7 +32,7 @@ function footballHelmet(THREE, shellM, x, y, z, rotY = 0, s = 1) {
   const g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = rotY; g.scale.setScalar(s);
   const shell = new THREE.Mesh(GEO(THREE, 'SphereGeometry', 5, 14, 9, 0, Math.PI * 2, 0, Math.PI * 0.6), shellM); shell.scale.set(0.92, 1, 1.12); shell.position.y = 1.2; g.add(shell);
   const cheek = new THREE.Mesh(GEO(THREE, 'SphereGeometry', 4.2, 12, 4, 0, Math.PI * 2, Math.PI * 0.5, Math.PI * 0.25), shellM); cheek.scale.set(1, 0.9, 1.1); cheek.position.y = 1.4; g.add(cheek);
-  const mask = FB_MASK || (FB_MASK = new THREE.MeshStandardMaterial({ color: 0x9aa1a6, roughness: 0.35, metalness: 0.6 })), white = FB_WHITE || (FB_WHITE = new THREE.MeshStandardMaterial({ color: 0xf4f4f0, roughness: 0.5 })), dark = FB_DARK || (FB_DARK = new THREE.MeshStandardMaterial({ color: 0x151617, roughness: 0.8 }));
+  const mask = FB_MASK || (FB_MASK = MAT(THREE, { color: 0x9aa1a6, roughness: 0.35, metalness: 0.6 })), white = FB_WHITE || (FB_WHITE = MAT(THREE, { color: 0xf4f4f0, roughness: 0.5 })), dark = FB_DARK || (FB_DARK = MAT(THREE, { color: 0x151617, roughness: 0.8 }));
   for (const [yy, rr] of [[-0.6, 4.6], [1.2, 4.9], [-2.4, 4.1]]) { const bar = new THREE.Mesh(GEO(THREE, 'TorusGeometry', rr, 0.28, 4, 12, Math.PI * 0.9), mask); bar.rotation.set(Math.PI / 2, 0, Math.PI * 0.05); bar.position.set(0, yy, 1.4); g.add(bar); }
   const post = new THREE.Mesh(GEO(THREE, 'CylinderGeometry', 0.25, 0.25, 4.4, 6), mask); post.position.set(0, -0.6, 6.1); g.add(post);
   const stripe = new THREE.Mesh(GEO(THREE, 'SphereGeometry', 5.05, 8, 12, -0.12, 0.24, 0.05, Math.PI * 0.52), white); stripe.scale.set(0.92, 1, 1.12); stripe.position.y = 1.2; stripe.rotation.y = Math.PI / 2; g.add(stripe);
@@ -31,11 +45,11 @@ let FB_MASK = null, FB_WHITE = null, FB_DARK = null;
 const GEAR = {};
 function gearKit(THREE) {
   if (GEAR.pad) return GEAR;
-  const std = (c, r = 0.6, m = 0.05) => new THREE.MeshStandardMaterial({ color: c, roughness: r, metalness: m });
+  const std = (c, r = 0.6, m = 0.05) => MAT(THREE, { color: c, roughness: r, metalness: m });
   const tex = (draw, w = 128, h = 64) => { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d')); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.userData.keep = true; return t; };
   Object.assign(GEAR, {
     pad: std(0x1d1f22, 0.55), padTrim: std(0xe8e8e4, 0.6), hanger: std(0x9aa1a6, 0.3, 0.8), lace: std(0xf4f4f0, 0.7),
-    football: new THREE.MeshStandardMaterial({ roughness: 0.75, map: tex(g => { g.fillStyle = '#6b3a1f'; g.fillRect(0, 0, 128, 64); g.strokeStyle = '#4a2612'; g.lineWidth = 2; for (let x = 0; x < 128; x += 7) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x + 3, 64); g.stroke(); } g.fillStyle = '#f4f4f0'; g.fillRect(12, 0, 4, 64); g.fillRect(76, 0, 4, 64); }) }),
+    football: MAT(THREE, { roughness: 0.75, map: tex(g => { g.fillStyle = '#6b3a1f'; g.fillRect(0, 0, 128, 64); g.strokeStyle = '#4a2612'; g.lineWidth = 2; for (let x = 0; x < 128; x += 7) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x + 3, 64); g.stroke(); } g.fillStyle = '#f4f4f0'; g.fillRect(12, 0, 4, 64); g.fillRect(76, 0, 4, 64); }) }),
     bag: [0x1c1d1f, 0x2a4d7a, 0x8c1d2c, 0xe7e4dc, 0x2f5a3e].map(c => std(c, 0.45, 0.1)), trim: [std(0x111213, 0.5), std(0xf2f2ee, 0.5), std(0x9aa1a6, 0.4, 0.5)],
     shaft: std(0xc9ced2, 0.25, 0.9), iron: std(0xb9bfc3, 0.2, 0.95), covers: [0xc4382c, 0x2d4a7c, 0xe8b923, 0xf2f2ee, 0x2f8a4f].map(c => std(c, 0.95)),
     mats: {}, numMat: (n) => GEAR.mats[n] || (GEAR.mats[n] = new THREE.MeshBasicMaterial({ map: GEAR.numTex(n, '#ffffff'), transparent: true, depthWrite: false })),
@@ -109,7 +123,7 @@ function artMat(THREE, i) {
     else if (n % 4 === 2) { g.fillStyle = '#efe3c6'; g.fillRect(0, 0, 128, 96); g.strokeStyle = '#8a6a3a'; for (let k2 = 0; k2 < 7; k2++) { g.beginPath(); g.moveTo(0, q() * 96); g.bezierCurveTo(40, q() * 96, 80, q() * 96, 128, q() * 96); g.stroke(); } g.fillStyle = '#7ea3b8'; g.beginPath(); g.ellipse(80, 40, 22, 14, 0.4, 0, 7); g.fill(); }
     else { g.fillStyle = '#f6f2e8'; g.fillRect(0, 0, 128, 96); for (let k2 = 0; k2 < 6; k2++) { g.fillStyle = ['#b5563a', '#2d4a7c', '#c9a227', '#2f6b4f'][k2 % 4]; g.fillRect(8 + q() * 80, 8 + q() * 56, 10 + q() * 36, 8 + q() * 30); } }
     g.strokeStyle = 'rgba(0,0,0,.25)'; g.strokeRect(0.5, 0.5, 127, 95);
-    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.userData.keep = true; ART.push(new THREE.MeshStandardMaterial({ map: t, roughness: 0.85 }));
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.userData.keep = true; ART.push(MAT(THREE, { map: t, roughness: 0.85 }));
   }
   return ART[i % ART.length];
 }
@@ -127,7 +141,7 @@ function painting(THREE) {
       try {
         PAINT_TEX = new THREE.TextureLoader().load(new URL('./paintings.jpg', import.meta.url).href, () => { if (typeof window !== 'undefined') window.dispatchEvent(new Event('v3d-tex')); });
         PAINT_TEX.colorSpace = THREE.SRGBColorSpace; PAINT_TEX.anisotropy = 4; PAINT_TEX.userData.keep = true;
-        PAINT_SHARED = new THREE.MeshStandardMaterial({ map: PAINT_TEX, roughness: 0.75 });
+        PAINT_SHARED = MAT(THREE, { map: PAINT_TEX, roughness: 0.75 });
       } catch { PAINT_TEX = false; }
     }
     PAINT_M[i] = PAINT_TEX ? { isAtlasTile: true, rect: [u, v, w, h], shared: PAINT_SHARED } : artMat(THREE, i);
@@ -138,7 +152,7 @@ function painting(THREE) {
 function tileGeo(THREE, tile) {
   const key = tile.rect.join(',');
   let g = TILE_GEO.get(key);
-  if (!g) { g = new THREE.BoxGeometry(1, 1, 1); const uv = g.attributes.uv, [u, v, w, h] = tile.rect; for (let i = 0; i < uv.count; i++) uv.setXY(i, u + uv.getX(i) * w, v + uv.getY(i) * h); TILE_GEO.set(key, g); }
+  if (!g) { g = new THREE.BoxGeometry(1, 1, 1); g.userData.keep = true; const uv = g.attributes.uv, [u, v, w, h] = tile.rect; for (let i = 0; i < uv.count; i++) uv.setXY(i, u + uv.getX(i) * w, v + uv.getY(i) * h); TILE_GEO.set(key, g); }
   return g;
 }
 
@@ -154,7 +168,7 @@ function textileMats(THREE) {
     g => { const cs = ['#2f5a3e', '#e8e0cc', '#a6832f', '#e8e0cc', '#6b1f2a']; let y = 0; for (let i = 0; y < 128; i++) { const h = [14, 4, 8, 4, 22][i % 5]; g.fillStyle = cs[i % 5]; g.fillRect(0, y, 128, h); y += h; } }, // striped runner
     g => { g.fillStyle = '#e6dcc6'; g.fillRect(0, 0, 128, 128); g.fillStyle = '#6a7f9a'; for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) { const cx = x * 32 + (y % 2) * 16 + 8, cy = y * 32 + 16; g.beginPath(); g.ellipse(cx, cy, 7, 11, 0.5, 0, 7); g.fill(); g.beginPath(); g.ellipse(cx + 8, cy - 4, 4, 7, -0.6, 0, 7); g.fill(); } }, // toile
   ];
-  for (const d of draws) { const c = document.createElement('canvas'); c.width = c.height = 128; d(c.getContext('2d')); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(2, 3); t.anisotropy = 8; t.userData.keep = true; TEX.push(new THREE.MeshStandardMaterial({ map: t, roughness: 0.9 })); }
+  for (const d of draws) { const c = document.createElement('canvas'); c.width = c.height = 128; d(c.getContext('2d')); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(2, 3); t.anisotropy = 8; t.userData.keep = true; TEX.push(MAT(THREE, { map: t, roughness: 0.9 })); }
   return TEX;
 }
 
@@ -172,11 +186,11 @@ const OBJ_ORDER = [0, 5, 2, 4, 3, 8, 1, 9, 7, 12, 10, 6, 11, 13, 4, 14];
 const objReset = () => { OBJ.seq = 0; };
 function museumObjects(THREE, parent, x, y, z, w, d, r, maxH = 44) {
   if (!OBJ.bronze) Object.assign(OBJ, {
-    bronze: new THREE.MeshStandardMaterial({ color: 0x8a5a2b, roughness: 0.35, metalness: 0.8 }), marble: new THREE.MeshStandardMaterial({ color: 0xeeeae2, roughness: 0.4 }),
-    stone: new THREE.MeshStandardMaterial({ color: 0x9a948a, roughness: 0.85 }), plinth: new THREE.MeshStandardMaterial({ color: 0xf6f6f3, roughness: 0.6 }),
-    crate: new THREE.MeshStandardMaterial({ color: 0xc8a06a, roughness: 0.85 }), slat: new THREE.MeshStandardMaterial({ color: 0xa47c48, roughness: 0.85 }), glaze: new THREE.MeshStandardMaterial({ color: 0x2f5a7a, roughness: 0.3, metalness: 0.1 }),
-    verd: new THREE.MeshStandardMaterial({ color: 0x4f7d6a, roughness: 0.5, metalness: 0.55 }), terra: new THREE.MeshStandardMaterial({ color: 0xb5653a, roughness: 0.8 }), granite: new THREE.MeshStandardMaterial({ color: 0x2b2c2e, roughness: 0.3, metalness: 0.1 }),
-    wood: new THREE.MeshStandardMaterial({ color: 0x6b4428, roughness: 0.6 }),
+    bronze: MAT(THREE, { color: 0x8a5a2b, roughness: 0.35, metalness: 0.8 }), marble: MAT(THREE, { color: 0xeeeae2, roughness: 0.4 }),
+    stone: MAT(THREE, { color: 0x9a948a, roughness: 0.85 }), plinth: MAT(THREE, { color: 0xf6f6f3, roughness: 0.6 }),
+    crate: MAT(THREE, { color: 0xc8a06a, roughness: 0.85 }), slat: MAT(THREE, { color: 0xa47c48, roughness: 0.85 }), glaze: MAT(THREE, { color: 0x2f5a7a, roughness: 0.3, metalness: 0.1 }),
+    verd: MAT(THREE, { color: 0x4f7d6a, roughness: 0.5, metalness: 0.55 }), terra: MAT(THREE, { color: 0xb5653a, roughness: 0.8 }), granite: MAT(THREE, { color: 0x2b2c2e, roughness: 0.3, metalness: 0.1 }),
+    wood: MAT(THREE, { color: 0x6b4428, roughness: 0.6 }),
   });
   const add = (geo, m, px, py, pz, s = [1, 1, 1], rot = 0) => { const me = new THREE.Mesh(geo, m); me.position.set(px, py, pz); me.scale.set(...s); me.rotation.y = rot; me.castShadow = me.receiveShadow = true; parent.add(me); return me; };
   const n = OBJ.seq++, kind = OBJ_ORDER[n % OBJ_ORDER.length], MATS = [OBJ.bronze, OBJ.marble, OBJ.stone, OBJ.verd, OBJ.granite, OBJ.terra], m = MATS[(n * 5 + 1) % MATS.length];
@@ -218,10 +232,10 @@ function museumObjects(THREE, parent, x, y, z, w, d, r, maxH = 44) {
 const SMALL = {};
 function smallThings(THREE, parent, x0, y, z0, w, d, r, maxH = 9, trays = false) {
   if (!SMALL.clay) Object.assign(SMALL, {
-    clay: new THREE.MeshStandardMaterial({ color: 0xb5653a, roughness: 0.85 }), glaze: new THREE.MeshStandardMaterial({ color: 0x2f5a7a, roughness: 0.3 }), celadon: new THREE.MeshStandardMaterial({ color: 0x9fbfa6, roughness: 0.35 }),
-    shell: new THREE.MeshStandardMaterial({ color: 0xeadcc4, roughness: 0.6 }), mineral: new THREE.MeshStandardMaterial({ color: 0x7b5ea7, roughness: 0.25, metalness: 0.2, flatShading: true }), quartz: new THREE.MeshStandardMaterial({ color: 0xe8ecef, roughness: 0.15, metalness: 0.1, flatShading: true }),
-    coin: new THREE.MeshStandardMaterial({ color: 0xb08d3c, roughness: 0.35, metalness: 0.9 }), flint: new THREE.MeshStandardMaterial({ color: 0x4a4540, roughness: 0.5, flatShading: true }), bone: new THREE.MeshStandardMaterial({ color: 0xe8dfc8, roughness: 0.7 }),
-    tray: new THREE.MeshStandardMaterial({ color: 0xf7f5ef, roughness: 0.9 }), foam: new THREE.MeshStandardMaterial({ color: 0xf2f2ee, roughness: 1 }),
+    clay: MAT(THREE, { color: 0xb5653a, roughness: 0.85 }), glaze: MAT(THREE, { color: 0x2f5a7a, roughness: 0.3 }), celadon: MAT(THREE, { color: 0x9fbfa6, roughness: 0.35 }),
+    shell: MAT(THREE, { color: 0xeadcc4, roughness: 0.6 }), mineral: MAT(THREE, { color: 0x7b5ea7, roughness: 0.25, metalness: 0.2 }), quartz: MAT(THREE, { color: 0xe8ecef, roughness: 0.15, metalness: 0.1 }),
+    coin: MAT(THREE, { color: 0xb08d3c, roughness: 0.35, metalness: 0.9 }), flint: MAT(THREE, { color: 0x4a4540, roughness: 0.5 }), bone: MAT(THREE, { color: 0xe8dfc8, roughness: 0.7 }),
+    tray: MAT(THREE, { color: 0xf7f5ef, roughness: 0.9 }), foam: MAT(THREE, { color: 0xf2f2ee, roughness: 1 }),
   });
   const add = (geo, m, px, py, pz, s = 1, rx = 0, ry = 0) => { const me = new THREE.Mesh(geo, m); me.position.set(px, py, pz); me.scale.setScalar(s); me.rotation.set(rx, ry, 0); parent.add(me); return me; };
   if (trays === true) { const rows = Math.max(1, Math.floor(d / 9)), rd = d / rows; for (let q = 0; q < rows; q++) smallThings(THREE, parent, x0, y, z0 + q * rd, w, rd, r, maxH, 'row'); return; }
@@ -250,8 +264,9 @@ function smallThings(THREE, parent, x0, y, z0, w, d, r, maxH = 9, trays = false)
   }
 }
 
+let KIT_BOX = null;
 function kit(THREE) {
-  const std = (color, roughness = 0.55, metalness = 0.25, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness, metalness, ...extra });
+  const std = (color, roughness = 0.55, metalness = 0.25, extra = {}) => MAT(THREE, { color, roughness, metalness, ...extra });
   const M = {
     paint: std(0xbfc4c7, 0.5, 0.3),
     dark: std(0x2b2f32, 0.6, 0.3),
@@ -264,12 +279,12 @@ function kit(THREE) {
     black: std(0x151719, 0.35, 0.1),
     rubber: std(0x1d1f21, 0.9, 0),
     teal: std(0x0f7377, 0.45, 0.3),
-    glass: new THREE.MeshPhysicalMaterial({ color: 0xdfeff0, roughness: 0.05, metalness: 0, transparent: true, opacity: 0.22, depthWrite: false }),
+    glass: MAT(THREE, { color: 0xdfeff0, roughness: 0.05, metalness: 0.6, transparent: true, opacity: 0.22, depthWrite: false }),
     label: std(0xf7f3e8, 0.8, 0),
     green: std(0x2f9e44, 0.4, 0.1, { emissive: 0x145a22, emissiveIntensity: 0.4 }),
     red: std(0xc92a2a, 0.4, 0.1, { emissive: 0x5a1414, emissiveIntensity: 0.4 }),
   };
-  const geo = new THREE.BoxGeometry(1, 1, 1);
+  const geo = KIT_BOX || (KIT_BOX = new THREE.BoxGeometry(1, 1, 1)); geo.userData.keep = true;
   // box by its minimum corner (x, y, z) and size (w, h, d)
   const bx = (parent, w, h, d, m, x = 0, y = 0, z = 0) => {
     const me = m && m.isAtlasTile ? new THREE.Mesh(tileGeo(THREE, m), m.shared) : new THREE.Mesh(geo, m); me.scale.set(w, h, d); me.position.set(x + w / 2, y + h / 2, z + d / 2);
@@ -296,7 +311,7 @@ function kit(THREE) {
   };
   const meshMat = (w, h, cellIn = 2, color = '#cfd5d8', metal = 0.7) => {
     const t = grid(16, 3, color); t.repeat.set(w / (cellIn * 4), h / (cellIn * 4));
-    return new THREE.MeshStandardMaterial({ map: t, alphaTest: 0.4, transparent: false, side: THREE.DoubleSide, metalness: metal, roughness: 0.35 });
+    return MAT(THREE, { map: t, alphaTest: 0.4, transparent: false, side: THREE.DoubleSide, metalness: metal, roughness: 0.35 });
   };
   // many same-shaped boxes with per-box color (contents: file boxes, books, bins, cartons)
   const many = (parent, list, m) => {
@@ -319,7 +334,7 @@ function kit(THREE) {
     g.fillStyle = '#fff'; g.fillRect(0, 0, 16, 64); g.fillStyle = '#3a3d40';
     for (const y of [10, 42]) { g.fillRect(6, y, 4, 12); }
     const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1, 21); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
-    return new THREE.MeshStandardMaterial({ color: paint.color.clone(), map: t, roughness: paint.roughness, metalness: paint.metalness });
+    return MAT(THREE, { color: paint.color.clone(), map: t, roughness: paint.roughness, metalness: paint.metalness });
   };
   // open-top drawer box: floor, two sides, back and front wall
   const tray = (parent, w, h, d, m, x, y, z, t = 0.15) => { bx(parent, w, t, d, m, x, y, z); bx(parent, t, h, d, m, x, y, z); bx(parent, t, h, d, m, x + w - t, y, z); bx(parent, w, h, t, m, x, y, z); bx(parent, w, h, t, m, x, y, z + d - t); };
@@ -345,23 +360,25 @@ function kit(THREE) {
   const slots = (parent, m, x, y, z, depth, h, facing) => { const p = new THREE.Mesh(new THREE.PlaneGeometry(depth, h), m); p.rotation.y = facing > 0 ? Math.PI / 2 : -Math.PI / 2; p.position.set(x + facing * 0.01, y + h / 2, z + depth / 2); parent?.add(p); return p; };
   // many boxes where any one can come out: a click swaps that box for a detailed copy from spawn(b) and runs
   // show(g, b) to pull it; a second click runs hide(g, b) and puts the plain box back. open parts register in reg.
-  const pullMany = (parent, list, m, { spawn, show, hide, reg, one = false, also = [], gate = null, ms = 1400 }) => {
-    const im = many(parent, list, m); if (!im) return null;
+  const pullMany = (parent, list, m, { spawn, show, hide, reg, one = false, also = [], gate = null, ms = 1400, hint = 'Pull it out', back = 'Put it back', drawList = null, ids = null, idx = null }) => {
+    const im = many(parent, drawList || list, m); if (!im) return null;
+    const idsOf = ids || (i => [i]);
     const keep = new THREE.Matrix4(), zero = new THREE.Matrix4().makeScale(0, 0, 0), open = new Map();
     im.userData.onClick = (hit) => {
       // when the gate is shut (e.g. overview of a mobile system) the click belongs to whatever holds the boxes
       if (gate && !gate()) { let o = im.parent; while (o && !o.userData.onClick) o = o.parent; return o?.userData.onClick(hit); }
-      const i = hit?.instanceId ?? Math.floor(list.length / 2); if (i == null || !list[i]) return;
+      const i0 = hit?.instanceId ?? Math.floor(list.length / 2), i = idx && i0 != null ? idx(i0) : i0; if (i == null || !list[i]) return;
       if (open.has(i)) return open.get(i)();
       if (one) [...open.values()].forEach(f => f());
       const b = list[i], g = spawn(b, i); g.userData.dyn = true; parent.add(g);
-      const saved = [im, ...also].map(q => { if (!q) return null; q.getMatrixAt(i, keep); const m2 = keep.clone(); q.setMatrixAt(i, zero); q.instanceMatrix.needsUpdate = true; return m2; });
+      const slots = [...idsOf(i).map(j => [im, j]), ...also.filter(Boolean).map(q => [q, i])];
+      const saved = slots.map(([q, j]) => { q.getMatrixAt(j, keep); const m2 = keep.clone(); q.setMatrixAt(j, zero); q.instanceMatrix.needsUpdate = true; return m2; });
       let busy = false;
-      const close = () => { if (busy) return 0; busy = true; open.delete(i); reg?.delete(close); (async () => { await hide(g, b); parent.remove(g); [im, ...also].forEach((q, n) => { if (q && saved[n]) { q.setMatrixAt(i, saved[n]); q.instanceMatrix.needsUpdate = true; } }); })(); return ms; };
-      g.userData.onClick = () => close(); open.set(i, close); reg?.add(close);
+      const close = () => { if (busy) return 0; busy = true; open.delete(i); reg?.delete(close); (async () => { await hide(g, b); parent.remove(g); slots.forEach(([q, j], n) => { q.setMatrixAt(j, saved[n]); q.instanceMatrix.needsUpdate = true; }); })(); return ms; };
+      g.userData.onClick = () => close(); g.userData.hint = back; open.set(i, close); reg?.add(close);
       show(g, b);
     };
-    im.userData.pullAny = () => im.userData.onClick({ instanceId: Math.floor(Math.random() * list.length) });
+    im.userData.pullAny = () => im.userData.onClick({ instanceId: Math.floor(Math.random() * list.length) }); im.userData.hint = hint;
     return im;
   };
   return { THREE, M, bx, cyl, bar, group, grid, meshMat, many, pullMany, FIN, finisher, std, postMat, tray, dim, inch, slots };
@@ -429,13 +446,13 @@ function shelving(k, parent, o) {
       lids.push({ x: b.x - 0.16, y: b.y + b.h - 1.5, z: b.z - 0.16, w: ok ? b.w + 0.32 : 0, h: 1.6, d: b.d + 0.32, color: b.color });
       holes.push({ x: b.x + b.w / 2 - 2.1, y: b.y + b.h - 4.2, z: fz, w: ok ? 4.2 : 0, h: 1.3, d: 0.05, color: '#2b2118' });
       tags.push({ x: b.x + b.w / 2 - 2.8, y: b.y + b.h * 0.3, z: fz, w: ok ? 5.6 : 0, h: 2.6, d: 0.05, color: '#fbf9f2' }); });
-    extras.push(many(g, lids, M.kraft), many(g, holes, k.std(0xffffff, 0.9, 0)), many(g, tags, k.std(0xffffff, 0.8, 0)));
+    extras.push(lids, holes, tags);
   }
+  // one batch per shelving face: box bodies, then their lids, handholds and labels (a click on any of them is its box)
   const cm = contents === 'bins' ? k.std(0xffffff, 0.35, 0) : contents === 'solander' ? k.std(0xffffff, 0.85, 0) : M.kraft;
-  if (pull && (contents === 'boxes' || contents === 'solander')) g.userData.pullIm = pullBoxes(k, g, items, cm, extras, d, contents, pull);
-  // a click on a lid, handhold or label is a click on its box
-  if (g.userData.pullIm) extras.forEach(im => { if (im) im.userData.onClick = hit => g.userData.pullIm.userData.onClick(hit); });
-  else if (contents) many(g, items, cm);
+  const n = items.length, drawList = contents === 'boxes' ? items.concat(...extras) : null;
+  if (pull && (contents === 'boxes' || contents === 'solander')) g.userData.pullIm = pullBoxes(k, g, items, cm, [], d, contents, { ...pull, drawList, ids: drawList ? (i => [i, n + i, 2 * n + i, 3 * n + i]) : null, idx: drawList ? (j => j % n) : null });
+  else if (contents) many(g, drawList || items, cm);
   g.userData.W = W; g.userData.D = d; g.userData.H = h; g.userData.ys = ys; g.userData.w = w; g.userData.bays = bays;
   return g;
 }
@@ -443,11 +460,11 @@ function shelving(k, parent, o) {
 // any record box or solander box comes off the shelf: it slides clear of the shelf, then the lid comes off
 // (record box) or swings open (solander) to show what is inside; pull = { tween, reg }
 const FOLDERS = ['#e8d6a8', '#f0e2b8', '#dcc893', '#e9ddc0'];
-function pullBoxes(k, g, items, cm, extras, d, contents, { tween, reg, gate }) {
+function pullBoxes(k, g, items, cm, extras, d, contents, { tween, reg, gate, drawList, ids, idx }) {
   const { THREE, bx, group } = k, zero = new THREE.Matrix4().makeScale(0, 0, 0), keep = new THREE.Matrix4();
   const saved = [];
   return k.pullMany(g, items, cm, {
-    reg, one: true, gate,
+    reg, one: true, gate, drawList, ids, idx, hint: contents === 'boxes' ? 'Pull this box, lift the lid' : 'Pull this solander box', back: 'Put it back',
     spawn: (b, i) => {
       saved[i] = extras.map(im => { if (!im) return null; im.getMatrixAt(i, keep); const m = keep.clone(); im.setMatrixAt(i, zero); im.instanceMatrix.needsUpdate = true; return m; });
       const p = group(null), out = b.z + b.d / 2 < d / 2 - 0.5 ? -1 : 1, bm = k.std(new THREE.Color(b.color).getHex(), 0.85, 0);
@@ -570,12 +587,13 @@ function binGeo(THREE) {
   BIN_GEO = mergeParts(THREE, [side(-0.45), side(0.5), box(1, 0.05, 1, 0, -0.475, 0), box(1, 1, 0.05, 0, 0, -0.475), box(1, 0.55, 0.05, 0, -0.225, 0.475), box(0.9, 0.07, 0.06, 0, 0.02, 0.49)]);
   // a heap of parts in the front of the bin
   PILE_GEO = mergeParts(THREE, [box(0.86, 0.18, 0.8, 0, -0.38, 0.02), box(0.6, 0.12, 0.5, -0.08, -0.25, 0.08), box(0.3, 0.1, 0.3, 0.2, -0.24, -0.1)]);
+  BIN_GEO.userData.keep = PILE_GEO.userData.keep = true;
   return BIN_GEO;
 }
 // loose hardware for a pulled bin or an open drawer compartment: bolts, hex nuts, washers
 const HW = {};
 function hardware(THREE, parent, x, y, z, w, d, r, n = 8) {
-  if (!HW.steel) Object.assign(HW, { steel: new THREE.MeshStandardMaterial({ color: 0xaab1b6, roughness: 0.3, metalness: 0.9 }), brass: new THREE.MeshStandardMaterial({ color: 0xb8913a, roughness: 0.35, metalness: 0.9 }), black: new THREE.MeshStandardMaterial({ color: 0x2a2c2e, roughness: 0.4, metalness: 0.6 }), nut: new THREE.CylinderGeometry(0.35, 0.35, 0.3, 6), bolt: new THREE.CylinderGeometry(0.14, 0.14, 1.6, 8), washer: new THREE.TorusGeometry(0.3, 0.1, 6, 14) });
+  if (!HW.steel) Object.assign(HW, { steel: MAT(THREE, { color: 0xaab1b6, roughness: 0.3, metalness: 0.9 }), brass: MAT(THREE, { color: 0xb8913a, roughness: 0.35, metalness: 0.9 }), black: MAT(THREE, { color: 0x2a2c2e, roughness: 0.4, metalness: 0.6 }), nut: new THREE.CylinderGeometry(0.35, 0.35, 0.3, 6), bolt: new THREE.CylinderGeometry(0.14, 0.14, 1.6, 8), washer: new THREE.TorusGeometry(0.3, 0.1, 6, 14) });
   const m = [HW.steel, HW.brass, HW.black][Math.floor(r() * 3)];
   for (let q = 0; q < n; q++) {
     const kind = q % 3, me = new THREE.Mesh(kind === 0 ? HW.nut : kind === 1 ? HW.bolt : HW.washer, m);
@@ -610,11 +628,11 @@ def('bin-shelving', 'Bin & Parts Storage', 'Shelf bins on closed or open shelvin
       g.traverse(q => { if (q.isMesh) q.castShadow = q.receiveShadow = true; });
       let busy = false;
       const close = async () => { if (busy) return 0; busy = true; open.delete(i); openSet.delete(close); await tween(g.position, 'z', 0, 500, 'out'); if (lift) await tween(g.position, 'y', 0, 250); p.remove(g); [im, pile, labs].forEach((q, n) => { q.setMatrixAt(i, saved[n]); q.instanceMatrix.needsUpdate = true; }); wake(); return 0; };
-      g.userData.onClick = () => close(); open.set(i, close); openSet.add(close);
+      g.userData.onClick = () => close(); g.userData.hint = 'Put the bin back'; open.set(i, close); openSet.add(close);
       (async () => { if (lift) await tween(g.position, 'y', lift, 250, 'out'); await tween(g.position, 'z', out(b), 650, 'out'); })();
       wake();
     };
-    pulls.push(() => im.userData.onClick({ instanceId: Math.floor(list.length * 0.45) }));
+    pulls.push(() => im.userData.onClick({ instanceId: Math.floor(list.length * 0.45) })); im.userData.hint = 'Pull this bin';
     return im;
   };
   const color = () => COLORS[ci][1];
@@ -655,7 +673,7 @@ def('bin-shelving', 'Bin & Parts Storage', 'Shelf bins on closed or open shelvin
       const pullsL = fronts.map(f => ({ x: f.x + 1, y: f.y + f.h - 1.2, z: D, w: f.w - 2, h: 0.9, d: 0.5, color: '#ffffff' }));
       const pim = many(cg, pullsL, pullM);
       const im = k.pullMany(cg, fronts, frontM, {
-        reg: openSet, one: true, also: [pim],
+        reg: openSet, one: true, also: [pim], hint: 'Open this drawer', back: 'Close the drawer',
         spawn: (f, i) => {
           const g = group(null); bx(g, f.w, f.h, 0.8, frontM, f.x, f.y, f.z); bx(g, f.w - 2, 0.9, 0.5, pullM, f.x + 1, f.y + f.h - 1.2, D);
           const tw = f.w - 1, td = D - 3, th = f.h - 0.8; k.tray(g, tw, th, td, inner, f.x + 0.5, f.y + 0.2, 1.8, 0.15);
@@ -736,7 +754,7 @@ function wireModel(id, name, dims0, start, layouts) {
       // any carton or tote slides off its shelf toward you; on the rolling track units it comes out the side you reach from
       const side = ud > uw, reach = side ? Math.min(uw * 0.7, 14) : Math.min(ud * 0.65, 12);
       k.pullMany(g, items, k.std(0xffffff, 0.7, 0), {
-        one: true, ms: 700, gate: side ? () => !!isWalking?.() : null,
+        one: true, ms: 700, gate: side ? () => !!isWalking?.() : null, hint: 'Slide this box off the shelf',
         spawn: (b) => { const q = group(null); bx(q, b.w, b.h, b.d, k.std(new THREE.Color(b.color).getHex(), 0.7, 0), b.x, b.y, b.z); q.traverse(o => { if (o.isMesh) o.castShadow = o.receiveShadow = true; }); return q; },
         show: (q) => tween(q.position, 'y', 0.4, 150, 'out').then(() => tween(q.position, side ? 'x' : 'z', reach, 650, 'out')),
         hide: (q) => tween(q.position, side ? 'x' : 'z', 0, 550, 'out').then(() => tween(q.position, 'y', 0, 120)),
@@ -934,7 +952,8 @@ function tireParts(THREE) {
   for (let i = 0; i < 128; i++) { const x = i * 8; g.fillRect(x, 50 + (i % 2) * 6, 3, 22); g.fillRect(x + 4, 44, 1.5, 40); }
   g.fillRect(0, 62, 1024, 3);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; t.userData.keep = true;
-  TIRE = { geo, mat: new THREE.MeshStandardMaterial({ map: t, roughness: 0.88, metalness: 0.04 }), label: new THREE.MeshStandardMaterial({ color: 0xf4f4f0, roughness: 0.7 }) };
+  geo.userData.keep = true;
+  TIRE = { geo, mat: MAT(THREE, { map: t, roughness: 0.88, metalness: 0.04 }), label: MAT(THREE, { color: 0xf4f4f0, roughness: 0.7 }) };
   return TIRE;
 }
 function tireMesh(THREE, parent, list, opts = null) {
@@ -967,10 +986,10 @@ function tireMesh(THREE, parent, list, opts = null) {
     let busy = false;
     const close = () => { if (busy) return 0; busy = true; out.delete(i); opts.reg?.delete(close);
       tween(spin.rotation, 'x', t.spin || 0, 800); tween(g.position, 'z', t.z, 800).then(() => tween(g.position, 'y', t.y, 200)).then(() => { parent.remove(g); im.setMatrixAt(i, saved[0]); im.instanceMatrix.needsUpdate = true; if (savedL) { lm.setMatrixAt(j, savedL); lm.instanceMatrix.needsUpdate = true; } wake(); }); return 1100; };
-    g.userData.onClick = () => close(); out.set(i, close); opts.reg?.add(close); wake();
+    g.userData.onClick = () => close(); g.userData.hint = 'Roll it back'; out.set(i, close); opts.reg?.add(close); wake();
   };
   // keep the matrix read straight: getMatrixAt returns nothing, so save a copy first
-  im.userData.onClick = click;
+  im.userData.onClick = click; im.userData.hint = 'Roll this tire off';
   if (lm) lm.userData.onClick = (hit) => { const e = tagged[hit?.instanceId]; if (e) im.userData.onClick({ ...hit, instanceId: e[1] }); };
   im.userData.pullAny = () => im.userData.onClick({ instanceId: Math.floor(list.length / 2) });
   return im;
@@ -1075,6 +1094,7 @@ function hdMobile(id, name, dims, start, opts = {}) {
     const mWhite = k.std(0xf1f2f0, 0.38, 0.2), mPlate = k.std(0xd7dbde, 0.25, 0.85), mObj = [0xb56f4a, 0x6b8f71, 0xc9a227, 0x3d5a7a].map(c => k.std(c, 0.6, 0.05));
     // museum cabinet pair: white case, glass double doors with latch plates, drawers low and shelves high behind the glass
     // one cabinet case with a pair of swinging doors; each pair opens together when you click it
+    const hwDark = k.std(0x3a3f44, 0.4, 0.55);
     const doorPair = (p, x, cw, y0, H, fz, dir, glass, frameM, first) => {
       const doors = [];
       for (const side of [0, 1]) {
@@ -1087,7 +1107,7 @@ function hdMobile(id, name, dims, start, opts = {}) {
           const px = side ? -dw + 0.6 : dw - 3.6, fz = dir > 0 ? 1.2 : -0.55;
           bx(pv, 3, 11, 0.25, mPlate, px, H / 2 - 6, fz); bx(pv, 2.4, 3.2, 0.1, M.label, px + 0.3, H / 2 + 1.2, fz + fo * 0.25);
           cyl(pv, 1.25, 0.35, mPlate, px + 1.5, H / 2 - 2.8, fz + fo * 0.3, 28, 'z'); cyl(pv, 1, 0.25, M.dark, px + 1.5, H / 2 - 2.8, fz + fo * 0.55, 24, 'z'); bx(pv, 0.55, 2.1, 0.5, M.chrome, px + 1.225, H / 2 - 3.85, fz + fo * 0.6);
-        } else { bx(pv, dw, H - 0.4, 0.8, frameM, sx, 0.2, 0); for (let v = 0; v < 5; v++) bx(pv, dw - 6, 0.3, 0.1, M.dark, sx + 3, H - 5 - v * 0.9, dir > 0 ? 0.82 : -0.02); bx(pv, 1, 7, 0.8, M.chrome, side ? -dw + 1.2 : dw - 2.2, H / 2 - 3.5, dir > 0 ? 0.9 : -0.8); }
+        } else { bx(pv, dw, H - 0.4, 0.8, frameM, sx, 0.2, 0); for (let v = 0; v < 5; v++) bx(pv, dw - 6, 0.3, 0.1, hwDark, sx + 3, H - 5 - v * 0.9, dir > 0 ? 0.82 : -0.02); bx(pv, 1, 7, 0.8, hwDark, side ? -dw + 1.2 : dw - 2.2, H / 2 - 3.5, dir > 0 ? 0.9 : -0.8); }
         void fz0;
         doors.push(pv);
       }
@@ -1172,7 +1192,7 @@ function hdMobile(id, name, dims, start, opts = {}) {
         for (const gx of [x0 + 0.1, x0 + sec - 1.6]) bx(p, 1.5, H - 1, 1.6, guideM, gx, y0, dir > 0 ? fz - 1.7 : fz + 0.1);
         const tex = new THREE.CanvasTexture(binSlat); tex.colorSpace = THREE.SRGBColorSpace; tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(1, (H - 1) / 3);
         const geo = new THREE.PlaneGeometry(sec - 3, H - 1); geo.translate(0, -(H - 1) / 2, 0);
-        const cur = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: tex, roughness: 0.4, metalness: 0.3, side: THREE.DoubleSide })); cur.position.set(x0 + sec / 2, y0 + H - 0.5, dir > 0 ? fz - 0.9 : fz + 0.9); cur.userData.dyn = true; p.add(cur);
+        const cur = new THREE.Mesh(geo, MAT(THREE, { map: tex, roughness: 0.4, metalness: 0.3, side: THREE.DoubleSide })); cur.position.set(x0 + sec / 2, y0 + H - 0.5, dir > 0 ? fz - 0.9 : fz + 0.9); cur.userData.dyn = true; p.add(cur);
         bx(p, sec + 0.4, 10, 11, hoodM, x0 - 0.2, y0 + H, dir > 0 ? fz - 11 : fz);
         const d = { cur, tex, open: false, h0: H - 1, click: null, g: p, dir };
         d.click = () => { d.open = !d.open; tween(cur.scale, 'y', d.open ? 0.04 : 1, 1400); if (d.open) openParts.add(d.shut); else openParts.delete(d.shut); };
@@ -1182,7 +1202,7 @@ function hdMobile(id, name, dims, start, opts = {}) {
       }
       // from inside the aisle, any framed work slides out face first; a closed bay rolls its door up first
       const im = k.pullMany(p, arts, k.std(0xffffff, 0.6, 0.1), {
-        reg: openParts, ms: 900,
+        reg: openParts, ms: 900, hint: 'Pull this painting', back: 'Slide it back in',
         spawn: (b) => { const q = group(null), iw = b.d - 3, ih = b.h - 3; bx(q, b.w, b.h, b.d, k.std(new THREE.Color(b.color).getHex(), 0.5, 0.25), b.x, b.y, b.z); bx(q, 0.05, ih, iw, b.pm, b.x + b.w, b.y + 1.5, b.z + 1.5); bx(q, 0.05, ih, iw, b.pm, b.x - 0.05, b.y + 1.5, b.z + 1.5); q.traverse(o => { if (o.isMesh) o.castShadow = o.receiveShadow = true; }); return q; },
         show: (q, b) => tween(q.position, 'z', dir * (b.d + 6), 900, 'out'),
         hide: (q) => tween(q.position, 'z', 0, 700, 'out'),
@@ -1231,7 +1251,7 @@ function hdMobile(id, name, dims, start, opts = {}) {
         }
       }
     };
-    const artRack = kind === 'artrack', wUp = k.std(0xf1f2f0, 0.45, 0.3), perfM = (() => { const c = document.createElement('canvas'); c.width = c.height = 32; const g = c.getContext('2d'); g.fillStyle = '#d3d7da'; g.fillRect(0, 0, 32, 32); g.fillStyle = '#6f777c'; for (const [x, y] of [[8, 8], [24, 8], [16, 20], [0, 20], [32, 20], [8, 32], [24, 32], [8, 0], [24, 0]]) { g.beginPath(); g.arc(x, y, 3, 0, Math.PI * 2); g.fill(); } const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(16, 20); return new THREE.MeshStandardMaterial({ map: t, roughness: 0.35, metalness: 0.8 }); })();
+    const artRack = kind === 'artrack', wUp = k.std(0xf1f2f0, 0.45, 0.3), perfM = (() => { const c = document.createElement('canvas'); c.width = c.height = 32; const g = c.getContext('2d'); g.fillStyle = '#d3d7da'; g.fillRect(0, 0, 32, 32); g.fillStyle = '#6f777c'; for (const [x, y] of [[8, 8], [24, 8], [16, 20], [0, 20], [32, 20], [8, 32], [24, 32], [8, 0], [24, 0]]) { g.beginPath(); g.arc(x, y, 3, 0, Math.PI * 2); g.fill(); } const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(16, 20); return MAT(THREE, { map: t, roughness: 0.35, metalness: 0.8 }); })();
     const palletFace = (p, y0, z0, loads, r) => {
       const bw = 96, D = C.d, upM = kind === 'artrack' ? wUp : up, bmM = kind === 'artrack' ? wUp : beam;
       for (let i = 0; i <= 2; i++) { const x = i * (bw + 3); for (const z of [z0, z0 + D - 3]) bx(p, 3, C.h, 3, upM, x, y0, z); for (let y = 6; y < C.h; y += 36) bx(p, 1.4, 1.4, D - 6, upM, x + 0.8, y0 + y, z0 + 3); }
@@ -1369,6 +1389,7 @@ function hdMobile(id, name, dims, start, opts = {}) {
           hub.visible = !electric; pad.visible = electric;
           hub.userData.dyn = pad.userData.dyn = true;
           // standing in an aisle, the carriages stay put: nobody closes an aisle on themselves
+          g.userData.hint = () => (inside() ? 'Locked while you are in the system' : 'Open the aisle here');
           g.userData.onClick = () => { if (inside()) { toast?.(electric ? 'Safety engaged: someone is in the system, so the carriages will not move. Step out to the walkway first.' : 'The aisles stay locked while you are in the system. Step out to the walkway to move them.'); return; } open = open === j - 1 ? j : j - 1; move(); };
           g.userData.wheel = hub; g.userData.pad = pad;
         }
@@ -1555,7 +1576,7 @@ def('lockers', 'Lockers', '72" H lockers in painted steel, wood laminate or soli
   const woodTex = () => { if (wood) return wood; const c = document.createElement('canvas'); c.width = 64; c.height = 256; const g = c.getContext('2d'); g.fillStyle = '#d9b27c'; g.fillRect(0, 0, 64, 256); const q = rng(8); for (let i = 0; i < 90; i++) { g.strokeStyle = 'rgba(120,78,40,' + (0.08 + q() * 0.2) + ')'; g.lineWidth = 0.5 + q() * 1.6; const x = q() * 64; g.beginPath(); g.moveTo(x, 0); g.bezierCurveTo(x + q() * 6 - 3, 90, x + q() * 6 - 3, 170, x + q() * 4 - 2, 256); g.stroke(); } wood = new THREE.CanvasTexture(c); wood.colorSpace = THREE.SRGBColorSpace; wood.wrapS = wood.wrapT = THREE.RepeatWrapping; wood.anisotropy = 8; return wood; };
   const numTex = {};
   const plate = (n) => {
-    if (!numTex[n]) { const c = document.createElement('canvas'); c.width = 128; c.height = 64; const g = c.getContext('2d'); g.fillStyle = '#d7dbde'; g.fillRect(0, 0, 128, 64); g.fillStyle = '#1b1d1f'; g.font = 'bold 44px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(String(n), 64, 35); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; numTex[n] = new THREE.MeshStandardMaterial({ map: t, roughness: 0.35, metalness: 0.6 }); }
+    if (!numTex[n]) { const c = document.createElement('canvas'); c.width = 128; c.height = 64; const g = c.getContext('2d'); g.fillStyle = '#d7dbde'; g.fillRect(0, 0, 128, 64); g.fillStyle = '#1b1d1f'; g.font = 'bold 44px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(String(n), 64, 35); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; numTex[n] = MAT(THREE, { map: t, roughness: 0.35, metalness: 0.6 }); }
     return new THREE.Mesh(new THREE.PlaneGeometry(2.6, 1.3), numTex[n]);
   };
   const hardware = (door, dw, dh, right) => {
@@ -1617,7 +1638,7 @@ def('lockers', 'Lockers', '72" H lockers in painted steel, wood laminate or soli
   };
   make();
   return {
-    group: root,
+    hint: 'Open or close this locker', group: root,
     // painted steel, wood laminate (grain) or solid phenolic; each has its own finishes
     get finishes() { return FINS[mat]; },
     setFinish: f => { paint.color.setHex(f.color); wake(); },
@@ -1660,7 +1681,7 @@ def('evidence-lockers', 'Pass-Through Evidence Lockers', 'Set into a wall: offic
         const pv = group(root, x0 + 0.3, y + 0.2, front ? D : 0), zo = front ? 0 : -0.3, zf = front ? 0.3 : -0.7;
         bx(pv, cw - 0.6, ch - 0.4, 0.3, paint, 0, 0, zo);
         bx(pv, 2.2, 3, 0.4, M.black, cw - 4.2, ch / 2 - 1.5, zf);
-        bx(pv, 1.6, 0.6, 0.1, lit, cw - 3.9, ch / 2 + 1.1, front ? 0.72 : -0.82);
+        if (front) bx(pv, 1.6, 0.6, 0.1, lit, cw - 3.9, ch / 2 + 1.1, 0.72); // status light faces the officer
         if (col.length === 1 && front) bx(pv, 4, 2, 0.2, screen, 1.5, ch - 5, 0.35);
         pv.userData.onClick = () => swing(pv, !pv.userData.open, front);
         (front ? fronts : backs).push(pv);
@@ -1671,7 +1692,7 @@ def('evidence-lockers', 'Pass-Through Evidence Lockers', 'Set into a wall: offic
   bx(root, 0.4, H, D, paint, W - 0.4, base, 0);
   const toggle = (list, front) => { const o = !list.every(p => p.userData.open); list.forEach(p => swing(p, o, front)); return o; };
   return {
-    group: root, view: [0.75, 0.42, 1.3],
+    hint: 'Open this door', group: root, view: [0.75, 0.42, 1.3],
     finishes: [{ name: 'Gray', swatch: '#9aa3a8', color: 0x9aa3a8 }, { name: 'Putty', swatch: '#d9cfbd', color: 0xd6ccb9 }, { name: 'Black', swatch: '#2c2f31', color: 0x2c2f31 }], setFinish: k.finisher(paint),
     actions: [
       { label: 'Open officer side', run: () => (toggle(fronts, true) ? 'Close officer side' : 'Open officer side') },
@@ -1726,7 +1747,7 @@ def('flat-files', 'Flat File Cabinets', 'Flat files from 50" x 38" to 72" x 54",
   };
   make();
   return {
-    group: root, view: [0.7, 0.9, 1.2], finishes: k.FIN.cabinets, setFinish: k.finisher(paint),
+    hint: 'Pull this drawer', group: root, view: [0.7, 0.9, 1.2], finishes: k.FIN.cabinets, setFinish: k.finisher(paint),
     actions: [
       { label: 'Open a drawer', run: () => { const dr = drawers[Math.min(drawers.length - 1, Math.floor(drawers.length * 0.7))]; dr.userData.onClick(); return dr.userData.open ? 'Close the drawer' : 'Open a drawer'; } },
       { label: 'Size', options: SIZES.map(s => s[2]), get: () => si, set: n => { si = n; make(); refit?.(); } },
@@ -1792,7 +1813,7 @@ def('rotary', 'Rotary File Cabinet', '46" W x 41" D x 84" H: the shelving unit t
   rot.userData.onClick = pedal.userData.onClick = () => turn(1);
   const label = () => (((step % 4) + 4) % 2 ? 'Open it' : 'Close and lock');
   return {
-    group: root, view: [0.85, 0.45, 1.3], finishes: k.FIN.cabinets, setFinish: k.finisher(paint),
+    hint: 'Turn the unit', group: root, view: [0.85, 0.45, 1.3], finishes: k.FIN.cabinets, setFinish: k.finisher(paint),
     actions: [
       { label: 'Close and lock', run: () => { turn(1); return (((step % 4) + 4) % 2) ? 'Open it' : 'Close and lock'; } },
       { label: 'Show the other side', run: () => { turn(2); } },
@@ -1827,16 +1848,17 @@ function museumCabinet(THREE, k, parent, opts) {
   // a whole drawer: box, front with label holder and pull, and specimen trays a hair above the floor so they never flicker
   const drawer = (i) => { const y = dy(i), dr = group(root); k.tray(dr, W - 5, 3.6, D - 5, tray, 2.5, y + 0.3, 1.5, 0.2); front(dr, y); smallThings(THREE, dr, 3, y + 0.54, 3, W - 7, D - 9, rng((opts.seed || 12) * 10 + i), 3, true); return dr; };
   if (!lazy) {
-    for (let i = 0; i < 6; i++) { const dr = drawer(i); dr.userData.onClick = () => { if (api.moving) return; if (!api.open) { api.toggle(); return; } slide(dr, !dr.userData.open); wake(); }; api.drawers.push(dr); }
+    for (let i = 0; i < 6; i++) { const dr = drawer(i); dr.userData.hint = () => (api.open ? (dr.userData.open ? 'Push the drawer in' : 'Pull this drawer') : 'Open the doors first'); dr.userData.onClick = () => { if (api.moving) return; if (!api.open) { api.toggle(); return; } slide(dr, !dr.userData.open); wake(); }; api.drawers.push(dr); }
   } else {
     // many cabinets on a carriage: the fronts are one piece, and a drawer is built only when it is pulled
     const bank = group(root), gapM = k.std(0x2a2d30, 0.9, 0);
     for (let i = 0; i < 6; i++) front(bank, dy(i));
     const pull = (i) => {
       if (out[i]) { const { dr, gap } = out[i]; delete out[i]; slide(dr, false).then(() => { root.remove(dr); bank.remove(gap); wake(); }); return; }
-      const dr = drawer(i); dr.userData.dyn = true; dr.userData.onClick = () => pull(i);
+      const dr = drawer(i); dr.userData.dyn = true; dr.userData.onClick = () => pull(i); dr.userData.hint = 'Push the drawer in';
       const gap = bx(bank, W - 4.2, 5.7, 0.05, gapM, 2.1, dy(i) + 0.1, D - 2.15); out[i] = { dr, gap }; slide(dr, true); wake();
     };
+    bank.userData.hint = () => (api.open ? 'Pull this drawer' : 'Open the doors first');
     bank.userData.onClick = (hit) => { if (api.moving || !hit?.point) return; if (!api.open) { api.toggle(); return; } const q = bank.worldToLocal(hit.point.clone()); pull(Math.max(0, Math.min(5, Math.floor((q.y - y0 - 1.6) / 6.3)))); };
     api.drawers = [{ userData: { onClick: () => pull(2) } }];
     api.pullBack = () => Object.keys(out).forEach(i => pull(+i));
@@ -1868,7 +1890,7 @@ function museumCabinet(THREE, k, parent, opts) {
       cyl(lv, 1, 0.25, knobM, 0, 0, 0, 24, 'z'); bx(lv, 0.55, 2.1, 0.5, leverM, -0.275, -1.05, 0);
       lv.rotation.z = api.open ? -Math.PI / 2 : 0; if (!lazy) { lv.userData.dyn = true; levers.push(lv); }
       if (api.open) pv.rotation.y = side ? 1.95 : -1.95;
-      pv.userData.onClick = () => api.toggle();
+      pv.userData.onClick = () => api.toggle(); pv.userData.hint = () => (api.open ? 'Close the doors' : 'Open the doors');
       doors.push(pv);
     }
     hinge.traverse(o => { if (o.isMesh) { o.castShadow = o.receiveShadow = true; } }); wake();
@@ -1882,7 +1904,7 @@ def('museum-cabinet', 'Museum Storage Cabinet', '48" W x 30" D x 88" H, full-hei
   const k = kit(THREE), root = new THREE.Group();
   const cab = museumCabinet(THREE, k, root, { tween, wake, base: 4, seed: 12 });
   return {
-    group: root, view: [0.75, 0.42, 1.35], prompt: 'Tap the doors to open them, then tap a drawer',
+    hint: 'Open the doors', group: root, view: [0.75, 0.42, 1.35], prompt: 'Tap the doors to open them, then tap a drawer',
     finishes: [{ name: 'White', swatch: '#f1f2f0', color: 0xf1f2f0 }, { name: 'Light gray', swatch: '#d9dcd8', color: 0xd9dcd8 }, { name: 'Putty', swatch: '#d9cfbd', color: 0xd6ccb9 }], setFinish: k.finisher(cab.paint),
     actions: [
       { label: 'Open doors', run: () => { cab.toggle(); return cab.open ? 'Close doors' : 'Open doors'; } },
@@ -1927,7 +1949,7 @@ def('art-screens', 'Sliding Art Screens', 'Two facing banks of 8 ft x 8 ft mesh 
     s.userData.onClick = () => { s.userData.out = !s.userData.out; tween(s.position, 'z', home + (s.userData.out ? -bank * (A - 8) : 0), 1300); };
     screens.push(s);
   });
-  return { group: root, finishes: [{ name: 'White', swatch: '#f3f4f2', color: 0xf3f4f2 }, { name: 'Light gray', swatch: '#c3c7ca', color: 0xbfc4c7 }, { name: 'Black', swatch: '#2c2f31', color: 0x2c2f31 }], setFinish: k.finisher(white), view: [1.25, 0.8, 0.75], actions: [{ label: 'Pull out a screen', run: () => { screens[2].userData.onClick(); return screens[2].userData.out ? 'Slide it back' : 'Pull out a screen'; } }] };
+  return { hint: 'Pull this screen out', group: root, finishes: [{ name: 'White', swatch: '#f3f4f2', color: 0xf3f4f2 }, { name: 'Light gray', swatch: '#c3c7ca', color: 0xbfc4c7 }, { name: 'Black', swatch: '#2c2f31', color: 0x2c2f31 }], setFinish: k.finisher(white), view: [1.25, 0.8, 0.75], actions: [{ label: 'Pull out a screen', run: () => { screens[2].userData.onClick(); return screens[2].userData.out ? 'Slide it back' : 'Pull out a screen'; } }] };
 });
 
 /* ---------------- 11. pallet rack ---------------- */
@@ -1960,7 +1982,7 @@ def(id, name, dims0, ({ THREE, wake, bake, refit, lite }) => {
           bx(g, bw, 4.5, 1.8, beam, x0, y, 0); bx(g, bw, 4.5, 1.8, beam, x0, y, D - 1.8);
           if (deckKind === 0) { const dk = new THREE.Mesh(new THREE.PlaneGeometry(bw, D - 2), k.meshMat(bw, D, 2.5, '#b9c0c4')); dk.rotation.x = -Math.PI / 2; dk.position.set(x0 + bw / 2, y + 4.6, D / 2); g.add(dk); }
           else if (deckKind === 1) bx(g, bw, 0.25, D - 2, alu, x0, y + 4.5, 1);
-          else if (deckKind === 2) for (let q = 0; q < 3; q++) { const pw = bw / 3 - 0.4, t = perfTex.clone(); t.needsUpdate = true; t.repeat.set(pw / 2, (D - 2) / 2); bx(g, pw, 0.25, D - 2, new THREE.MeshStandardMaterial({ map: t, roughness: 0.35, metalness: 0.8 }), x0 + q * (bw / 3) + 0.2, y + 4.5, 1); }
+          else if (deckKind === 2) for (let q = 0; q < 3; q++) { const pw = bw / 3 - 0.4, t = perfTex.clone(); t.needsUpdate = true; t.repeat.set(pw / 2, (D - 2) / 2); bx(g, pw, 0.25, D - 2, MAT(THREE, { map: t, roughness: 0.35, metalness: 0.8 }), x0 + q * (bw / 3) + 0.2, y + 4.5, 1); }
           else if (deckKind === 3) for (const px of [x0 + 8, x0 + 38, x0 + 54, x0 + 84]) bx(g, 3, 1.4, D - 2, galv, px, y + 3.2, 1);
           if (stopsOn) { bx(g, bw, 4, 1.2, beam, x0, y + 4.5, back); }
         } else if (stopsOn) bx(g, bw, 3, 2, beam, x0, 8, front > 0 ? D - 2.5 : 0.5);
@@ -2053,7 +2075,7 @@ def('mezzanine', 'Structural Steel Mezzanine', '20 ft x 16 ft platform, 9 ft cle
   const under = group(root, 20, 0, 20); under.userData.dyn = true;
   shelving(k, under, { bays: 4, closed: false, shelves: 5, h: 84, contents: 'boxes', seed: 21 });
   shelving(k, under, { bays: 4, closed: false, shelves: 5, h: 84, contents: 'boxes', seed: 22, z: 70 });
-  return { group: root, finishes: [{ name: 'Gray, yellow rail', swatch: 'linear-gradient(90deg,#4b5a63 50%,#e0a526 50%)', steel: 0x4b5a63, rail: 0xe0a526 }, { name: 'Blue, yellow rail', swatch: 'linear-gradient(90deg,#2a4d7a 50%,#e0a526 50%)', steel: 0x2a4d7a, rail: 0xe0a526 }, { name: 'Black, yellow rail', swatch: 'linear-gradient(90deg,#26292b 50%,#f2c230 50%)', steel: 0x26292b, rail: 0xf2c230 }, { name: 'All gray', swatch: '#6b7378', steel: 0x6b7378, rail: 0x6b7378 }], setFinish: f => { steel.color.setHex(f.steel); rail.color.setHex(f.rail); }, actions: [{ label: 'Hide shelving below', run: () => { under.visible = !under.visible; wake(); return under.visible ? 'Hide shelving below' : 'Show shelving below'; } }] };
+  return { hint: 'Open or close the gate', group: root, finishes: [{ name: 'Gray, yellow rail', swatch: 'linear-gradient(90deg,#4b5a63 50%,#e0a526 50%)', steel: 0x4b5a63, rail: 0xe0a526 }, { name: 'Blue, yellow rail', swatch: 'linear-gradient(90deg,#2a4d7a 50%,#e0a526 50%)', steel: 0x2a4d7a, rail: 0xe0a526 }, { name: 'Black, yellow rail', swatch: 'linear-gradient(90deg,#26292b 50%,#f2c230 50%)', steel: 0x26292b, rail: 0xf2c230 }, { name: 'All gray', swatch: '#6b7378', steel: 0x6b7378, rail: 0x6b7378 }], setFinish: f => { steel.color.setHex(f.steel); rail.color.setHex(f.rail); }, actions: [{ label: 'Hide shelving below', run: () => { under.visible = !under.visible; wake(); return under.visible ? 'Hide shelving below' : 'Show shelving below'; } }] };
 });
 
 /* ---------------- 13. vertical lift module ---------------- */
@@ -2156,7 +2178,7 @@ def('vlm', 'Vertical Lift Module (VLM)', 'About 10 ft W x 9 ft D, 15 ft H with o
     bx(unit, W, H - y0, 1, shell, 0, y0, D - 1);
     // taped work zone on the floor in front of the machine
     { const c = document.createElement('canvas'); c.width = 64; c.height = 16; const g2 = c.getContext('2d'); g2.fillStyle = '#f2c230'; g2.fillRect(0, 0, 64, 16); g2.fillStyle = '#1b1b1b'; for (let q = -16; q < 64; q += 16) { g2.beginPath(); g2.moveTo(q, 16); g2.lineTo(q + 8, 16); g2.lineTo(q + 16, 0); g2.lineTo(q + 8, 0); g2.closePath(); g2.fill(); }
-      const tx = (len) => { const t2 = new THREE.CanvasTexture(c); t2.colorSpace = THREE.SRGBColorSpace; t2.wrapS = THREE.RepeatWrapping; t2.repeat.set(len / 12, 1); return new THREE.MeshStandardMaterial({ map: t2, roughness: 0.6 }); };
+      const tx = (len) => { const t2 = new THREE.CanvasTexture(c); t2.colorSpace = THREE.SRGBColorSpace; t2.wrapS = THREE.RepeatWrapping; t2.repeat.set(len / 12, 1); return MAT(THREE, { map: t2, roughness: 0.6 }); };
       const zx0 = -4, zx1 = W + 24, zz0 = D + 3, zz1 = D + 54, tw = 3;
       for (const fy of nBays === 1 ? [0] : [0, FY]) {
         const strip = (len, x, z, rot) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(len, tw), tx(len)); m.rotation.set(-Math.PI / 2, 0, rot); m.position.set(x, fy + 0.03, z); m.userData.noShadow = true; unit.add(m); };
@@ -2274,7 +2296,7 @@ def('vlm', 'Vertical Lift Module (VLM)', 'About 10 ft W x 9 ft D, 15 ft H with o
   make();
   const idle = () => !trays.some(t => t.userData.busy);
   return {
-    group: root, prompt: 'Tap any tray to call it, or the terminal to run a pick list',
+    hint: 'Call this tray to the window', group: root, prompt: 'Tap any tray to call it, or the terminal to run a pick list',
     walk: () => ({ eye: [W / 2 - 6, 64, D + 44], look: [W / 2, 42, D - 6], x: [-30, W + 30], z: [D + 16, D + 90], floor: 0 }), finishes: [{ name: 'White', swatch: '#f2f3f1', color: 0xf2f3f1 }, { name: 'Light gray', swatch: '#c9cdcf', color: 0xc9cdcf }, { name: 'Dark gray', swatch: '#4a5055', color: 0x4a5055 }], setFinish: k.finisher(shell), view: [1.25, 0.5, 0.95],
     actions: [
       { label: 'Open the operator console', run: () => { openConsole(); } },
@@ -2292,8 +2314,8 @@ def('casework', 'Modular Lab Casework', '10 ft bench, 30" deep, epoxy top, reage
   const face = k.std(0xeeefed, 0.5, 0.1), W = 120, D = 30, H = 36, toe = 4;
   bx(root, W, toe, D - 3, M.dark, 0, 0, 0);
   bx(root, W, H - toe - 1.25, D - 1, k.std(0xd8dad8, 0.6, 0.1), 0, toe, 0);
-  bx(root, W + 1, 1.25, D + 1, k.std(0x1b1d1f, 0.25, 0.1), -0.5, H - 1.25, -0.5);
-  const movers = [];
+  const topM = k.std(0x1b1d1f, 0.25, 0.1); bx(root, W + 1, 1.25, D + 1, topM, -0.5, H - 1.25, -0.5);
+  const movers = []; let topI = 0;
   for (let c = 0; c < 4; c++) {
     const x0 = c * 30 + 0.3, cw = 29.4;
     if (c % 2 === 0) {
@@ -2305,13 +2327,21 @@ def('casework', 'Modular Lab Casework', '10 ft bench, 30" deep, epoxy top, reage
   }
   for (const x of [2, W / 2 - 1, W - 4]) bx(root, 2, 30, 2, M.steel, x, H, 4);
   for (const y of [H + 14, H + 28]) { bx(root, W - 2, 0.6, 10, M.steel, 1, y, 1); }
-  const bottles = []; const r = rng(2); for (let x = 6; x < W - 8; x += 4 + r() * 3) { if (r() > 0.3) bottles.push({ x, y: H + 14.6, z: 3, w: 2.6, h: 5 + r() * 4, d: 2.6, color: ['#8a5a2b', '#d9e8ef', '#5a7a2b', '#e9e2cf'][Math.floor(r() * 4)] }); }
-  k.many(root, bottles, k.std(0xffffff, 0.2, 0.05));
+  // reagent bottles on the shelf: round, capped, amber, clear and green glass
+  const r = rng(2), bottles = []; for (let x = 6; x < W - 8; x += 4 + r() * 3) { if (r() > 0.3) bottles.push([x + 1.3, H + 14.6, 4.3, 4.5 + r() * 4.5, ['#8a5a2b', '#d9e8ef', '#5a7a2b', '#e9e2cf'][Math.floor(r() * 4)]]); }
+  { const body = new THREE.InstancedMesh(new THREE.CylinderGeometry(1.25, 1.3, 1, 14), k.std(0xffffff, 0.15, 0.05), bottles.length), cap = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.6, 0.6, 1, 10), M.black, bottles.length), o = new THREE.Object3D(), col = new THREE.Color();
+    bottles.forEach(([x, y, z, h, c2], i) => { o.position.set(x, y + h / 2, z); o.scale.set(1, h, 1); o.updateMatrix(); body.setMatrixAt(i, o.matrix); body.setColorAt(i, col.set(c2)); o.position.set(x, y + h + 0.6, z); o.scale.set(1, 1.2, 1); o.updateMatrix(); cap.setMatrixAt(i, o.matrix); });
+    root.add(body, cap); }
+  // a stainless sink under the gooseneck, and glassware at the work end of the bench
+  bx(root, 22, 0.15, 16, M.steel, W - 31, H + 0.01, 8); bx(root, 19, 0.16, 13, k.std(0x5c6268, 0.3, 0.8), W - 29.5, H + 0.02, 9.5);
+  for (const [x, z, rr, hh] of [[10, 14, 1.8, 4.5], [16, 12, 1.3, 3.5], [22, 16, 2.4, 6]]) { const g2 = new THREE.Mesh(new THREE.CylinderGeometry(rr, rr * 0.95, hh, 20, 1, true), M.glass); g2.position.set(x, H + hh / 2, z); root.add(g2); const liq = new THREE.Mesh(new THREE.CylinderGeometry(rr * 0.92, rr * 0.9, hh * 0.45, 20), k.std(0x6aa9d6, 0.2, 0, { transparent: true, opacity: 0.7 })); liq.position.set(x, H + hh * 0.23, z); root.add(liq); }
+  { const fl = new THREE.Mesh(new THREE.LatheGeometry([[0, 0], [3, 0], [3.1, 0.4], [1.2, 5], [0.8, 6.5], [0.9, 8]].map(([a, b]) => new THREE.Vector2(a, b)), 24), M.glass); fl.position.set(30, H, 13); root.add(fl); }
   const fau = group(root, W - 20, H, 6); cyl(fau, 0.7, 14, M.chrome, 0, 7, 0); const arm = cyl(fau, 0.6, 9, M.chrome, 0, 14, 4.2, 12, 'z');
   return {
-    group: root, finishes: [{ name: 'White laminate', swatch: '#f1f2f0', color: 0xeeefed }, { name: 'Maple laminate', swatch: '#c79a66', color: 0xc79a66 }, { name: 'Light gray', swatch: '#c3c7ca', color: 0xbfc4c7 }, { name: 'O\'Brien teal', swatch: '#0f7377', color: 0x0f7377 }],
+    hint: 'Open or close', group: root, finishes: [{ name: 'White laminate', swatch: '#f1f2f0', color: 0xeeefed }, { name: 'Maple laminate', swatch: '#c79a66', color: 0xc79a66 }, { name: 'Light gray', swatch: '#c3c7ca', color: 0xbfc4c7 }, { name: 'O\'Brien teal', swatch: '#0f7377', color: 0x0f7377 }],
     setFinish: k.finisher(face),
-    actions: [{ label: 'Open drawers & doors', run: () => { const o = !movers[0].userData.open; movers.forEach(m => { if (!!m.userData.open !== o) m.userData.onClick(); }); return o ? 'Close them' : 'Open drawers & doors'; } }],
+    actions: [{ label: 'Open drawers & doors', run: () => { const o = !movers[0].userData.open; movers.forEach(m => { if (!!m.userData.open !== o) m.userData.onClick(); }); return o ? 'Close them' : 'Open drawers & doors'; } },
+      { label: 'Work surface', options: ['Epoxy resin, black', 'Phenolic resin, gray', 'Stainless steel'], get: () => topI, set: n => { topI = n; topM.color.setHex([0x1b1d1f, 0x5b6166, 0xc9ced2][n]); topM.metalness = n === 2 ? 0.9 : 0.1; topM.roughness = n === 2 ? 0.3 : 0.25; } }],
   };
 });
 
@@ -2368,7 +2398,7 @@ def('wire-cage', 'Wire Partition Enclosure', 'Welded wire cages from 10 x 8 ft u
   };
   make();
   return {
-    group: root, finishes: [{ name: 'Gray', swatch: '#6b7378', color: 0x6b7378 }, { name: 'Black', swatch: '#26292b', color: 0x26292b }, { name: 'Safety yellow', swatch: '#e0a526', color: 0xe0a526 }], setFinish: k.finisher(frame),
+    hint: 'Open or close the door', group: root, finishes: [{ name: 'Gray', swatch: '#6b7378', color: 0x6b7378 }, { name: 'Black', swatch: '#26292b', color: 0x26292b }, { name: 'Safety yellow', swatch: '#e0a526', color: 0xe0a526 }], setFinish: k.finisher(frame),
     actions: [
       { label: 'Open the door', run: () => { door.userData.onClick(); return door.userData.open ? 'Close the door' : 'Open the door'; } },
       { label: SIZES[0].label, run: () => { si = (si + 1) % SIZES.length; make(); refit?.(); return SIZES[si].label; } },
@@ -2435,7 +2465,7 @@ def('weapons', 'Weapons Storage Cabinet', '48" W x 20" D x 78" H: rifle rack wit
   }
   const openDoors = () => { if (!doors[0].userData.open) doors[0].userData.onClick(); };
   return {
-    group: root, view: [0.8, 0.5, 1.3],
+    hint: 'Open or close', group: root, view: [0.8, 0.5, 1.3],
     finishes: [{ name: 'Gunmetal', swatch: '#3b4046', color: 0x3b4046 }, { name: 'Light gray', swatch: '#c3c7ca', color: 0xbfc4c7 }, { name: 'Tan', swatch: '#b9a57e', color: 0xb9a57e }, { name: 'OD green', swatch: '#4d5a3a', color: 0x4d5a3a }], setFinish: k.finisher(paint),
     actions: [
       { label: 'Open doors', run: () => { doors[0].userData.onClick(); return doors[0].userData.open ? 'Close doors' : 'Open doors'; } },
@@ -2484,7 +2514,7 @@ def('athletic', 'Athletic Team Lockers', 'Four 24" W x 24" D x 72" H lockers: fo
     dv.userData.onClick = () => { dv.userData.open = !dv.userData.open; tween(dv.rotation, 'y', dv.userData.open ? -1.9 : 0, 650, 'out'); };
   }
   return {
-    group: root, view: [0.7, 0.45, 1.35],
+    hint: 'Open or close', group: root, view: [0.7, 0.45, 1.35],
     finishes: [{ name: 'Black', swatch: '#2c2f31', color: 0x2c2f31 }, { name: 'Navy', swatch: '#2a3d5c', color: 0x2a3d5c }, { name: 'Maroon', swatch: '#6b1f2a', color: 0x6b1f2a }, { name: 'Forest', swatch: '#2f5a3e', color: 0x2f5a3e }, { name: 'Light gray', swatch: '#c3c7ca', color: 0xbfc4c7 }], setFinish: k.finisher(paint),
     actions: [
       { label: 'Open foot lockers', run: () => { const o = !lids[0].userData.open; lids.forEach(l => { if (!!l.userData.open !== o) l.userData.onClick(); }); return o ? 'Close foot lockers' : 'Open foot lockers'; } },
@@ -2533,7 +2563,7 @@ def('mail-sorter', 'Wall-Mounted Mail Sorter', '60" W, 60 pockets 12" deep, hung
     busy = false;
   };
   return {
-    group: root, view: [0.55, 0.3, 1.35],
+    hint: 'Sort the mail', group: root, view: [0.55, 0.3, 1.35],
     finishes: [{ name: 'Maple laminate', swatch: '#c79a66', color: 0xc79a66 }, { name: 'Light gray', swatch: '#c3c7ca', color: 0xbfc4c7 }, { name: 'White', swatch: '#f1f2f0', color: 0xeeefed }, { name: 'Black', swatch: '#2c2f31', color: 0x2c2f31 }], setFinish: k.finisher(lam),
     actions: [{ label: 'Sort the mail', run: () => { sort(); return sorted ? 'Pull the mail' : 'Sort the mail'; } }],
   };
@@ -2563,7 +2593,7 @@ def('workstation', 'Industrial Workstation', '72" W x 30" D bench, adjustable he
   dr.userData.onClick = () => { dr.userData.open = !dr.userData.open; tween(dr.position, 'z', dr.userData.open ? 16 : 0, 600, 'out'); };
   let high = false, lit = true;
   return {
-    group: root, view: [0.7, 0.45, 1.3],
+    hint: 'Adjust', group: root, view: [0.7, 0.45, 1.3],
     finishes: [{ name: 'Light gray', swatch: '#c3c7ca', color: 0x9ea6ab }, { name: 'Black', swatch: '#2c2f31', color: 0x2c2f31 }, { name: 'O\'Brien teal', swatch: '#0f7377', color: 0x0f7377 }], setFinish: k.finisher(frame),
     actions: [
       { label: 'Raise the work surface', run: () => { high = !high; tween(up.position, 'y', high ? 6 : 0, 1400); return high ? 'Lower the work surface' : 'Raise the work surface'; } },
@@ -2602,7 +2632,7 @@ def('fireproof', 'Fireproof File Cabinets', 'A 4-drawer vertical (21" W x 31" D)
   unit(0, 21, 31, 53, 4, false);
   unit(25, 38, 21.5, 40, 3, true);
   return {
-    group: root, view: [0.8, 0.55, 1.3],
+    hint: 'Pull this drawer', group: root, view: [0.8, 0.55, 1.3],
     finishes: [{ name: 'Putty', swatch: '#d9cfbd', color: 0xd6ccb9 }, { name: 'Black', swatch: '#2c2f31', color: 0x2c2f31 }, { name: 'Light gray', swatch: '#c3c7ca', color: 0xbfc4c7 }, { name: 'White', swatch: '#f1f2f0', color: 0xeeefed }], setFinish: k.finisher(paint),
     actions: [
       { label: 'Open a drawer', run: () => { drawers[1].userData.onClick(); drawers[5].userData.onClick(); return drawers[1].userData.open ? 'Close the drawers' : 'Open a drawer'; } },
@@ -2729,7 +2759,7 @@ def('textile-rack', 'Rolled Textile Storage', '12 ft double-sided cantilever rac
     }
   }
   return {
-    group: root, view: [1.15, 0.5, 1.0],
+    hint: 'Pull this roll out', group: root, view: [1.15, 0.5, 1.0],
     finishes: [{ name: 'Dark gray', swatch: '#3a3f44', color: 0x3a3f44 }, { name: 'White', swatch: '#f1f2f0', color: 0xf1f2f0 }, { name: 'Light gray', swatch: '#c3c7ca', color: 0xbfc4c7 }, { name: 'Putty', swatch: '#d9cfbd', color: 0xd6ccb9 }, { name: 'Black', swatch: '#2c2f31', color: 0x2c2f31 }], setFinish: k.finisher(frame),
     actions: [{ label: 'Lift out a roll', run: () => { const g = rolls[Math.min(5, rolls.length - 1)]; g.userData.onClick(); return g.userData.out ? 'Put it back' : 'Lift out a roll'; } }],
   };
@@ -2790,7 +2820,7 @@ def('ss-table', 'Stainless Steel Work Table', '60" W x 30" D x 34" H: stainless 
   };
   make();
   return {
-    group: root, finishes: [{ name: 'Stainless', swatch: '#dfe3e6', color: 0xdfe3e6, metal: 0.95, rough: 0.22 }, { name: 'Black epoxy', swatch: '#2a2c2e', color: 0x2a2c2e, metal: 0.2, rough: 0.5 }, { name: 'White powder coat', swatch: '#eef0ee', color: 0xeef0ee, metal: 0.1, rough: 0.45 }], setFinish: k.finisher(ss, ssD), view: [0.8, 0.55, 1.3],
+    hint: 'Adjust', group: root, finishes: [{ name: 'Stainless', swatch: '#dfe3e6', color: 0xdfe3e6, metal: 0.95, rough: 0.22 }, { name: 'Black epoxy', swatch: '#2a2c2e', color: 0x2a2c2e, metal: 0.2, rough: 0.5 }, { name: 'White powder coat', swatch: '#eef0ee', color: 0xeef0ee, metal: 0.1, rough: 0.45 }], setFinish: k.finisher(ss, ssD), view: [0.8, 0.55, 1.3],
     actions: [
       { label: 'Bullet feet', run: () => { wheels = !wheels; make(); return wheels ? 'Bullet feet' : 'Add casters'; } },
       { label: 'Add backsplash', run: () => { splash = !splash; make(); return splash ? 'Remove backsplash' : 'Add backsplash'; } },
@@ -2808,8 +2838,8 @@ def('install', 'Mobile Storage Install, Step by Step', 'Rails in the floor or on
   const masonite = k.std(0x6b4a2f, 0.75, 0), ply = k.std(0xd9b27c, 0.8, 0), railM = k.std(0x7d858a, 0.35, 0.8), hole = k.std(0x2b2d2f, 0.9, 0), toolM = k.std(0x1f6fb3, 0.5, 0.2), alu = k.std(0xc9ced2, 0.3, 0.85), keyM = k.std(0xc9a227, 0.35, 0.7);
   // chain links and floor tile textures
   const tex = (w, hgt, draw, rx, ry) => { const c = document.createElement('canvas'); c.width = w; c.height = hgt; draw(c.getContext('2d')); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry); t.anisotropy = 8; return t; };
-  const chainM = new THREE.MeshStandardMaterial({ map: tex(32, 64, g => { g.fillStyle = '#3a3d40'; g.fillRect(0, 0, 32, 64); g.strokeStyle = '#a9b0b5'; g.lineWidth = 5; for (const y of [2, 34]) { g.beginPath(); g.ellipse(16, y + 14, 9, 14, 0, 0, Math.PI * 2); g.stroke(); } }, 1, 40), roughness: 0.4, metalness: 0.8 });
-  const vctM = new THREE.MeshStandardMaterial({ map: tex(128, 128, g => { g.fillStyle = '#d9d4c7'; g.fillRect(0, 0, 128, 128); g.fillStyle = '#c9c2b2'; g.fillRect(0, 0, 64, 64); g.fillRect(64, 64, 64, 64); g.strokeStyle = '#b8b1a2'; g.lineWidth = 1; g.strokeRect(0, 0, 64, 64); g.strokeRect(64, 64, 64, 64); }, 1, 1), roughness: 0.55, metalness: 0 });
+  const chainM = MAT(THREE, { map: tex(32, 64, g => { g.fillStyle = '#3a3d40'; g.fillRect(0, 0, 32, 64); g.strokeStyle = '#a9b0b5'; g.lineWidth = 5; for (const y of [2, 34]) { g.beginPath(); g.ellipse(16, y + 14, 9, 14, 0, 0, Math.PI * 2); g.stroke(); } }, 1, 40), roughness: 0.4, metalness: 0.8 });
+  const vctM = MAT(THREE, { map: tex(128, 128, g => { g.fillStyle = '#d9d4c7'; g.fillRect(0, 0, 128, 128); g.fillStyle = '#c9c2b2'; g.fillRect(0, 0, 64, 64); g.fillRect(64, 64, 64, 64); g.strokeStyle = '#b8b1a2'; g.lineWidth = 1; g.strokeRect(0, 0, 64, 64); g.strokeRect(64, 64, 64, 64); }, 1, 1), roughness: 0.55, metalness: 0 });
   const L = 108, d = 15, h = 84, N = 4, aisle = 36, cH = 5, TW = 8;
   const depths = [d + 1, ...Array(N).fill(2 * d + 1), d + 1];
   const base = []; let acc = 0; for (const dd of depths) { base.push(acc); acc += dd + 0.8; }
@@ -2995,7 +3025,7 @@ def('install', 'Mobile Storage Install, Step by Step', 'Rails in the floor or on
   const next = async () => { if (busy || at >= STEPS.length) return; busy = true; const [a, b, fn] = STEPS[at]; at++; say('Step ' + at + ' of ' + STEPS.length + ' · ' + a, b); await fn(); busy = false; refresh?.(); };
   reset();
   return {
-    group: root, finishes: [{ name: 'Black', swatch: '#2c2f31', color: 0x2c2f31 }, { name: 'O\'Brien teal', swatch: '#0f7377', color: 0x0f7377 }, { name: 'Light gray', swatch: '#c3c7ca', color: 0xbfc4c7 }, { name: 'Navy', swatch: '#2a3d5c', color: 0x2a3d5c }], setFinish: k.finisher(panel), view: [1.45, 0.62, 0.62],
+    hint: 'Open this aisle', group: root, finishes: [{ name: 'Black', swatch: '#2c2f31', color: 0x2c2f31 }, { name: 'O\'Brien teal', swatch: '#0f7377', color: 0x0f7377 }, { name: 'Light gray', swatch: '#c3c7ca', color: 0xbfc4c7 }, { name: 'Navy', swatch: '#2a3d5c', color: 0x2a3d5c }], setFinish: k.finisher(panel), view: [1.45, 0.62, 0.62],
     actions: [
       { label: 'Floor', options: METHODS, get: () => method, set: n => { if (!busy) { method = n; finish = 0; reset(); } } },
       { label: 'Deck finish', when: () => method === 0, options: FIN_R, get: () => finish, set: n => { if (!busy) { finish = n; reset(); } } },
@@ -3039,7 +3069,7 @@ def('painting-bins', 'Painting Storage Bins', 'Steel shelving with dividers on 1
       // roll-up door: side guides, slats, bottom bar, and the coil hood sitting on the top shelf
       const dg = group(unit); dg.visible = doorsOn; dg.userData.dyn = true;
       for (const gx of [x0 + 0.1, x0 + W - 1.6]) bx(dg, 1.5, H - 1, 1.6, guideM, gx, 0, D + 0.1);
-      const tex = slatTex(), m = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.4, metalness: 0.3 }); slatM.push(m);
+      const tex = slatTex(), m = MAT(THREE, { map: tex, roughness: 0.4, metalness: 0.3 }); slatM.push(m);
       const geo = new THREE.PlaneGeometry(W - 3, H - 1); geo.translate(0, -(H - 1) / 2, 0);
       const curtain = new THREE.Mesh(geo, m); curtain.position.set(x0 + W / 2, H - 0.5, D + 0.9); curtain.userData.dyn = true; dg.add(curtain);
       const btm = new THREE.Mesh(new THREE.BoxGeometry(W - 3, 1.4, 0.8), guideM); btm.position.set(x0 + W / 2, 0.7, D + 0.9); btm.userData.dyn = true; dg.add(btm);
@@ -3055,7 +3085,7 @@ def('painting-bins', 'Painting Storage Bins', 'Steel shelving with dividers on 1
     // any framed work slides out of its slot, face showing; behind a closed door the click opens the door first
     reg.clear(); secOf.clear();
     const im = k.pullMany(unit, frames, k.std(0xffffff, 0.6, 0.1), {
-      reg, ms: 900,
+      reg, ms: 900, hint: 'Pull this painting', back: 'Slide it back in',
       spawn: (b) => {
         const g = group(null), iw = b.d - 3, ih = b.h - 3;
         bx(g, b.w, b.h, b.d, k.std(new THREE.Color(b.color).getHex(), 0.5, 0.25), b.x, b.y, b.z);
@@ -3083,7 +3113,7 @@ def('painting-bins', 'Painting Storage Bins', 'Steel shelving with dividers on 1
   const tick = () => doors.forEach(d => { d.tex.repeat.y = Math.max(0.2, (d.h0 * d.curtain.scale.y) / 3); });
   make();
   return {
-    group: root, view: [0.7, 0.35, 1.3], tick,
+    hint: 'Roll the door up or down', group: root, view: [0.7, 0.35, 1.3], tick,
     finishes: [{ name: 'Light gray', swatch: '#c3c7ca', color: 0xbfc4c7 }, { name: 'Putty', swatch: '#d9cfbd', color: 0xd6ccb9 }, { name: 'White', swatch: '#f1f2f0', color: 0xeeefed }, { name: 'Black', swatch: '#2c2f31', color: 0x2c2f31 }], setFinish: k.finisher(paint, post),
     actions: [
       { label: 'Open doors', when: () => doorsOn, run: () => { const o = !doors.every(d => d.open); doors.forEach(d => { if (d.open !== o) d.curtain.userData.onClick(); }); return o ? 'Close doors' : 'Open doors'; } },
@@ -3098,7 +3128,7 @@ def('painting-bins', 'Painting Storage Bins', 'Steel shelving with dividers on 1
 /* ---------------- 31. stationary wardrobe cabinets ---------------- */
 def('wardrobe', 'Steel Wardrobe Cabinets', '36" W x 24" D x 78" H cabinets: hanging rod and hat shelf, adjustable shelves, locking double doors, on a base or legs', ({ THREE, tween, wake, bake, refit }) => {
   const k = kit(THREE), { M, bx, cyl, group } = k, root = new THREE.Group();
-  const paint = k.std(0xb5babd, 0.45, 0.35), cloth = [0x2a3d5c, 0x1c1d1f, 0x6b1f2a, 0xd9d4c7, 0x3d5a3a, 0x8a8f94, 0xefece4].map(c => k.std(c, 0.9, 0)), fold = [0xe8e4da, 0x9aa8b8, 0x6b4f3a, 0xf2f2ee].map(c => k.std(c, 0.9, 0));
+  const hw = k.std(0x3a3f44, 0.4, 0.55), paint = k.std(0xb5babd, 0.45, 0.35), cloth = [0x2a3d5c, 0x1c1d1f, 0x6b1f2a, 0xd9d4c7, 0x3d5a3a, 0x8a8f94, 0xefece4].map(c => k.std(c, 0.9, 0)), fold = [0xe8e4da, 0x9aa8b8, 0x6b4f3a, 0xf2f2ee].map(c => k.std(c, 0.9, 0));
   const W = 36, D = 24, H = 78, COUNTS = [2, 3, 4], INTERIORS = ['Full-height hanging', 'Hanging over shelves', 'Shelves only'];
   let ci = 1, inner = 1, legs = false, unit, doors = [];
   const make = () => {
@@ -3124,9 +3154,9 @@ def('wardrobe', 'Steel Wardrobe Cabinets', '36" W x 24" D x 78" H cabinets: hang
       for (const side of [0, 1]) {
         const pv = group(unit, side ? x + W - 0.2 : x + 0.2, y0 + 0.4, D), dw = W / 2 - 0.3, sx = side ? -dw : 0; pv.userData.dyn = true;
         bx(pv, dw, h - 0.8, 0.8, paint, sx, 0, 0);
-        for (let v = 0; v < 5; v++) bx(pv, dw - 6, 0.3, 0.1, M.dark, sx + 3, h - 6 - v * 0.9, 0.8);
-        for (let v = 0; v < 5; v++) bx(pv, dw - 6, 0.3, 0.1, M.dark, sx + 3, 6 + v * 0.9, 0.8);
-        if (side) { bx(pv, 1, 8, 0.9, M.chrome, -dw + 1.4, h / 2 - 4, 0.6); bx(pv, 1.4, 2.2, 0.6, M.chrome, -dw + 1.2, h / 2 + 5, 0.8); }
+        for (let v = 0; v < 5; v++) bx(pv, dw - 6, 0.3, 0.1, hw, sx + 3, h - 6 - v * 0.9, 0.8);
+        for (let v = 0; v < 5; v++) bx(pv, dw - 6, 0.3, 0.1, hw, sx + 3, 6 + v * 0.9, 0.8);
+        if (side) { bx(pv, 1, 8, 0.9, hw, -dw + 1.4, h / 2 - 4, 0.6); bx(pv, 1.4, 2.2, 0.6, hw, -dw + 1.2, h / 2 + 5, 0.8); }
         pair.push(pv);
       }
       const toggle = () => { const o = !pair[0].userData.open; pair.forEach((d, n) => { d.userData.open = o; tween(d.rotation, 'y', o ? (n ? 1.9 : -1.9) : 0, 800, 'out'); }); };
@@ -3140,7 +3170,7 @@ def('wardrobe', 'Steel Wardrobe Cabinets', '36" W x 24" D x 78" H cabinets: hang
   make();
   const re = () => { make(); refit?.(); };
   return {
-    group: root, view: [0.8, 0.45, 1.3], prompt: 'Tap a cabinet door to open it',
+    hint: 'Open this cabinet', group: root, view: [0.8, 0.45, 1.3], prompt: 'Tap a cabinet door to open it',
     finishes: k.FIN.lockers, setFinish: k.finisher(paint),
     actions: [
       { label: 'Open all doors', run: () => { const o = !doors.every(d => d.pair[0].userData.open); doors.forEach(d => { if (!!d.pair[0].userData.open !== o) d.toggle(); }); return o ? 'Close all doors' : 'Open all doors'; } },
@@ -3156,7 +3186,7 @@ def('wardrobe', 'Steel Wardrobe Cabinets', '36" W x 24" D x 78" H cabinets: hang
 def('wall-etrack', 'Wall E-Track Restraints', '16 ft wall with rows of E-track: straps from the track hold crated works, pallets, sculpture on plinths or large framed art', ({ THREE, tween, wake, bake, refit }) => {
   const k = kit(THREE), { M, bx, group } = k, root = new THREE.Group();
   const wall = k.std(0xe9e6df, 0.9, 0), strapM = k.std(0xe8b923, 0.8, 0), buckle = k.std(0x9aa1a6, 0.3, 0.9), pad = k.std(0x2b2d2f, 0.9, 0), foam = k.std(0xf2f2ee, 0.95, 0);
-  const trackTex = (() => { const c = document.createElement('canvas'); c.width = 64; c.height = 16; const g = c.getContext('2d'); g.fillStyle = '#c9ced2'; g.fillRect(0, 0, 64, 16); g.fillStyle = '#3a3d40'; for (let x = 4; x < 64; x += 16) { g.fillRect(x, 4, 8, 3); g.fillRect(x, 9, 8, 3); g.fillRect(x + 3, 4, 2, 8); } g.fillStyle = '#e3e7ea'; g.fillRect(0, 0, 64, 1.5); g.fillRect(0, 14.5, 64, 1.5); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping; t.repeat.set(192 / 8, 1); t.anisotropy = 8; return new THREE.MeshStandardMaterial({ map: t, roughness: 0.35, metalness: 0.85 }); })();
+  const trackTex = (() => { const c = document.createElement('canvas'); c.width = 64; c.height = 16; const g = c.getContext('2d'); g.fillStyle = '#c9ced2'; g.fillRect(0, 0, 64, 16); g.fillStyle = '#3a3d40'; for (let x = 4; x < 64; x += 16) { g.fillRect(x, 4, 8, 3); g.fillRect(x, 9, 8, 3); g.fillRect(x + 3, 4, 2, 8); } g.fillStyle = '#e3e7ea'; g.fillRect(0, 0, 64, 1.5); g.fillRect(0, 14.5, 64, 1.5); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping; t.repeat.set(192 / 8, 1); t.anisotropy = 8; return MAT(THREE, { map: t, roughness: 0.35, metalness: 0.85 }); })();
   const L = 192, ROWS = [18, 42, 66], KINDS = ['Crated works and pallets', 'Sculpture on plinths', 'Large framed art'];
   let kind = 0, strapsOn = true, unit, straps;
   // a strap from the track, around the front of a load of width w and depth d at height y, with a ratchet in front
@@ -3227,7 +3257,7 @@ def('smart-lockers', 'Smart Package Lockers', 'Touchscreen kiosk with a bank of 
       if (c === KIOSK) {
         // the kiosk: a touchscreen, a scanner and a small shelf, with storage above and below
         bx(unit, w, 30, 0.8, shell, x0, BASE + 24, D - 0.8);
-        const kiosk = group(unit); kiosk.userData.onClick = () => pickup();
+        const kiosk = group(unit); kiosk.userData.onClick = () => pickup(); kiosk.userData.hint = 'Pick up a package';
         const scr = new THREE.Mesh(new THREE.PlaneGeometry(w - 3, (w - 3) * 1.4), new THREE.MeshBasicMaterial({ map: scrTex, toneMapped: false })); scr.position.set(x0 + w / 2, BASE + 40, D + 0.02); kiosk.add(scr);
         bx(unit, 5, 2, 1.2, M.black, x0 + w / 2 - 2.5, BASE + 27, D - 0.2); bx(unit, 3.5, 0.3, 0.1, ledG, x0 + w / 2 - 1.75, BASE + 28, D + 1.01);
         bx(unit, w, 0.8, 6, shell, x0, BASE + 22, D);
@@ -3249,7 +3279,7 @@ def('smart-lockers', 'Smart Package Lockers', 'Touchscreen kiosk with a bank of 
     const boxIm = many(unit, boxes, M.kraft), ledIm = many(unit, leds, ledO);
     const openNow = new Set();
     const doorIm = k.pullMany(unit, doors, door, {
-      also: [ledIm], ms: 700,
+      also: [ledIm], ms: 700, hint: 'Open this door', back: 'Close the door',
       spawn: (b, i) => { const s2 = slots[i], pv = group(null, s2.x0 + 0.15, 0, D - 0.6); bx(pv, b.w, b.h, 0.6, door, 0, b.y, 0); bx(pv, 1, b.h * 0.5, 0.7, M.chrome, b.w - 1.8, b.y + b.h * 0.25, 0.1); bx(pv, 1, 0.5, 0.1, openNow.has(i) ? ledG : ledG, b.w - 2.35, b.y + b.h - 1.4, 0.62); pv.traverse(o => { if (o.isMesh) o.castShadow = o.receiveShadow = true; }); return pv; },
       show: (pv) => tween(pv.rotation, 'y', -1.7, 600, 'out'),
       hide: (pv) => tween(pv.rotation, 'y', 0, 500),
@@ -3327,7 +3357,7 @@ def('vertical-carousel', 'Vertical Carousel', 'About 9 ft W x 5 ft D x 12 ft H: 
     while (x < CW / 2 - 7) { const w = [6, 8, 12][Math.floor(r() * 3)]; if (x + w > CW / 2 - 1) break; bins.push({ x, y: -8.5, z: -CD / 2 + 1, w: w - 0.4, h: 5, d: CD - 2, color: col }); x += w; }
     many(c, bins, k.std(0xffffff, 0.45, 0.05));
     const tag = bx(c, 3, 1.4, 0.05, M.label, -1.5, -7, CD / 2 + 0.02);
-    c.userData.i = i; c.userData.onClick = () => call(i);
+    c.userData.i = i; c.userData.onClick = () => call(i); c.userData.hint = 'Bring this carrier to the window';
     carriers.push(c);
   }
   // guide tracks at both ends of the carriers
@@ -3425,7 +3455,7 @@ def('bike-storage', 'Bike Room Storage', 'Apartment and campus bike rooms: two-t
   };
   make();
   return {
-    group: root, view: [0.7, 0.55, 1.3], prompt: 'Tap an upper tray to lower it, or the door to open the room',
+    hint: 'Use this rack', group: root, view: [0.7, 0.55, 1.3], prompt: 'Tap an upper tray to lower it, or the door to open the room',
     finishes: [{ name: 'Dark gray', swatch: '#3a3f44', color: 0x3a3f44 }, { name: 'Black', swatch: '#1c1d1f', color: 0x1c1d1f }, { name: 'Silver', swatch: '#c3c7ca', color: 0xbfc4c7 }, { name: 'Blue', swatch: '#2a4d7a', color: 0x2a4d7a }], setFinish: k.finisher(steel),
     actions: [
       { label: 'Lower an upper tray', when: () => style === 0, run: () => { const t = trays[1] || trays[0]; t?.userData.onClick(); return t?.userData.down ? 'Raise the tray' : 'Lower an upper tray'; } },

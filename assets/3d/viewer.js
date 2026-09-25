@@ -11,7 +11,7 @@ const { MODELS } = await import('./models.js' + new URL(import.meta.url).search)
 
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 // phones, tablets and modest laptops get a lighter renderer: cheaper shadows, no antialiasing, a lower resolution cap
-const LOW = matchMedia('(pointer: coarse)').matches || (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 4;
+const LOW = !!window.V3D_LOW || matchMedia('(pointer: coarse)').matches || (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 4;
 const PR_MAX = LOW ? 1.5 : 2;
 const ease = t => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
@@ -108,17 +108,19 @@ function viewer(el) {
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.05;
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = LOW ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = LOW || window.V3D_PCF ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
   // shadows only re-render when the model changes, not when the camera turns
   renderer.shadowMap.autoUpdate = false;
 
   const scene = new THREE.Scene();
   const pmrem = new THREE.PMREMGenerator(renderer);
-  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  if (window.V3D_PBR) scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
   const sun = new THREE.DirectionalLight(0xffffff, 1.6);
-  sun.castShadow = true; sun.shadow.mapSize.set(LOW ? 1024 : 2048, LOW ? 1024 : 2048); sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.6;
-  const hemi = new THREE.HemisphereLight(0xffffff, 0xdfe7e7, 0.35), fill = new THREE.DirectionalLight(0xffffff, 0);
-  scene.add(sun, sun.target, hemi, fill, fill.target);
+  sun.castShadow = true; sun.shadow.mapSize.set(LOW ? 1024 : 2048, LOW ? 1024 : 2048); sun.shadow.bias = -0.0008; sun.shadow.normalBias = 1.2;
+  // the fast materials take no reflections from the environment, so the sky and ambient light carry the fill
+  const PBR = !!window.V3D_PBR, HEMI = PBR ? 0.35 : 1.25;
+  const hemi = new THREE.HemisphereLight(0xffffff, 0xcfd6d6, HEMI), fill = new THREE.DirectionalLight(0xffffff, 0), amb = new THREE.AmbientLight(0xffffff, PBR ? 0 : 0.35);
+  scene.add(sun, sun.target, hemi, fill, fill.target, amb);
   const ground = new THREE.Mesh(new THREE.CircleGeometry(1, 64), new THREE.ShadowMaterial({ opacity: 0.16 }));
   ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
   // a soft floor that fades out under the model, so it sits on something instead of floating (one draw call)
@@ -182,7 +184,7 @@ function viewer(el) {
   // at eye level you stand in the carriages' shade: lift the fill, soften the shadows, and fit the shadow map around you
   let shadowAt = null;
   const walkLight = (on) => {
-    hemi.intensity = on ? 0.8 : 0.35; fill.intensity = on ? 0.55 : 0; sun.shadow.intensity = on ? 0.55 : 1; renderer.toneMappingExposure = on ? 1.18 : 1.05;
+    hemi.intensity = on ? HEMI * 1.6 : HEMI; fill.intensity = on ? 0.55 : 0; sun.shadow.intensity = on ? 0.55 : 1; renderer.toneMappingExposure = on ? 1.18 : 1.05;
     if (!on && home) { fit.sun?.(); shadowAt = null; }
     renderer.shadowMap.needsUpdate = true;
   };
@@ -244,7 +246,7 @@ function viewer(el) {
   };
   const toLocal = () => camera.position.clone().applyMatrix4(new THREE.Matrix4().copy(current.group.matrixWorld).invert());
   const walkKeys = () => false;
-  el.v3dDebug = () => ({ camera, controls, group: current?.group, THREE, wake: modelWake });
+  el.v3dDebug = () => ({ camera, controls, group: current?.group, THREE, wake: modelWake, renderer });
   el.tabIndex = -1; el.v3dState = () => ({ cam: camera.position.toArray().map(Math.round), walking, stop: tourAt, active: document.activeElement?.className });
   addEventListener('keydown', e => {
     if (!walking || !(el.contains(document.activeElement) || el.matches(':hover') || document.fullscreenElement)) return;
@@ -305,7 +307,23 @@ function viewer(el) {
 
   // quick clicks through the menu collapse into one load; the model builds after the clicking stops,
   // its shaders compile in the background, and the model it replaces gives back its GPU memory
-  let loadT = 0, loadTok = 0;
+  let loadT = 0, loadTok = 0, shown = null, warmed = false;
+  // once the first model is up, compile every kind of material the showroom uses in the background (the GPU driver
+  // can take seconds on a new shader); later models then find their shaders ready and appear at once
+  function warmUp() {
+    const zoo = new THREE.Scene(), g = new THREE.BoxGeometry(1, 1, 1), px = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1); px.needsUpdate = true;
+    const S = THREE.MeshStandardMaterial, B = THREE.MeshBasicMaterial;
+    const mats = [new S(), new S({ map: px }), new S({ map: px, transparent: true }), new S({ map: px, alphaTest: 0.4, side: THREE.DoubleSide }), new S({ map: px, side: THREE.DoubleSide }), new S({ side: THREE.DoubleSide }),
+      new S({ transparent: true, opacity: 0.6 }), new THREE.MeshPhysicalMaterial({ transparent: true, opacity: 0.22, depthWrite: false }), new B({ map: px, toneMapped: false }), new B({ map: px, transparent: true, depthWrite: false, toneMapped: false }),
+      new B({ transparent: true, opacity: 0.5, depthWrite: false, toneMapped: false }), new B({ color: 0xffffff }), new B({ toneMapped: false, depthTest: false }), new THREE.MeshLambertMaterial(), new THREE.SpriteMaterial({ map: px, depthTest: false, toneMapped: false })];
+    for (const m of mats) {
+      if (m.isSpriteMaterial) { zoo.add(new THREE.Sprite(m)); continue; }
+      const a = new THREE.Mesh(g, m); a.castShadow = a.receiveShadow = true; zoo.add(a);
+      const b = new THREE.InstancedMesh(g, m, 1); b.receiveShadow = true; zoo.add(b);
+      const c = new THREE.InstancedMesh(g, m, 1); c.setColorAt(0, new THREE.Color(1, 1, 1)); c.receiveShadow = true; zoo.add(c);
+    }
+    renderer.compileAsync(zoo, camera, scene).catch(() => {});
+  }
   const request = (id) => {
     if (!MODELS[id]) return; curId = id; clearTimeout(loadT);
     el.querySelector('.v3d-title b').textContent = MODELS[id].name; el.querySelector('.v3d-title span').textContent = MODELS[id].dims || '';
@@ -324,26 +342,32 @@ function viewer(el) {
       b.addEventListener('click', () => { finPick = i; fin.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); current.setFinish(f); name.textContent = f.name; wake(); }); return b; });
     fin.replaceChildren(Object.assign(document.createElement('span'), { textContent: 'Finish' }), ...sw, name);
   }
-  const release = (g) => g.traverse(o => { o.geometry?.dispose?.(); for (const m of [].concat(o.material || [])) { if (!m) continue; for (const k of ['map', 'alphaMap', 'normalMap']) { const t = m[k]; if (t && !t.userData?.keep) t.dispose(); } } });
+  const release = (g) => g.traverse(o => { if (!o.geometry?.userData?.keep) o.geometry?.dispose?.(); for (const m of [].concat(o.material || [])) { if (!m) continue; for (const k of ['map', 'alphaMap', 'normalMap']) { const t = m[k]; if (t && !t.userData?.keep) t.dispose(); } } });
+  const cache = new Map(), CACHE_N = LOW ? 3 : 6;
+  const park = (m) => { if (!m) return; cache.delete(m._id); cache.set(m._id, m); while (cache.size > CACHE_N) { const [k0, old] = cache.entries().next().value; cache.delete(k0); if (old.group !== shown && old !== current) release(old.group); } };
   async function load(id) {
     const tok = ++loadTok;
     closePanel(); stopDemoTimers();
     if (walking) overview(1);
     // a model whose shaders are still compiling is released only after the compile settles (never mid-compile)
-    if (current) { scene.remove(current.group); if (current._compiling) current._stale = true; else release(current.group); current = null; clickables = []; }
+    if (current) { if (current._compiling) current._stale = true; else park(current); current = null; clickables = []; }
     await new Promise(r => requestAnimationFrame(r)); if (tok !== loadTok) return;
-    const def = MODELS[id];
-    current = def.build({ THREE, tween, wait, wake: modelWake, bake: g => bake(THREE, g), panel, toast, lite: el.dataset.lite === '1', fly: (p, t) => { const m = current.group.matrixWorld; fly(new THREE.Vector3(...p).applyMatrix4(m), new THREE.Vector3(...t).applyMatrix4(m)); }, overview: () => overview(), isWalking: () => walking, playerPos: () => (walking ? toLocal() : null), refresh: () => { syncActs(); showActs(); }, refit: () => { if (current) { if (walking) overview(1); fit(current.group, current.view); wake(); } } });
-    scan();
-    current.group.traverse(o => { if (o.isMesh && !o.userData.noShadow) { o.castShadow = true; o.receiveShadow = true; } });
-    bake(THREE, current.group);
+    const def = MODELS[id], T0 = performance.now(), hit = cache.get(id); if (hit) cache.delete(id);
+    current = hit || def.build({ THREE, tween, wait, wake: modelWake, bake: g => bake(THREE, g), panel, toast, lite: el.dataset.lite === '1', fly: (p, t) => { const m = current.group.matrixWorld; fly(new THREE.Vector3(...p).applyMatrix4(m), new THREE.Vector3(...t).applyMatrix4(m)); }, overview: () => overview(), isWalking: () => walking, playerPos: () => (walking ? toLocal() : null), refresh: () => { syncActs(); showActs(); }, refit: () => { if (current) { if (walking) overview(1); fit(current.group, current.view); wake(); } } });
+    current._id = id; scan();
+    const T1 = performance.now(); if (!hit) { current.group.traverse(o => { if (o.isMesh && !o.userData.noShadow) { o.castShadow = true; o.receiveShadow = true; } }); bake(THREE, current.group); } const T2 = performance.now();
+    // every instanced batch carries per-instance colors, so they all share one shader
+    if (!hit) current.group.traverse(o => { if (o.isInstancedMesh && !o.instanceColor) { const c = new THREE.Color(1, 1, 1); for (let i = 0; i < o.count; i++) o.setColorAt(i, c); } });
     const sph = new THREE.Sphere();
-    current.group.traverse(o => { if (!o.isMesh || o.userData.noShadow) return; if (o.isInstancedMesh) { o.castShadow = false; return; } if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere(); sph.copy(o.geometry.boundingSphere); o.castShadow = sph.radius * Math.max(o.scale.x, o.scale.y, o.scale.z) > 5; });
+    if (!hit) current.group.traverse(o => { if (!o.isMesh || o.userData.noShadow) return; if (o.isInstancedMesh) { o.castShadow = false; return; } if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere(); sph.copy(o.geometry.boundingSphere); o.castShadow = sph.radius * Math.max(o.scale.x, o.scale.y, o.scale.z) > 5; });
     const built = current; built._compiling = true;
     try { await renderer.compileAsync(built.group, camera, scene); } catch (err) { /* older browsers compile on first draw */ }
     built._compiling = false;
-    if (built._stale || tok !== loadTok || current !== built) { release(built.group); return; }
-    scene.add(current.group); measured = false;
+    // a load that was overtaken keeps its model in the cache (it is built now); the one on screen swaps out the same way
+    if (built._stale || tok !== loadTok || current !== built) { park(built); return; }
+    const inCache = g => [...cache.values()].some(m => m.group === g);
+    if (shown && shown !== built.group) { scene.remove(shown); if (!inCache(shown)) release(shown); }
+    scene.add(current.group); shown = current.group; measured = false;
     fit(current.group, current.view);
     curId = id; el.querySelectorAll('.v3d-side details').forEach(d => { if (d.querySelector('[data-id="' + id + '"]')) d.open = true; });
     { const nb = el.querySelector('.v3d-side [data-id="' + id + '"]'), nav = nb?.closest('.v3d-side'); if (nb && nav && nb.offsetTop - nav.scrollTop > nav.clientHeight - 40) nav.scrollTop = nb.offsetTop - nav.clientHeight / 2; }
@@ -360,7 +384,7 @@ function viewer(el) {
       let node;
       if (a.options) {
         // a few short choices read best as buttons you tap; long lists stay a dropdown
-        const short = a.options.length <= 4 && a.options.join('').length <= 46;
+        const short = a.options.length <= 3 && a.options.join('').length <= 26 && a.options.every(o => o.length <= 14);
         node = document.createElement('div'); node.className = short ? 'v3d-choice' : 'v3d-opt';
         const lab = Object.assign(document.createElement('span'), { textContent: a.label });
         if (short) {
@@ -457,8 +481,18 @@ function viewer(el) {
     const r = canvas.getBoundingClientRect(), p = hoverQ; hoverQ = null;
     ptr.set(((p[0] - r.left) / r.width) * 2 - 1, -((p[1] - r.top) / r.height) * 2 + 1);
     ray.setFromCamera(ptr, camera);
-    canvas.style.cursor = ray.intersectObjects(clickables, true).length ? 'pointer' : 'grab';
+    // what a click here would do: the same pick as a click, then the part's hint (or its model's default)
+    const ok = h => { const m = h.object.material; if (!h.object.visible) return false; let q = h.object.parent; while (q) { if (!q.visible) return false; q = q.parent; } return !(m && m.transparent && m.opacity < 0.6); };
+    // only the parts you can click are tested (a big system has thousands of boxes; testing them all stutters)
+    const hits = ray.intersectObjects(clickables, true).filter(ok), hit = hits[0];
+    let o = hit?.object; while (o && !o.userData.onClick) o = o.parent;
+    canvas.style.cursor = o ? 'pointer' : (walking ? 'grab' : 'grab');
+    const hint = o ? (typeof o.userData.hint === 'function' ? o.userData.hint(hit) : o.userData.hint) || current.hint || null : null;
+    if (hint) { tipEl.textContent = hint; tipEl.style.left = (p[0] - r.left + 14) + 'px'; tipEl.style.top = (p[1] - r.top + 16) + 'px'; tipEl.hidden = false; } else tipEl.hidden = true;
   };
+  const tipEl = Object.assign(document.createElement('div'), { className: 'v3d-tip', hidden: true }); stage.appendChild(tipEl);
+  canvas.addEventListener('pointerleave', () => { tipEl.hidden = true; });
+  canvas.addEventListener('pointerdown', () => { tipEl.hidden = true; });
   canvas.addEventListener('pointermove', e => {
     if (e.buttons || !current || !clickables.length) return;
     hoverQ = [e.clientX, e.clientY];
