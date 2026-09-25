@@ -47,11 +47,11 @@ const IMGS = {
   hdNemoursAisle: img('ee464-nemours5.jpg'),
   hdNemoursWide: '/assets/media/2023/04/nemours1.jpg',
   hdGearRoom: '/assets/media/ext/florida-atlantic-university-3.jpg',
-  liftsCard: img('53512-lifts-1.jpg'),
-  lifts2: img('7ec0c-lifts.jpg'),
+  liftsCard: img('vlm-bay-crop.jpg'),
+  lifts2: img('lifts-crop.jpg'),
   liftSide: img('83b11-lift-side-view.jpg'),
-  modulaLift: img('bfafa-vlm-lift.jpg'),
-  modula1: img('vlm-scaled-1.jpg'),
+  modulaLift: img('vlm-bay-crop.jpg'),
+  modula1: img('lifts-crop.jpg'),
   lockersCard: img('86339-lockers1.jpg'),
   lockerEvidence: img('71cac-evidence-locker.jpg'),
   lockerSolutions: img('e2f7b-solutions-locker.jpg'),
@@ -1889,6 +1889,14 @@ const homeBody = `
 
 /* ---------------- write files ---------------- */
 const SITE_JS = `document.documentElement.classList.add('js');
+// card and banner photos arrive as they scroll near (data-bg), so a page shows up fast and scrolls light
+(function(){
+  var els = document.querySelectorAll('[data-bg]'); if (!els.length) return;
+  var show = function(el){ el.style.backgroundImage = "url('" + el.getAttribute('data-bg') + "')"; el.removeAttribute('data-bg'); };
+  if (!('IntersectionObserver' in window)) { els.forEach(show); return; }
+  var io = new IntersectionObserver(function(es){ es.forEach(function(e){ if (e.isIntersecting) { show(e.target); io.unobserve(e.target); } }); }, { rootMargin: '500px' });
+  els.forEach(function(el){ io.observe(el); });
+})();
 (function(){
   var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   var hdr = document.querySelector('header');
@@ -2058,7 +2066,7 @@ for (const [file, html] of Object.entries(pages)) {
   // copy rules are enforced here: the build fails rather than publish a violation
   const bad = [/\u2014/, /&mdash;/, /nationwide/i].find(re => re.test(html.replace(/<script[\s\S]*?<\/script>/g, '')));
   if (bad) throw new Error(`${file}: copy rule violation (${bad})`);
-  fs.writeFileSync(path.join(OUT, file), X.enrich(file, X.with3d(X.photos(file, html), VER)));
+  fs.writeFileSync(path.join(OUT, file), X.lazyMedia(X.enrich(file, X.with3d(X.photos(file, html), VER))));
   n++;
 }
 // customer presentations: unlisted, never in the sitemap

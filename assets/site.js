@@ -1,4 +1,12 @@
 document.documentElement.classList.add('js');
+// card and banner photos arrive as they scroll near (data-bg), so a page shows up fast and scrolls light
+(function(){
+  var els = document.querySelectorAll('[data-bg]'); if (!els.length) return;
+  var show = function(el){ el.style.backgroundImage = "url('" + el.getAttribute('data-bg') + "')"; el.removeAttribute('data-bg'); };
+  if (!('IntersectionObserver' in window)) { els.forEach(show); return; }
+  var io = new IntersectionObserver(function(es){ es.forEach(function(e){ if (e.isIntersecting) { show(e.target); io.unobserve(e.target); } }); }, { rootMargin: '500px' });
+  els.forEach(function(el){ io.observe(el); });
+})();
 (function(){
   var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   var hdr = document.querySelector('header');

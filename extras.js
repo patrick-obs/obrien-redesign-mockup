@@ -361,7 +361,12 @@ function showroomPage(shell, heroImg) {
 </div></section>`);
 }
 // load the viewer only on pages that have one
-const with3d = (html, ver) => html.includes('class="v3d') ? html.replace('</body>', `<script type="module" src="assets/3d/viewer.js?v=${ver}"></script>\n</body>`) : html;
+// the 3D engine (about 1 MB) loads only when a 3D section comes near the screen; pages you only read never fetch it
+const with3d = (html, ver) => html.includes('class="v3d') ? html.replace('</body>', `<script>(function(){var els=document.querySelectorAll('.v3d');if(!els.length)return;var go=false;function load(){if(go)return;go=true;var s=document.createElement('script');s.type='module';s.src='assets/3d/viewer.js?v=${ver}';document.body.appendChild(s);}if(!('IntersectionObserver' in window))return load();var io=new IntersectionObserver(function(es){for(var i=0;i<es.length;i++)if(es[i].isIntersecting){io.disconnect();load();return;}},{rootMargin:'600px'});els.forEach(function(e){io.observe(e);});})();</script>\n</body>`) : html;
+// photos load as they come near the screen: card backgrounds via data-bg, images with the browser's own lazy loading
+const lazyMedia = (html) => html
+  .replace(/style="background-image:url\('([^']+)'\)"/g, 'data-bg="$1"')
+  .replace(/<img (?![^>]*loading=)(?![^>]*logo)/g, '<img loading="lazy" decoding="async" ');
 const CSS3D = `.v3d-ov{position:absolute;right:12px;top:12px;z-index:6;width:min(300px,calc(100% - 24px));max-height:calc(100% - 24px);overflow:auto;background:#fff;border-radius:14px;box-shadow:0 12px 32px rgba(0,0,0,.22);cursor:auto;touch-action:auto;font:14px/1.4 system-ui,Segoe UI,sans-serif;color:#111}
 .v3d-ov-x{position:absolute;top:8px;right:8px;width:26px;height:26px;border-radius:50%;border:0;background:rgba(255,255,255,.18);color:#fff;font-size:17px;line-height:1;cursor:pointer;z-index:1}
 .cp button{font:inherit;cursor:pointer}
@@ -515,7 +520,7 @@ const CSS3D = `.v3d-ov{position:absolute;right:12px;top:12px;z-index:6;width:min
 .v3d-set [hidden]{display:none!important}
 @media (max-width:640px){.v3d-cust{margin-left:0}.v3d-panel .v3d-set{grid-template-columns:1fr}}`;
 
-module.exports = { viewer3d, home3d, showroomPage, with3d, CSS3D, photos, specPanel, designSpecifyPage, servicePage, notFound, enrich, sitemap, ROBOTS, CSS };
+module.exports = { viewer3d, home3d, showroomPage, with3d, lazyMedia, CSS3D, photos, specPanel, designSpecifyPage, servicePage, notFound, enrich, sitemap, ROBOTS, CSS };
 
 /* customer presentations: a clean page for one customer, and the builder that makes its link or a single-file download */
 const PRESENT_GROUPS = [

@@ -281,7 +281,10 @@ function viewer(el) {
     try { o.userData.onClick(h); modelWake(); } catch (err) { /* a demo click that does not apply is skipped */ }
     demoT = setTimeout(() => { if (!demoOn) return; try { o.userData.onClick(h); modelWake(); } catch (err) { /* skip */ } demoT = setTimeout(demoStep, 4000); }, 2800);
   };
-  const startDemo = () => { if (reduce || touched || window.V3D_NODEMO) return; demoOn = true; controls.autoRotate = true; controls.autoRotateSpeed = 0.6; el.querySelector('[data-v=spin]')?.setAttribute('aria-pressed', 'true'); clearTimeout(demoT); if (!LOW) demoT = setTimeout(demoStep, 5000); wake(); };
+  // the idle spin is short and polite: 20 seconds at most, paused while the page scrolls, never on light devices
+  let spinStop = 0, scrollT = 0;
+  addEventListener('scroll', () => { if (!demoOn) return; controls.autoRotate = false; clearTimeout(scrollT); scrollT = setTimeout(() => { if (demoOn) { controls.autoRotate = true; wake(); } }, 900); }, { passive: true });
+  const startDemo = () => { if (reduce || touched || LOW || window.V3D_NODEMO) return; clearTimeout(spinStop); spinStop = setTimeout(() => { if (demoOn) { demoOn = false; controls.autoRotate = false; clearTimeout(demoT); } }, 20000); demoOn = true; controls.autoRotate = true; controls.autoRotateSpeed = 0.6; el.querySelector('[data-v=spin]')?.setAttribute('aria-pressed', 'true'); clearTimeout(demoT); if (!LOW) demoT = setTimeout(demoStep, 5000); wake(); };
   function stopDemoTimers() { clearTimeout(demoT); }
   function stopDemo() { if (touched) return; touched = true; demoOn = false; clearTimeout(demoT); controls.autoRotate = false; controls.autoRotateSpeed = 1.2; el.querySelector('[data-v=spin]')?.setAttribute('aria-pressed', 'false'); }
   ['pointerdown', 'wheel', 'keydown', 'touchstart'].forEach(t => el.addEventListener(t, stopDemo, { capture: true, passive: true }));
