@@ -12,7 +12,7 @@ const { MODELS } = await import('./models.js' + new URL(import.meta.url).search)
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 // phones, tablets and modest laptops get a lighter renderer: cheaper shadows, no antialiasing, a lower resolution cap
 const LOW = !!window.V3D_LOW || matchMedia('(pointer: coarse)').matches || (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 4;
-const PR_MAX = LOW ? 1.5 : 2;
+const PR_MAX = LOW ? 1.25 : 1.5;
 const ease = t => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
 // Merge every part that never moves into one mesh per material (hundreds of draw calls -> a handful).
@@ -310,23 +310,7 @@ function viewer(el) {
 
   // quick clicks through the menu collapse into one load; the model builds after the clicking stops,
   // its shaders compile in the background, and the model it replaces gives back its GPU memory
-  let loadT = 0, loadTok = 0, shown = null, warmed = false;
-  // once the first model is up, compile every kind of material the showroom uses in the background (the GPU driver
-  // can take seconds on a new shader); later models then find their shaders ready and appear at once
-  function warmUp() {
-    const zoo = new THREE.Scene(), g = new THREE.BoxGeometry(1, 1, 1), px = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1); px.needsUpdate = true;
-    const S = THREE.MeshStandardMaterial, B = THREE.MeshBasicMaterial;
-    const mats = [new S(), new S({ map: px }), new S({ map: px, transparent: true }), new S({ map: px, alphaTest: 0.4, side: THREE.DoubleSide }), new S({ map: px, side: THREE.DoubleSide }), new S({ side: THREE.DoubleSide }),
-      new S({ transparent: true, opacity: 0.6 }), new THREE.MeshPhysicalMaterial({ transparent: true, opacity: 0.22, depthWrite: false }), new B({ map: px, toneMapped: false }), new B({ map: px, transparent: true, depthWrite: false, toneMapped: false }),
-      new B({ transparent: true, opacity: 0.5, depthWrite: false, toneMapped: false }), new B({ color: 0xffffff }), new B({ toneMapped: false, depthTest: false }), new THREE.MeshLambertMaterial(), new THREE.SpriteMaterial({ map: px, depthTest: false, toneMapped: false })];
-    for (const m of mats) {
-      if (m.isSpriteMaterial) { zoo.add(new THREE.Sprite(m)); continue; }
-      const a = new THREE.Mesh(g, m); a.castShadow = a.receiveShadow = true; zoo.add(a);
-      const b = new THREE.InstancedMesh(g, m, 1); b.receiveShadow = true; zoo.add(b);
-      const c = new THREE.InstancedMesh(g, m, 1); c.setColorAt(0, new THREE.Color(1, 1, 1)); c.receiveShadow = true; zoo.add(c);
-    }
-    renderer.compileAsync(zoo, camera, scene).catch(() => {});
-  }
+  let loadT = 0, loadTok = 0, shown = null;
   const request = (id) => {
     if (!MODELS[id]) return; curId = id; clearTimeout(loadT);
     el.querySelector('.v3d-title b').textContent = MODELS[id].name; el.querySelector('.v3d-title span').textContent = MODELS[id].dims || '';
@@ -346,7 +330,7 @@ function viewer(el) {
     fin.replaceChildren(Object.assign(document.createElement('span'), { textContent: 'Finish' }), ...sw, name);
   }
   const release = (g) => g.traverse(o => { if (!o.geometry?.userData?.keep) o.geometry?.dispose?.(); for (const m of [].concat(o.material || [])) { if (!m) continue; for (const k of ['map', 'alphaMap', 'normalMap']) { const t = m[k]; if (t && !t.userData?.keep) t.dispose(); } } });
-  const cache = new Map(), CACHE_N = LOW ? 3 : 6;
+  const cache = new Map(), CACHE_N = LOW ? 2 : 4;
   const park = (m) => { if (!m) return; cache.delete(m._id); cache.set(m._id, m); while (cache.size > CACHE_N) { const [k0, old] = cache.entries().next().value; cache.delete(k0); if (old.group !== shown && old !== current) release(old.group); } };
   async function load(id) {
     const tok = ++loadTok;
@@ -451,7 +435,8 @@ function viewer(el) {
     wasActive = active;
     const idleSpin = demoOn && !active && !stepping && !dirty && now - lastDraw < 32;
     if ((dirty || busy) && !idleSpin) { lastDraw = now; renderer.render(scene, camera); dirty = false; if (!measured) { measured = true; heavy = renderer.info.render.calls > 90; } }
-    if (busy) frame = requestAnimationFrame(loop);
+    // exactly one frame is ever queued: controls.update() above fires change -> wake(), which may already have queued it
+    if (busy) { if (!frame) frame = requestAnimationFrame(loop); }
     else if (lowRes) { setRes(false); renderer.shadowMap.needsUpdate = true; renderer.render(scene, camera); }
   }
 
