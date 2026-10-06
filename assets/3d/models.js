@@ -2,6 +2,18 @@
 // Each model: MODELS[id] = { name, dims, build(ctx) -> { group, actions?, finishes?, setFinish? } }
 // ctx: { THREE, tween(obj, key, to, ms), wake() }. Parts with userData.onClick react to clicks.
 // Representative only: real configurations vary by manufacturer, size and accessories.
+//
+// EXPORT CONTRACT: other builds depend on these names and literals. Run `node C:/tools/obs-3d/tools/webkit.mjs check`
+// after any change here or in viewer.js.
+//  - obs-3d build.mjs bundles this file into every walkthrough: it needs kit, rng, museumObjects, smallThings, framed,
+//    textileMats, shelving, footballHelmet, football and artMat as top-level `function name(` declarations (it appends its
+//    own export list, so don't export them here), and the literal new URL('./paintings.jpg', import.meta.url).href.
+//    Scenes use kit() members (M, bx, cyl, bar, group, grid, std, meshMat, many, postMat), shelving(k, g, opts) and its
+//    userData, framed() -> { m, fw, fh }, museumObjects, footballHelmet / football, artMat.
+//  - museum-showcase studio.js drives MODELS by id, action label, option text and finish name (its booth loop skips a
+//    step it can't find), and taps hd-mobile carriages by their userData.wheel.
+//  - the mockup's present.js swaps the literal vendor imports and the models import in viewer.js for a single file.
+//  - the guide pages on obriensys.com list MODELS ids (src/pages/guides/*.astro).
 
 export const MODELS = {};
 const def = (id, name, dims, build) => { MODELS[id] = { name, dims, build }; };
