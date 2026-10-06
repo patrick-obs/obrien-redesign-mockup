@@ -1063,14 +1063,21 @@ function hdMobile(id, name, dims, start, opts = {}) {
         bx(p, 3.5, C.h, 2, tFrame, xx, y0, dir > 0 ? spine : spine - 2);
         for (const y of levels) { bx(p, 2, 2.2, D - 3, tFrame, xx + 0.75, y0 + y, dir > 0 ? spine + 2 : spine - D + 1); bx(p, 2, 3.4, 1, tFrame, xx + 0.75, y0 + y, dir > 0 ? spine + D - 2 : spine - D + 1); }
       }
+      // a tube rests in a cradle at every column it crosses; its rolls sit inside the bays between columns, 3" clear of
+      // each, so no column or arm passes through a roll (uprights at the pole ends, rolls in their bays)
+      const pc = q => Math.max(0, Math.min(cols[q] - 1.75, C.L - 3.5)) + 1.75;
       for (const y of levels) for (const zc of [10, 21]) {
         const z = spine + dir * zc;
         for (const [a, b] of TSP[Math.floor(r() * TSP.length)]) {
           const xa = cols[a], xb = cols[b];
-          for (const xs of [xa, xb]) bx(p, 2, 5.2, 3, tFrame, Math.max(0, Math.min(xs - 1, C.L - 2)), y0 + y + 2.2, z - 1.5);
+          for (let q = a; q <= b; q++) bx(p, 2, 5.2, 3, tFrame, Math.max(0, Math.min(cols[q] - 1, C.L - 2)), y0 + y + 2.2, z - 1.5);
           // tubes stop inside the end frames, never through the end panel
           const ta = Math.max(0.6, xa - 2), tb = Math.min(C.L - 0.6, xb + 2); cyl(p, 1.5, tb - ta, tTube, (ta + tb) / 2, y0 + y + 7.8, z, 14, 'x');
-          if (r() > 0.15) { const room = xb - xa - 8, len = room * (0.55 + r() * 0.4), x0 = xa + 4 + r() * (room - len), rad = 2.6 + r() * 2.8, wrapped = r() > 0.55, pat = r() > 0.3 ? textileMats(THREE)[Math.floor(r() * 6)] : tBare[Math.floor(r() * tBare.length)]; cyl(p, rad, len, wrapped ? tWraps[Math.floor(r() * 2)] : pat, x0 + len / 2, y0 + y + 7.8, z, 22, 'x'); if (!wrapped && pat.map && r() > 0.6) bx(p, len - 2, 5.5, 0.12, pat, x0 + 1, y0 + y + 7.8 - 5.5, dir > 0 ? z + rad : z - rad - 0.12); }
+          for (let q = a; q < b; q++) {
+            if (r() < 0.15) continue;
+            const b0 = pc(q) + 3, room = pc(q + 1) - 3 - b0, len = room * (0.6 + r() * 0.38), x0 = b0 + r() * (room - len), rad = 2.6 + r() * 2.8, wrapped = r() > 0.55, pat = r() > 0.3 ? textileMats(THREE)[Math.floor(r() * 6)] : tBare[Math.floor(r() * tBare.length)];
+            cyl(p, rad, len, wrapped ? tWraps[Math.floor(r() * 2)] : pat, x0 + len / 2, y0 + y + 7.8, z, 22, 'x'); if (!wrapped && pat.map && r() > 0.6) bx(p, len - 2, 5.5, 0.12, pat, x0 + 1, y0 + y + 7.8 - 5.5, dir > 0 ? z + rad : z - rad - 0.12);
+          }
         }
       }
     };
@@ -2765,16 +2772,18 @@ def('textile-rack', 'Rolled Textile Storage', '12 ft double-sided cantilever rac
   }
   for (const s of [1, -1]) bx(root, L + 6, 4, 2, frame, -3, 0, s > 0 ? arm + 2 : -arm - 4);
   bx(root, L, 3, 3, frame, 0, H - 3, -1.5);
-  // each tube spans one, two or three sections and rests in saddles at the columns it ends on
+  // each tube spans one, two or three sections and rests in a saddle at every column it crosses; its rolls sit inside the
+  // bays between columns (3" clear of each), so no column or arm ever passes through a roll
   const rolls = [];
   for (const y of levels) for (const s of [1, -1]) for (const z of slots) {
     const spans = SPANS[Math.floor(r() * SPANS.length)];
     for (const [a, b] of spans) {
       const xa = cols[a], xb = cols[b], g = group(root, 0, y + 7.8, s * z);
-      for (const xs of [xa, xb]) bx(root, 2, 5.2, 3, frame, xs - 1, y + 2.2, s * z - 1.5);
+      for (let q = a; q <= b; q++) bx(root, 2, 5.2, 3, frame, cols[q] - 1, y + 2.2, s * z - 1.5);
       cyl(g, 1.5, xb - xa + 8, tube, (xa + xb) / 2, 0, 0, 18, 'x');
-      if (r() > 0.1) {
-        const room = xb - xa - 8, len = room * (0.55 + r() * 0.4), x0 = xa + 4 + r() * (room - len), rad = 2.6 + r() * 2.8, wrapped = r() > 0.55, pat = r() > 0.3 ? textileMats(THREE)[Math.floor(r() * 6)] : bare[Math.floor(r() * bare.length)];
+      for (let q = a; q < b; q++) {
+        if (r() < 0.1) continue;
+        const b0 = cols[q] + 3, room = cols[q + 1] - 3 - b0, len = room * (0.6 + r() * 0.38), x0 = b0 + r() * (room - len), rad = 2.6 + r() * 2.8, wrapped = r() > 0.55, pat = r() > 0.3 ? textileMats(THREE)[Math.floor(r() * 6)] : bare[Math.floor(r() * bare.length)];
         cyl(g, rad, len, wrapped ? wraps[Math.floor(r() * 3)] : pat, x0 + len / 2, 0, 0, 28, 'x');
         // an unrolled lip hangs off some rolls so the weave, print or pattern shows flat
         if (!wrapped && pat.map && r() > 0.55) bx(g, len - 2, 6, 0.12, pat, x0 + 1, -6, s > 0 ? rad : -rad - 0.12);
