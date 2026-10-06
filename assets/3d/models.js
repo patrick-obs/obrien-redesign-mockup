@@ -7,7 +7,8 @@
 // after any change here or in viewer.js.
 //  - obs-3d build.mjs bundles this file into every walkthrough: it needs kit, rng, museumObjects, smallThings, framed,
 //    textileMats, shelving, footballHelmet, football and artMat as top-level `function name(` declarations (it appends its
-//    own export list, so don't export them here), and the literal new URL('./paintings.jpg', import.meta.url).href.
+//    own export list, so don't export them here), and the paintings atlas URL literal in painting(), written exactly once
+//    in this file (build.mjs and present.js swap its first occurrence for a data URL; never quote it in a comment).
 //    Scenes use kit() members (M, bx, cyl, bar, group, grid, std, meshMat, many, postMat), shelving(k, g, opts) and its
 //    userData, framed() -> { m, fw, fh }, museumObjects, footballHelmet / football, artMat.
 //  - museum-showcase studio.js drives MODELS by id, action label, option text and finish name (its booth loop skips a
