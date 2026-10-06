@@ -356,8 +356,13 @@ function kit(THREE) {
     const sp = tag(text, s); sp.position.copy(mid).add(new THREE.Vector3(...off)); g.add(sp);
     return g;
   };
-  // slot strip on one face of an upright, facing into the bay (+1 = toward +x, -1 = toward -x)
-  const slots = (parent, m, x, y, z, depth, h, facing) => { const p = new THREE.Mesh(new THREE.PlaneGeometry(depth, h), m); p.rotation.y = facing > 0 ? Math.PI / 2 : -Math.PI / 2; p.position.set(x + facing * 0.01, y + h / 2, z + depth / 2); parent?.add(p); return p; };
+  // keyholes on an upright (Pat's rule for every post): on the post's inner wall behind its 1" face, facing into the unit
+  // where the shelf supports hook in, never on its sides along the run. A strip in the xy plane over x..x+w, y..y+h at
+  // depth z, facing +z (dir 1) or -z (dir -1); keyMat(paint) is its material (round end up, 1-1/2" centers)
+  const slots = (parent, m, x, y, z, w, h, dir = 1) => { const p = new THREE.Mesh(keyGeo(THREE, w, h), m); p.position.set(x + w / 2, y + h / 2, z + dir * 0.01); if (dir < 0) p.rotation.y = Math.PI; p.userData.keyholes = dir; parent?.add(p); return p; };
+  // a solid square post (w wide, at depth zz in a unit whose back is at z0): one strip on the face toward its partner
+  const postKeys = (parent, m, x, y, zz, z0, h, w = 1.25) => (Math.abs(zz - z0) < 0.01 ? slots(parent, m, x, y, zz + w, w, h, 1) : slots(parent, m, x, y, zz, w, h, -1));
+  const keyMat = (paint) => { const m = MAT(THREE, { color: paint.color.clone(), map: keyTex(THREE), roughness: paint.roughness, metalness: paint.metalness }); m.userData.keyholes = true; return m; };
   // many boxes where any one can come out: a click swaps that box for a detailed copy from spawn(b) and runs
   // show(g, b) to pull it; a second click runs hide(g, b) and puts the plain box back. open parts register in reg.
   const pullMany = (parent, list, m, { spawn, show, hide, reg, one = false, also = [], gate = null, ms = 1400, hint = 'Pull it out', back = 'Put it back', drawList = null, ids = null, idx = null }) => {
@@ -381,7 +386,22 @@ function kit(THREE) {
     im.userData.pullAny = () => im.userData.onClick({ instanceId: Math.floor(Math.random() * list.length) }); im.userData.hint = hint;
     return im;
   };
-  return { THREE, M, bx, cyl, bar, group, grid, meshMat, many, pullMany, FIN, finisher, std, postMat, tray, dim, inch, slots };
+  return { THREE, M, bx, cyl, bar, group, grid, meshMat, many, pullMany, FIN, finisher, std, postMat, keyMat, postKeys, tray, dim, inch, slots };
+}
+// the keyhole column: a 16 x 64 tile is 1-1/4" x 6" with four keyholes, round end up; a strip's UVs repeat it every 6"
+let KEY_TEX = null; const KEY_GEO = new Map();
+function keyTex(THREE) {
+  if (KEY_TEX) return KEY_TEX;
+  const c = document.createElement('canvas'); c.width = 16; c.height = 64; const g = c.getContext('2d');
+  g.fillStyle = '#fff'; g.fillRect(0, 0, 16, 64); g.fillStyle = '#34383b';
+  for (let q = 0; q < 4; q++) { const y = 3 + q * 16; g.beginPath(); g.ellipse(8, y + 2, 2.4, 2, 0, 0, 7); g.fill(); g.fillRect(6.9, y + 2, 2.2, 7.5); }
+  KEY_TEX = new THREE.CanvasTexture(c); KEY_TEX.wrapS = KEY_TEX.wrapT = THREE.RepeatWrapping; KEY_TEX.colorSpace = THREE.SRGBColorSpace; KEY_TEX.anisotropy = 8; KEY_TEX.userData.keep = true;
+  return KEY_TEX;
+}
+function keyGeo(THREE, w, h) {
+  const key = w.toFixed(3) + 'x' + h.toFixed(3); let g = KEY_GEO.get(key);
+  if (!g) { g = new THREE.PlaneGeometry(w, h); const uv = g.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setY(i, uv.getY(i) * h / 6); g.userData.keep = true; KEY_GEO.set(key, g); }
+  return g;
 }
 
 const KRAFT = ['#c49a64', '#ece9df', '#b58a55', '#f2efe6', '#e4e1d6', '#ffffff'];
@@ -392,7 +412,7 @@ const BOOKS = ['#7c2d2d', '#2d4a7c', '#2f6b4f', '#a3782b', '#5a3d6e', '#1f1f1f',
 function shelving(k, parent, o) {
   const { M, bx, bar, group, many } = k;
   const { bays = 3, w = 36, d = 18, h = 84, shelves = 6, closed = false, paint = M.paint, contents = null, seed = 7, labels = false, dividers = false, pass = false, pull = null } = o;
-  const post = o.postPaint || paint;
+  const key = o.postPaint && o.postPaint !== paint ? o.postPaint : null;
   const g = group(parent, o.x || 0, o.y || 0, o.z || 0), W = bays * w, r = rng(seed);
   for (let i = 0; i <= bays; i++) {
     const x = i * w, inner = i > 0 && i < bays;
@@ -400,7 +420,13 @@ function shelving(k, parent, o) {
       bx(g, inner ? 2.5 : 1.25, h, 0.12, paint, i === 0 ? 0 : i === bays ? W - 1.25 : x - 1.25, 0, zf);
       const sx = i === bays ? W - 0.12 : x, sz = zf === 0 ? 0 : d - 1.25;
       bx(g, 0.12, h, 1.25, paint, sx, 0, sz);
-      if (post !== paint) { if (i < bays) k.slots(g, post, sx + 0.12, 0, sz, 1.25, h, 1); if (i > 0) k.slots(g, post, sx, 0, sz, 1.25, h, -1); }
+      // keyholes on the inner wall behind the 1" face, either side of the web: the back posts' face the front (seen
+      // through every opening), the front posts' face the back
+      if (key) {
+        const zi = zf === 0 ? 0.12 : d - 0.12, dir = zf === 0 ? 1 : -1, a = i === bays ? W - 1.25 : x - 1.25;
+        if (i < bays) k.slots(g, key, sx + 0.12, 0, zi, (i === 0 ? 1.25 : x + 1.25) - sx - 0.12, h, dir);
+        if (i > 0) k.slots(g, key, a, 0, zi, sx - a, h, dir);
+      }
     }
     if (closed) bx(g, 0.05, h, d, paint, i === bays ? W - 0.05 : x, 0, 0);
   }
@@ -523,7 +549,7 @@ function shelvingDims(k, g) {
 function fourPost(id, name, dims0, preset) {
   def(id, name, dims0, ({ THREE, tween, wake, bake, refit, lite }) => {
     const k = kit(THREE), { bx, group } = k, root = new THREE.Group();
-    const paint = k.std(0xbfc4c7, 0.5, 0.3), post = k.postMat(paint);
+    const paint = k.std(0xbfc4c7, 0.5, 0.3), post = k.keyMat(paint);
     const SIZES = [[36, 18, '36" W x 18" D'], [36, 12, '36" W x 12" D'], [42, 24, '42" W x 24" D'], [48, 24, '48" W x 24" D']];
     const HEIGHTS = [72, 84, 96], BAYS = [1, 3, 5, 8], SHELVES = [0, 5, 6, 7, 8, 10, 12, 16];
     const CONTENTS = [['boxes', 'Record storage boxes'], ['solander', 'Solander boxes'], ['bins', 'Bins'], [null, 'Nothing']];
@@ -603,7 +629,7 @@ function hardware(THREE, parent, x, y, z, w, d, r, n = 8) {
 }
 def('bin-shelving', 'Bin & Parts Storage', 'Shelf bins on closed or open shelving, hanging bins on louvered panels, or modular drawer cabinets: pull any bin or drawer', ({ THREE, tween, wake, bake, refit }) => {
   const k = kit(THREE), { M, bx, group, many } = k, root = new THREE.Group();
-  const paint = k.std(0xbfc4c7, 0.5, 0.3), binM = k.std(0xffffff, 0.45, 0.05), pileM = k.std(0xffffff, 0.35, 0.8), labM = k.std(0xf7f5ee, 0.8, 0), louverM = k.std(0x8f969a, 0.45, 0.5);
+  const paint = k.std(0xbfc4c7, 0.5, 0.3), key = k.keyMat(paint), binM = k.std(0xffffff, 0.45, 0.05), pileM = k.std(0xffffff, 0.35, 0.8), labM = k.std(0xf7f5ee, 0.8, 0), louverM = k.std(0x8f969a, 0.45, 0.5);
   const STYLES = ['Shelf bins, closed shelving', 'Shelf bins, open shelving', 'Hanging bins on louvered panels', 'Modular drawer cabinets'];
   const COLORS = [['Blue', '#2f6fb3'], ['Red', '#c4382c'], ['Yellow', '#e8b923'], ['Green', '#2f8a4f'], ['Gray', '#8f969a'], ['Black', '#2a2c2e']];
   const SECS = [1, 3, 5], openSet = new Set(), PILES = ['#aab1b6', '#b8913a', '#3a3c3e', '#c9ced2'];
@@ -638,7 +664,7 @@ def('bin-shelving', 'Bin & Parts Storage', 'Shelf bins on closed or open shelvin
   const color = () => COLORS[ci][1];
   // shelf bins: each shelf gets one bin size, 18" deep bins on 18" shelves
   const shelfBins = (closed) => {
-    const bays = SECS[si], sg = shelving(k, unit, { bays, w: 36, d: 18, h: 84, closed, shelves: 8, paint, postPaint: k.postMat(paint), labels: false });
+    const bays = SECS[si], sg = shelving(k, unit, { bays, w: 36, d: 18, h: 84, closed, shelves: 8, paint, postPaint: key, labels: false });
     const list = [], widths = [4.125, 6.625, 8.375, 11.125];
     sg.userData.ys.forEach((y, s) => {
       if (s === sg.userData.ys.length - 1) return;
@@ -701,7 +727,7 @@ def('bin-shelving', 'Bin & Parts Storage', 'Shelf bins on closed or open shelvin
   make();
   return {
     group: root, view: [0.85, 0.45, 1.3], prompt: 'Tap any bin or drawer to pull it out',
-    finishes: k.FIN.shelving, setFinish: k.finisher(paint),
+    finishes: k.FIN.shelving, setFinish: k.finisher(paint, key),
     actions: [
       { label: 'Pull a bin', run: () => { if (openSet.size) { [...openSet].forEach(f => f()); return; } pulls[0]?.(); } },
       { label: 'Style', options: STYLES, get: () => style, set: n => { style = n; re(); } },
@@ -830,7 +856,7 @@ wireModel('wire-shelving', 'Chrome Wire Shelving', 'Chrome wire units, from a pa
 /* ---------------- 4. library cantilever shelving ---------------- */
 def('library', 'Library Cantilever Shelving', 'Double-faced cantilever shelving, counter height to 90", three to eight sections', ({ THREE, wake, bake, refit }) => {
   const k = kit(THREE), { M, bx, group, many } = k, root = new THREE.Group();
-  const paint = k.std(0xbfc4c7, 0.5, 0.3), post = k.postMat(paint), wood = k.std(0xc79a66, 0.7, 0);
+  const paint = k.std(0xbfc4c7, 0.5, 0.3), post = k.keyMat(paint), wood = k.std(0xc79a66, 0.7, 0);
   const HEIGHTS = [{ h: 42, n: 3, label: 'Height: 42" counter' }, { h: 66, n: 5, label: 'Height: 66"' }, { h: 84, n: 7, label: 'Height: 84"' }, { h: 90, n: 7, label: 'Height: 90"' }];
   const SECTIONS = [3, 5, 8];
   const w = 36, side = 10, core = 3, D = side * 2 + core;
@@ -844,7 +870,9 @@ def('library', 'Library Cantilever Shelving', 'Double-faced cantilever shelving,
     unit = group(root); unit.userData.dyn = true;
     for (let i = 0; i <= bays; i++) {
       const x = i === 0 ? 0 : i === bays ? W - 2 : i * w - 1;
-      bx(unit, 2, h, core, post, x, 0, side);
+      bx(unit, 2, h, core, paint, x, 0, side);
+      // the brackets hook into slots on the column's two faces, one toward each face of the double-faced unit
+      k.slots(unit, post, x + 0.5, 0, side, 1, h, -1); k.slots(unit, post, x + 0.5, 0, side + core, 1, h, 1);
       bx(unit, 2, 3, D - 1, paint, x, 0, 0.5);
     }
     bx(unit, W - 2, h - 3, 0.3, paint, 1, 3, side + core / 2 - 0.15);
@@ -999,13 +1027,13 @@ function hdMobile(id, name, dims, start, opts = {}) {
     const k = kit(THREE), { M, bx, cyl, group, many } = k, root = new THREE.Group();
     const paint = k.std(0xbfc4c7, 0.5, 0.3), panel = k.std(0x2c2f31, 0.45, 0.25), ff = k.std(0xeeefed, 0.45, 0.3);
     const up = k.std(0x1f4e8c, 0.45, 0.35), beam = k.std(0xe3671c, 0.45, 0.35);
-    const oUp = k.std(0x2c3e3f, 0.5, 0.4), oUpP = k.postMat(oUp), oBeam = k.std(0xf2b705, 0.45, 0.3), deckM = k.std(0xa7adb1, 0.55, 0.4);
+    const oUp = k.std(0x2c3e3f, 0.5, 0.4), oUpP = k.keyMat(oUp), oBeam = k.std(0xf2b705, 0.45, 0.3), deckM = k.std(0xa7adb1, 0.55, 0.4);
     const gWhite = k.std(0xf1f2f0, 0.4, 0.25), wire = k.meshMat(144, 26, 1.5, '#e9ecee', 0.6), trayM = k.std(0x1c1d1f, 0.7, 0.05), leaf = k.std(0xffffff, 0.7, 0), led = k.std(0xffffff, 0.3, 0, { emissive: 0xfff8e8, emissiveIntensity: 1.1 });
-    const tBlue = k.std(0x1f5fb0, 0.45, 0.35), tBlueP = k.postMat(tBlue), bumperM = k.std(0x111213, 0.9, 0);
+    const tBlue = k.std(0x1f5fb0, 0.45, 0.35), tBlueP = k.keyMat(tBlue), bumperM = k.std(0x111213, 0.9, 0);
     const black = k.std(0x1c1e20, 0.45, 0.15), red = k.std(0xc4241c, 0.4, 0.1), go = k.std(0x39d353, 0.3, 0, { emissive: 0x1f8a33, emissiveIntensity: 0.9 }), stop = k.std(0xc92a2a, 0.35, 0.1, { emissive: 0x5a1414, emissiveIntensity: 0.5 });
     let kind = start, electric = !!opts.electric, open = 2, unit, ranges = [], C, panelsOn = null, closedShelf = true, binDoors = true, binDoorsList = [], safety = 3, safeties = [], sweeps = [], loadColor = {}, openParts = new Set(), aisleW = null, twoLevel = !!opts.twoLevel, open2 = 1, ranges2 = [], arms = [];
     const armM = k.std(0x3a3f44, 0.5, 0.5), mzDeck = k.std(0x5d6468, 0.75, 0.4), railY = k.std(0xe0a526, 0.45, 0.35), steelM = k.std(0x4b5a63, 0.5, 0.5);
-    const lPost = k.postMat(paint), tFrame = k.std(0x3a3f44, 0.45, 0.35), tTube = k.std(0xf6f7f5, 0.35, 0.1), aWhite = k.std(0xf3f4f2, 0.45, 0.25), gilt = k.std(0xa6832f, 0.35, 0.7);
+    const lPost = k.keyMat(paint), tFrame = k.std(0x3a3f44, 0.45, 0.35), tTube = k.std(0xf6f7f5, 0.35, 0.1), aWhite = k.std(0xf3f4f2, 0.45, 0.25), gilt = k.std(0xa6832f, 0.35, 0.7);
     const tWraps = [k.std(0xe3e7ea, 0.3, 0.35), k.std(0xeceeee, 0.55, 0.1)], tBare = [k.std(0x9b2226, 0.85, 0), k.std(0x7a5230, 0.9, 0), k.std(0x3d5a7a, 0.85, 0), k.std(0x5e4a7a, 0.85, 0)];
     const artM = ['#8c3b2f', '#2f4f6f', '#c9a227', '#3d6b4f', '#b56f4a', '#5e4a7a', '#244a5a'].map(c => k.std(c, 0.8, 0)), screenMesh = k.meshMat(120, 96, 2, '#c3c9cd', 0.85);
     const gusGeo = (() => { const g = new THREE.Shape(); g.moveTo(0, 0); g.lineTo(5, 0); g.lineTo(0, 12); g.closePath(); return new THREE.ExtrudeGeometry(g, { depth: 0.4, bevelEnabled: false }); })();
@@ -1013,7 +1041,7 @@ function hdMobile(id, name, dims, start, opts = {}) {
     const libFace = (p, y0, z0, dir, books, r) => {
       const D = C.d, H = C.h, core = dir > 0 ? z0 : z0 + D - 1.5, sh0 = dir > 0 ? z0 + 1.5 : z0 + 0.2, shD = D - 1.7;
       bx(p, C.L, H, 1.5, paint, 0, y0, core);
-      for (let i = 0; i <= 3; i++) bx(p, 2, H, 1.7, lPost, Math.max(0, Math.min(i * 36 - 1, C.L - 2)), y0, core - 0.1);
+      for (let i = 0; i <= 3; i++) { const x = Math.max(0, Math.min(i * 36 - 1, C.L - 2)); bx(p, 2, H, 1.7, paint, x, y0, core - 0.1); k.slots(p, lPost, x + 0.5, y0, dir > 0 ? core + 1.6 : core - 0.1, 1, H, dir); }
       const ys = [3, 14.7, 26.3, 38, 49.7, 61.3, 73];
       for (let b = 0; b < 3; b++) {
         const x0 = b * 36 + 1.5, bw = 33;
@@ -1134,7 +1162,7 @@ function hdMobile(id, name, dims, start, opts = {}) {
     const gearFace = (p, y0, z0, dir, r) => {
       const D = C.d, H = C.h, bw = 36, front = dir > 0 ? z0 + D : z0, inZ = (depth) => (dir > 0 ? z0 + D - depth - 0.5 : z0 + 0.5);
       // frame: uprights with slots facing in, a back panel and a top
-      for (let i = 0; i <= 3; i++) { const x = Math.min(i * bw, C.L - 1.25); for (const zz of [z0, z0 + D - 1.25]) { bx(p, 1.25, H, 1.25, paint, x, y0, zz); if (i < 3) k.slots(p, lPost, x + 1.25, y0, zz, 1.25, H, 1); if (i > 0) k.slots(p, lPost, x, y0, zz, 1.25, H, -1); } }
+      for (let i = 0; i <= 3; i++) { const x = Math.min(i * bw, C.L - 1.25); for (const zz of [z0, z0 + D - 1.25]) { bx(p, 1.25, H, 1.25, paint, x, y0, zz); k.postKeys(p, lPost, x, y0, zz, z0, H); } }
       bx(p, C.L, H, 0.1, paint, 0, y0, dir > 0 ? z0 : z0 + D - 0.1); bx(p, C.L, 0.6, D, paint, 0, y0 + H - 0.6, z0);
       for (let b = 0; b < 3; b++) {
         const x0 = b * bw + 1.25, w = bw - 1.25;
@@ -1185,7 +1213,7 @@ function hdMobile(id, name, dims, start, opts = {}) {
       bx(p, C.L, 0.6, D, paint, 0, y0 + 2, z0); bx(p, C.L, 0.6, D, paint, 0, y0 + H - 0.6, z0); bx(p, C.L, H, 0.1, paint, 0, y0, dir > 0 ? z0 : z0 + D - 0.1);
       for (let s2 = 0; s2 < C.L / sec; s2++) {
         const x0 = s2 * sec;
-        for (const xx of [x0, x0 + sec - 1.25]) for (const zz of [z0, z0 + D - 1.25]) { bx(p, 1.25, H, 1.25, paint, xx, y0, zz); k.slots(p, lPost, xx === x0 ? xx + 1.25 : xx, y0, zz, 1.25, H, xx === x0 ? 1 : -1); }
+        for (const xx of [x0, x0 + sec - 1.25]) for (const zz of [z0, z0 + D - 1.25]) { bx(p, 1.25, H, 1.25, paint, xx, y0, zz); k.postKeys(p, lPost, xx, y0, zz, z0, H); }
         for (let dx = 12; dx < sec - 1; dx += 12) bx(p, 0.12, H - 3.2, D - 3, paint, x0 + dx, y0 + 2.6, z0 + 1.5);
         for (let slot = 0; slot < 4; slot++) { let x = x0 + slot * 12 + 1.4; const n = 1 + Math.floor(r() * 3); for (let q = 0; q < n && x < x0 + slot * 12 + 10.5; q++) { const t2 = 1.8 + r() * 1.4, pt = painting(THREE); let iw = Math.min(D - 9, 16 + r() * (D - 22)), ih = iw / pt.a; if (ih > H - 10) { ih = H - 10; iw = ih * pt.a; } const pd = iw + 3, ph = ih + 3; arts.push({ x, y: y0 + 2.6, z: dir > 0 ? z0 + D - 3 - pd : z0 + 3, w: t2, h: ph, d: pd, sec: s2, pm: pt.m, color: FRAME_HEX[Math.floor(r() * 4)] }); x += t2 + 0.6; } }
         if (!binDoors) continue;
@@ -1230,7 +1258,7 @@ function hdMobile(id, name, dims, start, opts = {}) {
     const wFoam = k.std(0x242628, 0.95, 0), wGun = k.std(0x17181a, 0.4, 0.5), wFurn = k.std(0x5a4a38, 0.6, 0.1), wCan = k.std(0x4d5a3a, 0.6, 0.3);
     const weaponsFace = (p, y0, z0, dir, r) => {
       const D = C.d, H = C.h, bw = 36, front = dir > 0 ? z0 + D : z0, zin = (dd, off = 0.6) => (dir > 0 ? z0 + D - dd - off : z0 + off);
-      for (let i = 0; i <= 3; i++) { const x = Math.min(i * bw, C.L - 1.25); for (const zz of [z0, z0 + D - 1.25]) { bx(p, 1.25, H, 1.25, paint, x, y0, zz); if (i < 3) k.slots(p, lPost, x + 1.25, y0, zz, 1.25, H, 1); if (i > 0) k.slots(p, lPost, x, y0, zz, 1.25, H, -1); } }
+      for (let i = 0; i <= 3; i++) { const x = Math.min(i * bw, C.L - 1.25); for (const zz of [z0, z0 + D - 1.25]) { bx(p, 1.25, H, 1.25, paint, x, y0, zz); k.postKeys(p, lPost, x, y0, zz, z0, H); } }
       bx(p, C.L, H, 0.1, paint, 0, y0, dir > 0 ? z0 : z0 + D - 0.1); bx(p, C.L, 0.6, D, paint, 0, y0 + H - 0.6, z0);
       for (let b = 0; b < 3; b++) {
         const x0 = b * bw + 1.25, w = bw - 1.25;
@@ -1277,10 +1305,11 @@ function hdMobile(id, name, dims, start, opts = {}) {
     };
     // open-frame bays on 48" centers: open shelving (pick bins), tire racks, grow racks
     const frameFace = (p, y0, z0, dir, list, r) => {
-      const D = C.d, bays = C.L / 48, upM = kind === 'grow' ? gWhite : kind === 'tire' ? tBlueP : oUpP, bmM = kind === 'grow' ? gWhite : kind === 'tire' ? tBlue : oBeam;
+      const D = C.d, bays = C.L / 48, upM = kind === 'grow' ? gWhite : kind === 'tire' ? tBlue : oUp, keyM = kind === 'grow' ? null : kind === 'tire' ? tBlueP : oUpP, bmM = kind === 'grow' ? gWhite : kind === 'tire' ? tBlue : oBeam;
       for (let i = 0; i <= bays; i++) {
         const x = Math.min(i * 48, C.L - 2);
         for (const z of [z0, z0 + D - 2]) bx(p, 2, C.h, 2, upM, x, y0, z);
+        if (keyM) k.slots(p, keyM, x + 0.5, y0, dir > 0 ? z0 + D : z0, 1, C.h, dir);
         for (let y = 10; y < C.h - 6; y += 30) bx(p, 1.2, 1.2, D - 4, upM, x + 0.4, y0 + y, z0 + 2);
       }
       if (kind === 'open') {
@@ -1956,7 +1985,7 @@ def('art-screens', 'Sliding Art Screens', 'Two facing banks of 8 ft x 8 ft mesh 
 function palletModel(id, name, dims0, start) {
 def(id, name, dims0, ({ THREE, wake, bake, refit, lite }) => {
   const k = kit(THREE), { M, bx, group, many } = k, root = new THREE.Group();
-  const up = k.std(0x1f4e8c, 0.45, 0.35), upP = k.postMat(up), beam = k.std(0xe3671c, 0.45, 0.35), galv = k.std(0xb9c0c4, 0.4, 0.7);
+  const up = k.std(0x1f4e8c, 0.45, 0.35), upP = k.keyMat(up), beam = k.std(0xe3671c, 0.45, 0.35), galv = k.std(0xb9c0c4, 0.4, 0.7);
   const alu = k.std(0xd3d7da, 0.35, 0.85);
   const perfTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 32; const g = c.getContext('2d'); g.fillStyle = '#d3d7da'; g.fillRect(0, 0, 32, 32); g.fillStyle = '#6f777c'; for (const [x, y] of [[8, 8], [24, 8], [16, 20], [0, 20], [32, 20], [8, 32], [24, 32], [8, 0], [24, 0]]) { g.beginPath(); g.arc(x, y, 3, 0, Math.PI * 2); g.fill(); } const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8; return t; })();
   const bays = 2, bw = 96, D = 42, H = 192, levels = [0, 60, 120];
@@ -1968,7 +1997,7 @@ def(id, name, dims0, ({ THREE, wake, bake, refit, lite }) => {
     const r = rng(seed), g = group(unit, 0, 0, z0), loads = [];
     for (let i = 0; i <= bays; i++) {
       const x = i * (bw + 3);
-      for (const z of [0, D - 3]) bx(g, 3, H, 3, upP, x, 0, z);
+      for (const z of [0, D - 3]) { bx(g, 3, H, 3, up, x, 0, z); k.slots(g, upP, x + 0.875, 0, z ? D : 0, 1.25, H, z ? 1 : -1); }
       const f = group(g, x + 1.5, 0, 0);
       for (let y = 6, n = 0; y < H - 30; y += 36, n++) { const z1 = n % 2 ? 3 : D - 3, z2 = n % 2 ? D - 3 : 3; const b = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.4, Math.hypot(D - 6, 36)), up); b.position.set(0, y + 18, (z1 + z2) / 2); b.rotation.x = Math.atan2(z2 - z1, 36) * (n % 2 ? 1 : -1); f.add(b); }
       for (let y = 6; y < H; y += 36) bx(f, 1.4, 1.4, D - 6, up, -0.7, y, 3);
@@ -2768,11 +2797,11 @@ def('textile-rack', 'Rolled Textile Storage', '12 ft double-sided cantilever rac
 /* ---------------- 24. tire rack ---------------- */
 def('tire-rack', 'Tire Storage Rack', 'Two 48" bays, three levels: tires cradled between front and back beams, tread out', ({ THREE, wake, tween }) => {
   const k = kit(THREE), { M, bx, cyl, group } = k, root = new THREE.Group();
-  const blue = k.std(0x1f5fb0, 0.45, 0.35), up = k.postMat(blue), rimM = k.std(0xc9ced2, 0.25, 0.9), r = rng(40);
+  const blue = k.std(0x1f5fb0, 0.45, 0.35), up = k.keyMat(blue), rimM = k.std(0xc9ced2, 0.25, 0.9), r = rng(40);
   const bays = 2, D = 24, H = 94, W = bays * 48, levels = [3, 33, 63], tires = [];
   for (let i = 0; i <= bays; i++) {
     const x = Math.min(i * 48, W - 2);
-    for (const z of [0, D - 2]) { bx(root, 2, H, 2, up, x, 0, z); bx(root, 5, 0.4, 5, M.steel, x - 1.5, 0, z - 1.5); }
+    for (const z of [0, D - 2]) { bx(root, 2, H, 2, blue, x, 0, z); k.slots(root, up, x + 0.5, 0, z ? D : 0, 1, H, z ? 1 : -1); bx(root, 5, 0.4, 5, M.steel, x - 1.5, 0, z - 1.5); }
     for (let y = 12; y < H - 6; y += 30) bx(root, 1.2, 1.2, D - 4, blue, x + 0.4, y, 2);
   }
   for (const lv of levels) for (let b = 0; b < bays; b++) {
@@ -3041,7 +3070,7 @@ def('install', 'Mobile Storage Install, Step by Step', 'Rails in the floor or on
 /* ---------------- 28. painting storage bins ---------------- */
 def('painting-bins', 'Painting Storage Bins', 'Steel shelving with dividers on 12" centers for framed art, split in two if needed, roll-up doors to keep the dust out', ({ THREE, tween, wake, bake, refit }) => {
   const k = kit(THREE), { M, bx, group, many } = k, root = new THREE.Group();
-  const paint = k.std(0xbfc4c7, 0.5, 0.3), post = k.postMat(paint), slatM = [], hoodM = k.std(0xf1f2f0, 0.35, 0.3), guideM = k.std(0xdfe2e4, 0.35, 0.5);
+  const paint = k.std(0xbfc4c7, 0.5, 0.3), post = k.keyMat(paint), slatM = [], hoodM = k.std(0xf1f2f0, 0.35, 0.3), guideM = k.std(0xdfe2e4, 0.35, 0.5);
   const W = 48, D = 48, H = 96, r = rng(33);
   let sections = 2, split = false, doorsOn = true, unit, doors = [], pullAny = null; const reg = new Set(), secOf = new Map();
   const slatTex = () => { const c = document.createElement('canvas'); c.width = 16; c.height = 32; const g = c.getContext('2d'); g.fillStyle = '#f4f5f3'; g.fillRect(0, 0, 16, 32); g.fillStyle = '#d6d9d8'; g.fillRect(0, 26, 16, 3); g.fillStyle = '#ffffff'; g.fillRect(0, 2, 16, 4); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8; return t; };
@@ -3051,7 +3080,7 @@ def('painting-bins', 'Painting Storage Bins', 'Steel shelving with dividers on 1
     const frames = [];
     for (let s = 0; s < sections; s++) {
       const x0 = s * (W + 1);
-      for (const xx of [x0, x0 + W - 1.25]) for (const zz of [0, D - 1.25]) { bx(unit, 1.25, H, 1.25, paint, xx, 0, zz); k.slots(unit, post, xx === x0 ? xx + 1.25 : xx, 0, zz, 1.25, H, xx === x0 ? 1 : -1); }
+      for (const xx of [x0, x0 + W - 1.25]) for (const zz of [0, D - 1.25]) { bx(unit, 1.25, H, 1.25, paint, xx, 0, zz); k.postKeys(unit, post, xx, 0, zz, 0, H); }
       for (const y of split ? [2, H / 2, H - 0.6] : [2, H - 0.6]) { bx(unit, W, 0.6, D, paint, x0, y, 0); bx(unit, W, 1.4, 0.1, paint, x0, y - 0.8, D - 0.1); }
       bx(unit, W, H, 0.1, paint, x0, 0, 0); if (s === 0) bx(unit, 0.1, H, D, paint, x0, 0, 0); bx(unit, 0.1, H, D, paint, x0 + W - 0.1, 0, 0);
       const comps = split ? [[2.6, H / 2], [H / 2 + 0.6, H - 0.6]] : [[2.6, H - 0.6]];
