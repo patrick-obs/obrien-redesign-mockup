@@ -2873,7 +2873,7 @@ def('install', 'Mobile Storage Install, Step by Step', 'Rails in the floor or on
   const paint = k.std(0xbfc4c7, 0.5, 0.3), panel = k.std(0x2c2f31, 0.45, 0.25), black = k.std(0x1c1e20, 0.45, 0.15);
   const concrete = k.std(0xb9bcbc, 0.9, 0), plug = k.std(0xaeb2b2, 0.92, 0), slc = k.std(0x9fa4a5, 0.8, 0), kerf = k.std(0x55595b, 0.9, 0);
   const chalk = k.std(0x2f6fdf, 0.6, 0, { emissive: 0x1b3f8a, emissiveIntensity: 0.4 }), shimM = k.std(0x9aa1a6, 0.4, 0.7), grout = k.std(0x8d9091, 0.95, 0);
-  const masonite = k.std(0x6b4a2f, 0.75, 0), ply = k.std(0xd9b27c, 0.8, 0), railM = k.std(0x7d858a, 0.35, 0.8), hole = k.std(0x2b2d2f, 0.9, 0), toolM = k.std(0x1f6fb3, 0.5, 0.2), alu = k.std(0xc9ced2, 0.3, 0.85), keyM = k.std(0xc9a227, 0.35, 0.7);
+  const hardboard = k.std(0x6b4a2f, 0.75, 0), ply = k.std(0xd9b27c, 0.8, 0), railM = k.std(0x7d858a, 0.35, 0.8), hole = k.std(0x2b2d2f, 0.9, 0), toolM = k.std(0x1f6fb3, 0.5, 0.2), alu = k.std(0xc9ced2, 0.3, 0.85), keyM = k.std(0xc9a227, 0.35, 0.7);
   // chain links and floor tile textures
   const tex = (w, hgt, draw, rx, ry) => { const c = document.createElement('canvas'); c.width = w; c.height = hgt; draw(c.getContext('2d')); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry); t.anisotropy = 8; return t; };
   const chainM = MAT(THREE, { map: tex(32, 64, g => { g.fillStyle = '#3a3d40'; g.fillRect(0, 0, 32, 64); g.strokeStyle = '#a9b0b5'; g.lineWidth = 5; for (const y of [2, 34]) { g.beginPath(); g.ellipse(16, y + 14, 9, 14, 0, 0, Math.PI * 2); g.stroke(); } }, 1, 40), roughness: 0.4, metalness: 0.8 });
@@ -2919,7 +2919,7 @@ def('install', 'Mobile Storage Install, Step by Step', 'Rails in the floor or on
   // one mesh per layer per bay keeps draw calls down
   const plyPaint = k.std(0x5f6a70, 0.7, 0.05);
   const layer = (m, t, y) => bays.map(([a, b]) => { const g = stage(); for (let z = z0; z < z1; z += 48) bx(g, b - a, t, Math.min(48, z1 - z) - 0.1, m, a, y, z); return g; });
-  const mason = layer(masonite, 0.25, 0), plyG = layer(ply, 1, 0.25), vctR = layer(vctM, 0.125, 1.25);
+  const hboard = layer(hardboard, 0.25, 0), plyG = layer(ply, 1, 0.25), vctR = layer(vctM, 0.125, 1.25);
   vctR.forEach(g => g.children.forEach(t => { t.material = vctM.clone(); t.material.map = vctM.map.clone(); t.material.map.repeat.set(t.scale.x / 24, t.scale.z / 24); t.material.map.needsUpdate = true; }));
   const stack = stage(); bx(stack, 48, 4, 96, ply, x1 + 20, 0, 20);
   const pts = []; for (let z = z0 + 6; z < z1 - 4; z += 16) for (const [a, b] of bays) for (let x = a + 5; x < b - 3; x += 16) pts.push([x, z]);
@@ -2987,7 +2987,7 @@ def('install', 'Mobile Storage Install, Step by Step', 'Rails in the floor or on
     for (const o of g.children) o.userData.dyn = true;
     return g;
   });
-  const staged = [lines, saw, pour, ...plugs, kerfs, ...railsR, shimsR, groutR, ...mason, ...plyG, ...vctR, stack, drill, ramps, ...railsF, shimsF, ...fill, ...vctF, ...Object.values(parts).flat()];
+  const staged = [lines, saw, pour, ...plugs, kerfs, ...railsR, shimsR, groutR, ...hboard, ...plyG, ...vctR, stack, drill, ramps, ...railsF, shimsF, ...fill, ...vctF, ...Object.values(parts).flat()];
   staged.forEach(o => { o.userData.home = o.position.clone(); });
   const chainAt = (cb, top, sag) => { cb.userData.take.position.y = top; cb.userData.strands.forEach((st, i) => { st.scale.y = top - 2.5; st.position.y = (top + 2.5) / 2; st.position.z = st.userData.z + (i ? -sag : 0); }); };
   const show = (list) => list.forEach(o => { o.visible = true; });
@@ -2999,11 +2999,11 @@ def('install', 'Mobile Storage Install, Step by Step', 'Rails in the floor or on
     ['Rails', 'Set the rails on the slab', async () => { await drop(railsR, 14, 700, 160); }],
     ['Level', 'Shim each rail dead level', async () => { shimsR.visible = true; railsR.forEach(g => { g.position.y = -0.25; }); await wait(250); for (const g of railsR) { tween(g.position, 'y', 0, 600, 'out'); await wait(120); } await wait(600); }],
     ['Grout', 'Grout under the rails', async () => { groutR.visible = true; groutR.scale.z = 0.01; await tween(groutR.scale, 'z', 1, 1100); }],
-    ['Underlayment', 'Lay masonite between the rails', async () => { await drop(mason, 6, 500, 90); }],
+    ['Underlayment', 'Lay hardboard between the rails', async () => { await drop(hboard, 6, 500, 90); }],
     ['Cut to fit', 'Cut plywood to size between the track', async () => { stack.visible = true; saw.visible = true; saw.position.set(x1 + 44, 4, 20); await tween(saw.position, 'z', 116, 1200, 'lin'); saw.visible = false; }],
     ['Deck', 'Set the plywood flush with the rails', async () => { stack.visible = false; await drop(plyG, 8, 500, 90); }],
     ['Drill', 'Hammer drill through the plywood into the slab', async () => { drill.visible = true; const rows = [...new Set(pts.map(p => p[1]))]; for (const z of rows) { const idx = pts.findIndex(p => p[1] === z); drill.position.set(pts[idx][0], 0, z); holes.count = pts.filter(p => p[1] <= z).length; wake(); await wait(110); } drill.visible = false; }],
-    ['Fasten', 'Drive Tapcon screws into the concrete', async () => { for (let n = 0; n <= pts.length; n += 8) { screws.count = Math.min(n, pts.length); wake(); await wait(40); } screws.count = pts.length; wake(); }],
+    ['Fasten', 'Drive concrete screw anchors into the slab', async () => { for (let n = 0; n <= pts.length; n += 8) { screws.count = Math.min(n, pts.length); wake(); await wait(40); } screws.count = pts.length; wake(); }],
     ['Edges', 'Aluminum ramp edges on the open sides', async () => { ramps.visible = true; ramps.position.y = 6; await tween(ramps.position, 'y', 0, 700, 'out'); }],
   ];
   const INFLOOR = [
