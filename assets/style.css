@@ -594,8 +594,13 @@ button.btn{font:inherit;font-weight:700;cursor:pointer}
 .gx-rmap path{stroke:#fff}
 .gx-rmap path.l0{fill:#e3e9e9}.gx-rmap path.l1{fill:#c9dede}.gx-rmap path.hl{fill:var(--teal)}
 .gx-rmap .gx-hq circle{fill:#fff;stroke:#c4572a}
+.gx-rmap .gx-dc circle{fill:var(--teal);stroke:#fff;stroke-width:1}
+.gx-rmap .gx-dc text{font-family:var(--font);font-weight:700;fill:var(--teal-ink);paint-order:stroke;stroke:var(--mist)}
 .gx-rmap .gx-hq text{font-family:var(--font);font-weight:700;fill:#c4572a;text-anchor:end;paint-order:stroke;stroke:var(--mist)}
 .gx-region{grid-template-columns:1fr 1fr;margin-top:36px}
 .gx-region ul{margin:8px 0 0;padding-left:18px;color:#39494c;font-size:.95rem}
 .gx-region li{margin-bottom:4px}
 @media(max-width:560px){.gx-region{grid-template-columns:1fr}}
+/* header: room for Where We Work; the phone number stays in the announcement bar and the mobile menu */
+header .logo{flex-shrink:0}
+.head-cta .head-phone{display:none}

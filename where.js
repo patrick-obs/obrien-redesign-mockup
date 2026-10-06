@@ -29,6 +29,10 @@ function regionMap(states, label) {
       x0 = Math.min(x0, nums[i]); x1 = Math.max(x1, nums[i]); y0 = Math.min(y0, nums[i + 1]); y1 = Math.max(y1, nums[i + 1]);
     }
   }
+  // a tiny area (DC is a sliver at this scale) still shows its neighbors
+  const MIN = 240;
+  if (x1 - x0 < MIN) { const c = (x0 + x1) / 2; x0 = c - MIN / 2; x1 = c + MIN / 2; }
+  if (y1 - y0 < MIN * 0.6) { const c = (y0 + y1) / 2; y0 = c - MIN * 0.3; y1 = c + MIN * 0.3; }
   const pad = Math.max(x1 - x0, y1 - y0) * 0.35 + 20;
   let vx = x0 - pad, vy = y0 - pad, vw = x1 - x0 + pad * 2, vh = y1 - y0 + pad * 2;
   if (vw / vh < 1.3) { const w = vh * 1.3; vx -= (w - vw) / 2; vw = w; } else if (vw / vh > 1.8) { const h = vw / 1.8; vy -= (h - vh) / 2; vh = h; }
@@ -36,6 +40,7 @@ function regionMap(states, label) {
   const f = (n) => n.toFixed(2);
   return `<figure class="gx-rmap"><svg viewBox="${f(vx)} ${f(vy)} ${f(vw)} ${f(vh)}" role="img" aria-label="Map highlighting ${label}">
     <g>${m.states.map((s) => `<path class="${names.has(s.name) ? 'hl' : s.level ? 'l1' : 'l0'}" d="${s.d}" style="stroke-width:${f(1.2 * k)}"><title>${s.name}</title></path>`).join('')}</g>
+    ${states.includes('DC') ? `<g class="gx-dc"><circle cx="827.4" cy="267.3" r="${f(6 * k)}"/><text x="${f(827.4 + 9 * k)}" y="${f(267.3 + 4 * k)}" style="font-size:${f(12 * k)}px;stroke-width:${f(3 * k)}px">Washington, DC</text></g>` : ''}
     <g class="gx-hq"><circle cx="${m.hq[0]}" cy="${m.hq[1]}" r="${f(4.5 * k)}" style="stroke-width:${f(2 * k)}"/><text x="${f(m.hq[0] - 7 * k)}" y="${f(m.hq[1] - 7 * k)}" style="font-size:${f(12 * k)}px;stroke-width:${f(3 * k)}px">Conshohocken HQ</text></g>
   </svg></figure>`;
 }
@@ -50,7 +55,7 @@ function regionPage(shell, img, r) {
     [`Do you install storage systems in ${r.slug === 'pennsylvania' ? 'Central, Eastern and Western Pennsylvania' : r.short}?`, `Yes. ${r.lede} We handle the walk-through, layout, installation and service from our Conshohocken office.`],
     ['Can you work with our architect and general contractor?', 'Yes. On renovations and new buildings we coordinate with the architect and general contractor, and we provide product and load data to your engineer of record.'],
   ];
-  const pick = FORM_STATE[r.match.states[0]];
+  const pick = FORM_STATE[r.match.states[0]] || 'Somewhere else';
   const form = G.quickQuote(`region-${r.slug}`, `storage in ${shortName(r)}`).replace(`<option>${pick}</option>`, `<option selected>${pick}</option>`);
   return shell(r.title, img, `
 <div class="page-hero">
@@ -120,11 +125,16 @@ const CSS = `
 .gx-rmap path{stroke:#fff}
 .gx-rmap path.l0{fill:#e3e9e9}.gx-rmap path.l1{fill:#c9dede}.gx-rmap path.hl{fill:var(--teal)}
 .gx-rmap .gx-hq circle{fill:#fff;stroke:#c4572a}
+.gx-rmap .gx-dc circle{fill:var(--teal);stroke:#fff;stroke-width:1}
+.gx-rmap .gx-dc text{font-family:var(--font);font-weight:700;fill:var(--teal-ink);paint-order:stroke;stroke:var(--mist)}
 .gx-rmap .gx-hq text{font-family:var(--font);font-weight:700;fill:#c4572a;text-anchor:end;paint-order:stroke;stroke:var(--mist)}
 .gx-region{grid-template-columns:1fr 1fr;margin-top:36px}
 .gx-region ul{margin:8px 0 0;padding-left:18px;color:#39494c;font-size:.95rem}
 .gx-region li{margin-bottom:4px}
 @media(max-width:560px){.gx-region{grid-template-columns:1fr}}
+/* header: room for Where We Work; the phone number stays in the announcement bar and the mobile menu */
+header .logo{flex-shrink:0}
+.head-cta .head-phone{display:none}
 `;
 
 module.exports = { REGIONS, file, pages, footerLinks, CSS };

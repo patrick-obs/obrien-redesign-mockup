@@ -631,6 +631,7 @@ const HEADER = `
       <div><a class="top" href="resources.html">Resources</a></div>
       <div><a class="top" href="blog.html">Blog</a></div>
       <div><a class="top" href="about.html">About</a></div>
+      <div><a class="top" href="where-we-work.html">Where We Work</a></div>
       <div><a class="top nav-3d" href="showroom.html">3D Showroom <span class="new">New</span></a></div>
     </nav>
     <div class="head-cta">
@@ -651,6 +652,7 @@ const HEADER = `
       <a href="resources.html">Resources</a>
       <a href="blog.html">Blog</a>
       <a href="about.html">About</a>
+      <a href="where-we-work.html">Where We Work</a>
       <div class="mnav-cta"><a class="btn btn-solid" href="contact.html">Free Assessment</a><a class="head-phone" href="tel:6108253405">610.825.3405</a></div>
     </div>
   </nav>
