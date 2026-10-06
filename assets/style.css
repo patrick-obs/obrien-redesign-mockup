@@ -588,3 +588,14 @@ button.btn{font:inherit;font-weight:700;cursor:pointer}
 .gx-map figcaption i.l2{background:var(--teal)}.gx-map figcaption i.l1{background:#9fcfd0}
 @media(max-width:900px){.gx-cards{grid-template-columns:1fr 1fr}.gx-steps{grid-template-columns:1fr 1fr}.gx-quote{grid-template-columns:1fr}}
 @media(max-width:560px){.gx-cards,.gx-steps,.gx-fields{grid-template-columns:1fr}}
+
+.gx-rmap{margin:0;background:var(--mist);border-radius:var(--radius);padding:14px}
+.gx-rmap svg{width:100%;height:auto;display:block}
+.gx-rmap path{stroke:#fff}
+.gx-rmap path.l0{fill:#e3e9e9}.gx-rmap path.l1{fill:#c9dede}.gx-rmap path.hl{fill:var(--teal)}
+.gx-rmap .gx-hq circle{fill:#fff;stroke:#c4572a}
+.gx-rmap .gx-hq text{font-family:var(--font);font-weight:700;fill:#c4572a;text-anchor:end;paint-order:stroke;stroke:var(--mist)}
+.gx-region{grid-template-columns:1fr 1fr;margin-top:36px}
+.gx-region ul{margin:8px 0 0;padding-left:18px;color:#39494c;font-size:.95rem}
+.gx-region li{margin-bottom:4px}
+@media(max-width:560px){.gx-region{grid-template-columns:1fr}}

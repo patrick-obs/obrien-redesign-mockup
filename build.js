@@ -8,6 +8,7 @@ const OUT = __dirname;
 const VER = Date.now().toString(36);
 const X = require('./extras'); // Sept 2026 upgrades: specify panel, specify hub, service, SEO plumbing
 const G = require('./growth'); // Oct 2026 search pass: deeper product pages, answers page, quote form, service-area map
+const W = require('./where'); // region pages: storage-systems-<region>.html + where-we-work.html
 // Website assistant (same one as obriensys.com). Switch to 'https://obriensys.com' once the chat is live there.
 const CHAT_API = 'https://chatbot.obriensys-web.pages.dev';
 
@@ -676,6 +677,8 @@ const FOOTER = `
         <h4>O'Brien Systems</h4>
         <p>Custom storage solutions since 1979: headquartered in Conshohocken, PA, serving Pennsylvania, New Jersey, Delaware, Maryland, Washington DC and New York, and traveling with our customers when their projects do.</p>
         <p style="margin-top:10px;font-size:.8rem">PA Small Business (SB) Certified</p>
+        <h4 style="margin-top:18px">Where We Work</h4>
+        ${W.footerLinks()}<a href="where-we-work.html">All regions &rarr;</a>
         <p style="margin-top:12px"><a href="tel:6108253405">610.825.3405</a><a href="mailto:sales@obriensys.com">sales@obriensys.com</a><a href="https://www.facebook.com/OBrienSystems/">Facebook</a></p>
       </div>
       <div>
@@ -688,7 +691,7 @@ const FOOTER = `
       </div>
       <div>
         <h4>Company</h4>
-        <a href="about.html">About Us</a><a href="services.html">Services</a><a href="showroom.html">3D Showroom</a><a href="design-specify.html">Design &amp; Specify</a><a href="service.html">Request Service</a><a href="resources.html">Resources &amp; Brochures</a><a href="blog.html">Blog</a><a href="contact.html">Contact</a>
+        <a href="about.html">About Us</a><a href="where-we-work.html">Where We Work</a><a href="services.html">Services</a><a href="showroom.html">3D Showroom</a><a href="design-specify.html">Design &amp; Specify</a><a href="service.html">Request Service</a><a href="resources.html">Resources &amp; Brochures</a><a href="blog.html">Blog</a><a href="contact.html">Contact</a>
       </div>
     </div>
     <div class="legal">
@@ -2030,7 +2033,7 @@ const SITE_JS = `document.documentElement.classList.add('js');
 })();
 `;
 fs.mkdirSync(path.join(OUT,'assets'), {recursive:true});
-fs.writeFileSync(path.join(OUT,'assets','style.css'), CSS + X.CSS + X.CSS3D + G.CSS);
+fs.writeFileSync(path.join(OUT,'assets','style.css'), CSS + X.CSS + X.CSS3D + G.CSS + W.CSS);
 fs.writeFileSync(path.join(OUT,'assets','site.js'), SITE_JS);
 
 const pages = {
@@ -2062,7 +2065,8 @@ for (const i of INDUSTRIES) {
 }
 BLOG.forEach((p, idx) => { pages[`post-${p.slug}.html`] = postPage(p, idx); });
 pages['storage-questions.html'] = G.answersPage(shell, IMGS.heroHome);
-pages['about.html'] = pages['about.html'].replace('<div class="cta" id="contact">', G.aboutMap() + '<div class="cta" id="contact">');
+Object.assign(pages, W.pages(shell, IMGS.heroHome));
+pages['about.html'] = pages['about.html'].replace('<div class="cta" id="contact">', G.aboutMap().replace('</figure>', '</figure>\n  <p class="gx-more"><a href="where-we-work.html">See every region we work in</a></p>') + '<div class="cta" id="contact">');
 
 let n = 0;
 for (const [file, html] of Object.entries(pages)) {

@@ -244,4 +244,4 @@ const CSS = `
 @media(max-width:560px){.gx-cards,.gx-steps,.gx-fields{grid-template-columns:1fr}}
 `;
 
-module.exports = { PILLAR, extra, faqs, answersPage, aboutMap, CSS };
+module.exports = { PILLAR, extra, faqs, answersPage, aboutMap, quickQuote, CSS };
