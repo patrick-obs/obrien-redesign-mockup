@@ -1127,23 +1127,14 @@ function hdMobile(id, name, dims, start, opts = {}) {
       };
     };
     const mWhite = k.std(0xf1f2f0, 0.38, 0.2), mPlate = k.std(0xd7dbde, 0.25, 0.85), mObj = [0xb56f4a, 0x6b8f71, 0xc9a227, 0x3d5a7a].map(c => k.std(c, 0.6, 0.05));
-    // museum cabinet pair: white case, glass double doors with latch plates, drawers low and shelves high behind the glass
-    // one cabinet case with a pair of swinging doors; each pair opens together when you click it
+    // a cabinet case's pair of solid swinging doors (wardrobes); each pair opens together when you click it. Museum cabinets
+    // use museumCabinet(), the one builder for the stand-alone and the mobile cabinets
     const hwDark = k.std(0x3a3f44, 0.4, 0.55);
-    const doorPair = (p, x, cw, y0, H, fz, dir, glass, frameM, first) => {
+    const doorPair = (p, x, cw, y0, H, fz, dir, frameM, first) => {
       const doors = [];
       for (const side of [0, 1]) {
         const pv = group(p, side ? x + cw : x, y0, fz), dw = cw / 2 - 0.1, sx = side ? -dw : 0; pv.userData.dyn = true;
-        const fo = dir > 0 ? 1 : -1, fz0 = dir > 0 ? 1.2 : -0.3; // outer face offset
-        if (glass) {
-          // wide white stiles and rails around full-height glass, a gasket line, and a latch plate with a label card and twist handle
-          const st = 4.2; bx(pv, dw, st, 1.2, frameM, sx, H - st, dir > 0 ? 0 : -0.3); bx(pv, dw, st, 1.2, frameM, sx, 0, dir > 0 ? 0 : -0.3); bx(pv, st, H, 1.2, frameM, sx, 0, dir > 0 ? 0 : -0.3); bx(pv, st, H, 1.2, frameM, sx + dw - st, 0, dir > 0 ? 0 : -0.3);
-          bx(pv, dw - 2 * st, H - 2 * st, 0.25, M.glass, sx + st, st, 0.45);
-          const px = side ? -dw + 0.6 : dw - 3.6, fz = dir > 0 ? 1.2 : -0.55;
-          bx(pv, 3, 11, 0.25, mPlate, px, H / 2 - 6, fz); bx(pv, 2.4, 3.2, 0.1, M.label, px + 0.3, H / 2 + 1.2, fz + fo * 0.25);
-          cyl(pv, 1.25, 0.35, mPlate, px + 1.5, H / 2 - 2.8, fz + fo * 0.3, 28, 'z'); cyl(pv, 1, 0.25, M.dark, px + 1.5, H / 2 - 2.8, fz + fo * 0.55, 24, 'z'); bx(pv, 0.55, 2.1, 0.5, M.chrome, px + 1.225, H / 2 - 3.85, fz + fo * 0.6);
-        } else { bx(pv, dw, H - 0.4, 0.8, frameM, sx, 0.2, 0); for (let v = 0; v < 5; v++) bx(pv, dw - 6, 0.3, 0.1, hwDark, sx + 3, H - 5 - v * 0.9, dir > 0 ? 0.82 : -0.02); bx(pv, 1, 7, 0.8, hwDark, side ? -dw + 1.2 : dw - 2.2, H / 2 - 3.5, dir > 0 ? 0.9 : -0.8); }
-        void fz0;
+        bx(pv, dw, H - 0.4, 0.8, frameM, sx, 0.2, 0); for (let v = 0; v < 5; v++) bx(pv, dw - 6, 0.3, 0.1, hwDark, sx + 3, H - 5 - v * 0.9, dir > 0 ? 0.82 : -0.02); bx(pv, 1, 7, 0.8, hwDark, side ? -dw + 1.2 : dw - 2.2, H / 2 - 3.5, dir > 0 ? 0.9 : -0.8);
         doors.push(pv);
       }
       const api = { busy: false, isOpen: () => !!doors[0].userData.open };
@@ -1158,7 +1149,7 @@ function hdMobile(id, name, dims, start, opts = {}) {
     const museumFace = (p, y0, z0, dir) => {
       for (let u = 0; u < 3; u++) {
         const g = group(p);
-        museumCabinet(THREE, k, g, { tween, wake, paint: mWhite, plate: mPlate, label: mPlate, base: 0, seed: 20 + u * 3 + (dir > 0 ? 0 : 1), reg: openParts, lazy: true });
+        museumCabinet(THREE, k, g, { tween, wake, paint: mWhite, plate: mPlate, base: 0, seed: 20 + u * 3 + (dir > 0 ? 0 : 1), reg: openParts, lazy: true });
         if (dir > 0) g.position.set(u * 49, y0, z0 + 0.5); else { g.rotation.y = Math.PI; g.position.set(u * 49 + 48, y0, z0 + C.d - 0.5); }
       }
     };
@@ -1258,7 +1249,7 @@ function hdMobile(id, name, dims, start, opts = {}) {
         bx(p, 36, 0.8, D, wardM, x, y0, z0); bx(p, 36, 0.8, D, wardM, x, y0 + H - 0.8, z0); bx(p, 0.6, H, D, wardM, x, y0, z0); bx(p, 0.6, H, D, wardM, x + 35.4, y0, z0); bx(p, 36, H, 0.6, wardM, x, y0, back);
         bx(p, 34.8, 0.4, D - 2, wardM, x + 0.6, y0 + H - 12, z0 + 1);
         cyl(p, 0.5, 34.8, M.chrome, x + 18, y0 + H - 16, z0 + D / 2, 12, 'x');
-        doorPair(p, x + 0.2, 35.6, y0 + 0.4, H - 0.8, fz, dir, false, wardM);
+        doorPair(p, x + 0.2, 35.6, y0 + 0.4, H - 0.8, fz, dir, wardM);
       }
     };
     // weapons racks: rifle bays with a butt tray, barrel rest and hinged locking bar; a pistol and ammo bay between them
@@ -1858,15 +1849,18 @@ def('rotary', 'Rotary File Cabinet', '46" W x 41" D x 84" H: the shelving unit t
 });
 
 /* ---------------- 9. museum cabinet ---------------- */
-// one museum storage cabinet, the same on its own or on a mobile carriage: white case on a recessed plinth, gasket lines,
-// shelves of collection objects over a bank of drawers with a solid shelf on top, full-height glass (or solid) doors
-// with a latch plate, label card and twist handle. Drawers only open with the doors open; closing puts drawers back first.
-// Built facing +z with its min corner at the group origin. opts: { tween, wake, paint, base, seed, reg }
+// one museum storage cabinet, the same on its own or on a mobile carriage (the one builder for both): white case on a
+// recessed plinth, gasket lines, shelves of collection objects over a bank of low-front preservation drawers with a solid
+// shelf on top, full-height glass (or solid) doors on hinges, and latch hardware on BOTH doors at the meeting stiles: a
+// tall stainless plate with a label card window on top and a round twist handle that turns before the doors swing.
+// Drawers only open with the doors open; closing puts drawers back first.
+// Built facing +z with its min corner at the group origin. opts: { tween, wake, paint, plate, base, seed, reg, lazy }
 function museumCabinet(THREE, k, parent, opts) {
   const { M, bx, cyl, group } = k, { tween, wake = () => {}, reg = null } = opts;
   const paint = opts.paint || k.std(0xf1f2f0, 0.38, 0.2), tray = k.std(0xe6e8e6, 0.5, 0.2), plate = opts.plate || k.std(0xd7dbde, 0.25, 0.85);
   const W = 48, D = 30, H = 84, base = opts.base ?? 4, t = 1, r = rng(opts.seed || 12), root = group(parent);
-  const lite = !!opts.lazy, labelM = lite ? (opts.label || M.label) : M.label, knobM = lite ? plate : M.dark, leverM = lite ? plate : M.chrome, grooveM = lite ? plate : M.dark;
+  // on a carriage (lazy: many cabinets) the hardware keeps to the plate and one dark material: fewer draw calls per door
+  const lite = !!opts.lazy, knobM = M.dark, leverM = lite ? M.dark : M.chrome, frameM = lite ? M.dark : k.std(0x9aa0a4, 0.4, 0.7);
   if (base) bx(root, W - 3, base, D - 4, paint, 1.5, 0, 1.5);
   const y0 = base;
   bx(root, W, t, D, paint, 0, y0 + H - t, 0); bx(root, t, H, D, paint, 0, y0, 0); bx(root, t, H, D, paint, W - t, y0, 0); bx(root, W, H, t, paint, 0, y0, 0); bx(root, W, t, D, paint, 0, y0, 0);
@@ -1880,15 +1874,17 @@ function museumCabinet(THREE, k, parent, opts) {
   const drawerIsOut = () => (lazy ? Object.keys(out).length > 0 : api.drawers.some(d => d.userData.open));
   const slide = (dr, o) => { dr.userData.open = o; return tween(dr.position, 'z', o ? 24 : 0, o ? 750 : 600, 'out'); };
   const dy = i => y0 + 1.6 + i * 6.3;
-  const front = (g, y) => { bx(g, W - 4, 6.2, 0.6, paint, 2, y - 0.05, D - 3.4); bx(g, W - 4, 0.1, 0.02, grooveM, 2, y + 6.1, D - 2.79); bx(g, 3.6, 2, 0.15, plate, W / 2 - 1.8, y + 3.2, D - 2.8); bx(g, 3, 1.4, 0.05, labelM, W / 2 - 1.5, y + 3.5, D - 2.62); bx(g, 8, 0.7, 0.6, plate, W / 2 - 4, y + 1.2, D - 2.8); };
-  // a whole drawer: box, front with label holder and pull, and specimen trays a hair above the floor so they never flicker
-  const drawer = (i) => { const y = dy(i), dr = group(root); k.tray(dr, W - 5, 3.6, D - 5, tray, 2.5, y + 0.3, 1.5, 0.2); front(dr, y); smallThings(THREE, dr, 3, y + 0.54, 3, W - 7, D - 9, rng((opts.seed || 12) * 10 + i), 3, true); return dr; };
+  // preservation drawers have a low front (2.6"), so the trays inside show from the aisle: a pull and a label holder on it
+  const front = (g, y) => { bx(g, W - 4, 2.6, 0.6, paint, 2, y - 0.05, D - 3.4); bx(g, 7, 0.7, 0.6, plate, W / 2 - 3.5, y + 0.95, D - 2.8); bx(g, 3.6, 1.6, 0.15, plate, W / 2 + 5, y + 0.45, D - 2.8); bx(g, 3, 1.1, 0.05, lite ? paint : M.label, W / 2 + 5.3, y + 0.7, D - 2.62); };
+  // a whole drawer: sides and back full height, the low front, and specimen trays a hair above the floor so they never flicker
+  const drawer = (i) => { const y = dy(i), dr = group(root), h = 5.2; bx(dr, W - 5, 0.2, D - 5, tray, 2.5, y + 0.3, 1.5); for (const x of [2.5, W - 2.7]) bx(dr, 0.2, h, D - 5, tray, x, y + 0.3, 1.5); bx(dr, W - 5, h, 0.2, tray, 2.5, y + 0.3, 1.5); front(dr, y); smallThings(THREE, dr, 3, y + 0.54, 3, W - 7, D - 9, rng((opts.seed || 12) * 10 + i), 3, true); return dr; };
   if (!lazy) {
     for (let i = 0; i < 6; i++) { const dr = drawer(i); dr.userData.hint = () => (api.open ? (dr.userData.open ? 'Push the drawer in' : 'Pull this drawer') : 'Open the doors first'); dr.userData.onClick = () => { if (api.moving) return; if (!api.open) { api.toggle(); return; } slide(dr, !dr.userData.open); wake(); }; api.drawers.push(dr); }
   } else {
     // many cabinets on a carriage: the fronts are one piece, and a drawer is built only when it is pulled
     const bank = group(root), gapM = k.std(0x2a2d30, 0.9, 0);
-    for (let i = 0; i < 6; i++) front(bank, dy(i));
+    // each closed drawer: its low front, and over it the tops of its specimen trays (the full drawer is built when pulled)
+    for (let i = 0; i < 6; i++) { front(bank, dy(i)); bx(bank, W - 5, 0.2, D - 5, paint, 2.5, dy(i) + 0.3, 1.5); for (const x of [3.2, W / 2 + 0.4]) bx(bank, W / 2 - 3.6, 1.2, D - 9, paint, x, dy(i) + 0.5, 3); }
     const pull = (i) => {
       if (out[i]) { const { dr, gap } = out[i]; delete out[i]; slide(dr, false).then(() => { root.remove(dr); bank.remove(gap); wake(); }); return; }
       const dr = drawer(i); dr.userData.dyn = true; dr.userData.onClick = () => pull(i); dr.userData.hint = 'Push the drawer in';
@@ -1917,11 +1913,15 @@ function museumCabinet(THREE, k, parent, opts) {
         bx(pv, st, dh, 1.2, paint, sx, 0, -1.2); bx(pv, st, dh, 1.2, paint, sx + dw - st, 0, -1.2);
         bx(pv, dw - 2 * st, dh - 2 * st, 0.25, M.glass, sx + st, st, -0.7);
       } else bx(pv, dw, dh, 1.2, paint, sx, 0, -1.2);
-      // latch plate on the meeting stile: label card up top, round twist handle below
-      const px = side ? -dw + 0.6 : dw - 3.6;
+      // latch plate on the meeting stile: a label card window up top (a frame, the card, two lines of ink), round twist handle below
+      const px = side ? -dw + 0.6 : dw - 3.6, cy = dh / 2 + 2.3;
       bx(pv, 3, 11, 0.25, plate, px, dh / 2 - 6, 0);
-      bx(pv, 2.4, 3.2, 0.1, labelM, px + 0.3, dh / 2 + 1.2, 0.25);
+      bx(pv, 2.4, 2.1, 0.08, frameM, px + 0.3, cy, 0.25);
+      if (!lite) { bx(pv, 2, 1.6, 0.06, M.label, px + 0.5, cy + 0.25, 0.33); for (const [yy, ww] of [[cy + 1.25, 1.4], [cy + 0.85, 1]]) bx(pv, ww, 0.14, 0.02, M.dark, px + 0.75, yy, 0.39); }
+      else bx(pv, 2, 1.6, 0.06, plate, px + 0.5, cy + 0.25, 0.33);
       cyl(pv, 1.25, 0.35, plate, px + 1.5, dh / 2 - 2.8, 0.3, 28, 'z');
+      // three hinge knuckles on the outer edge
+      for (const hy of [8, dh / 2, dh - 12]) cyl(pv, 0.42, 3.4, plate, side ? 0.05 : -0.05, hy, 0.2, 12);
       const lv = group(pv, px + 1.5, dh / 2 - 2.8, 0.55);
       cyl(lv, 1, 0.25, knobM, 0, 0, 0, 24, 'z'); bx(lv, 0.55, 2.1, 0.5, leverM, -0.275, -1.05, 0);
       lv.rotation.z = api.open ? -Math.PI / 2 : 0; if (!lazy) { lv.userData.dyn = true; levers.push(lv); }
