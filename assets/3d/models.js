@@ -2815,7 +2815,7 @@ def('textile-rack', 'Rolled Textile Storage', '12 ft double-sided cantilever rac
   const k = kit(THREE), { M, bx, cyl, group } = k, root = new THREE.Group();
   const frame = k.std(0x3a3f44, 0.45, 0.35), tube = k.std(0xf6f7f5, 0.35, 0.1), r = rng(31);
   const wraps = [k.std(0xe3e7ea, 0.3, 0.35), k.std(0xeceeee, 0.55, 0.1), k.std(0xd9dde0, 0.3, 0.4)];
-  const bare = [k.std(0x9b2226, 0.85, 0), k.std(0x7a5230, 0.9, 0), k.std(0x8c6b3f, 0.9, 0), k.std(0x3d5a7a, 0.85, 0), k.std(0x5e4a7a, 0.85, 0)];
+  const capM = k.std(0xefe9dc, 0.9, 0), bare = [k.std(0x9b2226, 0.85, 0), k.std(0x7a5230, 0.9, 0), k.std(0x8c6b3f, 0.9, 0), k.std(0x3d5a7a, 0.85, 0), k.std(0x5e4a7a, 0.85, 0)];
   const L = 144, H = 104, arm = 30, cols = [0, 48, 96, 144], levels = [10, 27, 44, 61, 78, 95], slots = [10, 22];
   const SPANS = [[[0, 3]], [[0, 1], [1, 3]], [[0, 2], [2, 3]], [[0, 1], [1, 2], [2, 3]], [[0, 3]], [[1, 3]], [[0, 2]]];
   for (const x of cols) {
@@ -2845,7 +2845,7 @@ def('textile-rack', 'Rolled Textile Storage', '12 ft double-sided cantilever rac
         cyl(g, rad, len, wrapped ? wraps[Math.floor(r() * 3)] : pat, x0 + len / 2, 0, 0, 28, 'x');
         // an unrolled lip hangs off some rolls so the weave, print or pattern shows flat
         if (!wrapped && pat.map && r() > 0.55) bx(g, len - 2, 6, 0.12, pat, x0 + 1, -6, s > 0 ? rad : -rad - 0.12);
-        for (const e of [x0, x0 + len]) cyl(g, rad * 0.92, 0.2, wrapped ? wraps[1] : k.std(0xefe9dc, 0.9, 0), e + (e === x0 ? -0.1 : 0.1), 0, 0, 28, 'x');
+        for (const e of [x0, x0 + len]) cyl(g, rad * 0.92, 0.2, wrapped ? wraps[1] : capM, e + (e === x0 ? -0.1 : 0.1), 0, 0, 28, 'x');
         bx(g, 1.6, 2.2, 0.1, M.label, x0 + 3, -1.1, s > 0 ? rad + 0.05 : -rad - 0.15);
       }
       if (z === slots[1]) {
