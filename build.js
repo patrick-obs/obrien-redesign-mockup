@@ -7,6 +7,7 @@ const OUT = __dirname;
 // every build gets a new asset version so browsers never mix new pages with an old cached stylesheet
 const VER = Date.now().toString(36);
 const X = require('./extras'); // Sept 2026 upgrades: specify panel, specify hub, service, SEO plumbing
+const G = require('./growth'); // Oct 2026 search pass: deeper product pages, answers page, quote form, service-area map
 // Website assistant (same one as obriensys.com). Switch to 'https://obriensys.com' once the chat is live there.
 const CHAT_API = 'https://chatbot.obriensys-web.pages.dev';
 
@@ -673,7 +674,7 @@ const FOOTER = `
     <div class="cols">
       <div>
         <h4>O'Brien Systems</h4>
-        <p>Custom storage solutions since 1979: headquartered in Conshohocken, PA, serving the greater Philadelphia region and traveling with our customers when their projects do.</p>
+        <p>Custom storage solutions since 1979: headquartered in Conshohocken, PA, serving Pennsylvania, New Jersey, Delaware, Maryland, Washington DC and New York, and traveling with our customers when their projects do.</p>
         <p style="margin-top:10px;font-size:.8rem">PA Small Business (SB) Certified</p>
         <p style="margin-top:12px"><a href="tel:6108253405">610.825.3405</a><a href="mailto:sales@obriensys.com">sales@obriensys.com</a><a href="https://www.facebook.com/OBrienSystems/">Facebook</a></p>
       </div>
@@ -692,7 +693,7 @@ const FOOTER = `
     </div>
     <div class="legal">
       <span>&copy; 2026 O'Brien Systems.</span>
-      <span><a href="#">Privacy Policy</a> | <a href="#">Accessibility Statement</a> | <a href="sitemap.xml">Sitemap</a></span>
+      <span><a href="#">Privacy Policy</a> | <a href="#">Accessibility Statement</a> | <a href="sitemap.xml">Sitemap</a> | <a href="storage-questions.html">Storage questions</a></span>
     </div>
   </div>
 </footer>
@@ -1722,7 +1723,7 @@ const resourcesPage = shell(`Resources & Brochures | O'Brien Systems`, IMGS.hami
   <div class="dl-grid">
     ${BROCHURES.map(b=>`<a class="dlc" href="${b[1]}" target="_blank" rel="noopener"><div class="cover" style="background-image:url('${COVERS[b[2]]}')"></div><div class="bd"><b>${b[0]}</b><span class="tag">PDF</span></div></a>`).join('\n    ')}
   </div>
-  <div class="chips" style="margin-top:36px"><a href="design-specify.html">Design &amp; Specify: CSI sections, CAD and Revit</a><a href="service.html">Request service</a></div>
+  <div class="chips" style="margin-top:36px"><a href="storage-questions.html">Storage questions answered</a><a href="design-specify.html">Design &amp; Specify: CSI sections, CAD and Revit</a><a href="service.html">Request service</a></div>
   <p class="lead" style="margin-top:28px">Need drawings, specifications, or manufacturer literature for a specific product line? <a href="contact.html">Ask us</a> and we'll pull the current documents from the manufacturer.</p>
 </div></section>`);
 
@@ -2029,7 +2030,7 @@ const SITE_JS = `document.documentElement.classList.add('js');
 })();
 `;
 fs.mkdirSync(path.join(OUT,'assets'), {recursive:true});
-fs.writeFileSync(path.join(OUT,'assets','style.css'), CSS + X.CSS + X.CSS3D);
+fs.writeFileSync(path.join(OUT,'assets','style.css'), CSS + X.CSS + X.CSS3D + G.CSS);
 fs.writeFileSync(path.join(OUT,'assets','site.js'), SITE_JS);
 
 const pages = {
@@ -2049,17 +2050,19 @@ const pages = {
 
 for (const s of SOLUTIONS) {
   const d = SOLUTION_PAGES[s.slug];
-  pages[`${s.slug}.html`] = subpage({ ...d, slug:s.slug, name:s.name, img:s.img, banner:s.banner, hub:'solutions', hubName:'Solutions' });
+  pages[`${s.slug}.html`] = subpage({ ...d, extra:(d.extra||'') + G.extra(s.slug, s.name, 'solution'), faqs:[...(d.faqs||[]), ...G.faqs(s.slug)], slug:s.slug, name:s.name, img:s.img, banner:s.banner, hub:'solutions', hubName:'Solutions' });
 }
 for (const p of PRODUCTS) {
   const d = PRODUCT_PAGES[p.slug];
-  pages[`${p.slug}.html`] = subpage({ ...d, slug:p.slug, name:p.name, img:p.img, banner:p.banner, hub:'solutions', hubName:'Solutions' });
+  pages[`${p.slug}.html`] = subpage({ ...d, extra:(d.extra||'') + G.extra(p.slug, p.name, 'product'), faqs:[...(d.faqs||[]), ...G.faqs(p.slug)], slug:p.slug, name:p.name, img:p.img, banner:p.banner, hub:'solutions', hubName:'Solutions' });
 }
 for (const i of INDUSTRIES) {
   const d = INDUSTRY_PAGES[i.slug];
-  pages[`${i.slug}.html`] = subpage({ ...d, slug:i.slug, eyebrow:'Industries', name:i.name, img:i.img, banner:i.banner, hub:'industries', hubName:'Industries' });
+  pages[`${i.slug}.html`] = subpage({ ...d, extra:(d.extra||'') + G.extra(i.slug, i.name, 'industry'), faqs:[...(d.faqs||[]), ...G.faqs(i.slug)], slug:i.slug, eyebrow:'Industries', name:i.name, img:i.img, banner:i.banner, hub:'industries', hubName:'Industries' });
 }
 BLOG.forEach((p, idx) => { pages[`post-${p.slug}.html`] = postPage(p, idx); });
+pages['storage-questions.html'] = G.answersPage(shell, IMGS.heroHome);
+pages['about.html'] = pages['about.html'].replace('<div class="cta" id="contact">', G.aboutMap() + '<div class="cta" id="contact">');
 
 let n = 0;
 for (const [file, html] of Object.entries(pages)) {
