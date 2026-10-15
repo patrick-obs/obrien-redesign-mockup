@@ -177,7 +177,7 @@ const ORG = {
 const strip = (s) => s.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ').replace(/&#39;/g, "'").replace(/&[a-z]+;/g, ' ').replace(/\s+/g, ' ').trim();
 function enrich(file, html) {
   const title = strip((html.match(/<title>([\s\S]*?)<\/title>/) || [])[1] || '');
-  const lead = strip((html.match(/class="(?:page-hero|hero)(?: [^"]*)?"[\s\S]*?<p[^>]*>([\s\S]*?)<\/p>/) || [])[1] || '') || ORG.description;
+  const lead = strip((html.match(/class="(?:page-hero|hero)"[\s\S]*?<p[^>]*>([\s\S]*?)<\/p>/) || [])[1] || '') || ORG.description;
   const desc = lead.length > 158 ? lead.slice(0, 155).replace(/\s+\S*$/, '') + '...' : lead;
   const img = (html.match(/--hero-img:url\('([^']+)'\)/) || [])[1];
   const url = `${SITE}/${file === 'index.html' ? '' : file}`;
@@ -312,7 +312,7 @@ function photos(file, html) {
   }
   if (added.length) {
     if (/<div class="gallery">/.test(html)) html = html.replace(/(<div class="gallery">[\s\S]*?)(\n    <\/div>)/, (m, a, b) => a + added.map(u => `\n      ${tile(u)}`).join('') + b);
-    else html = html.replace(/(\n    )(<div class="faq">|<div class="related">|<h2 style="margin-top:52px)/,`$1<div class="gallery">\n      ${added.map(tile).join('\n      ')}\n    </div>$1$2`);
+    else html = html.replace(/(\n    )(<div class="faq">|<h2 style="margin-top:52px)/, `$1<div class="gallery">\n      ${added.map(tile).join('\n      ')}\n    </div>$1$2`);
   }
   return html;
 }
@@ -332,16 +332,16 @@ const VIEW3D = {
 };
 const ALL3D = 'hd-mobile,wire-track,vlm,vertical-carousel,rotary,four-post,bin-shelving,wire-shelving,library,tire-rack,lockers,smart-lockers,athletic,evidence-lockers,weapons,flat-files,fireproof,museum-cabinet,wardrobe,art-screens,wall-art,textile-rack,painting-bins,wall-etrack,casework,workstation,ss-table,mail-sorter,pallet-rack,pallet-museum,mezzanine,wire-cage,install,bike-storage';
 const viewer3d = (slug, name) => VIEW3D[slug] ? `
-<section class="v3d-sec" id="explore-3d">
+<section class="v3d-sec">
   <div class="wrap">
-    <div class="v3d-head"><div><span class="eyebrow">Explore in 3D</span><h2>${VIEW3D[slug].includes(',') ? 'Explore the systems in 3D' : `See ${name.replace(/\s*\(VLM\)/, '')} from every side`}</h2></div><a class="v3d-all" href="showroom.html">Open the 3D showroom</a></div>
+    <div class="v3d-head"><div><span class="eyebrow">Explore in 3D</span><h2>${VIEW3D[slug].includes(',') ? 'Explore the systems in 3D' : `See ${name.replace(/\s*\(VLM\)/, '')} from every side`}</h2></div><a class="v3d-all" href="showroom.html">Open the 3D showroom &rarr;</a></div>
     <div class="v3d" data-models="${VIEW3D[slug]}" data-lite="1"></div>
   </div>
 </section>` : '';
 const home3d = () => `
 <section class="v3d-sec v3d-home">
   <div class="wrap">
-    <div class="v3d-head"><div><span class="eyebrow">3D showroom</span><h2>Spin it, open it, see how it works</h2><p>Drag to look at every side. Tap a carriage to open an aisle, pull a drawer, swing a door.</p></div><a class="v3d-all" href="showroom.html">All ${ALL3D.split(',').length} models</a></div>
+    <div class="v3d-head"><div><span class="eyebrow">3D showroom</span><h2>Spin it, open it, see how it works</h2><p>Drag to look at every side. Tap a carriage to open an aisle, pull a drawer, swing a door.</p></div><a class="v3d-all" href="showroom.html">All ${ALL3D.split(',').length} models &rarr;</a></div>
     <div class="v3d" data-models="hd-mobile,four-post,lockers,flat-files,vlm" data-lite="1"></div>
   </div>
 </section>`;

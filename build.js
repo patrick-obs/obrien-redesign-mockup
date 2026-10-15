@@ -9,7 +9,6 @@ const VER = Date.now().toString(36);
 const X = require('./extras'); // Sept 2026 upgrades: specify panel, specify hub, service, SEO plumbing
 const G = require('./growth'); // Oct 2026 search pass: deeper product pages, answers page, quote form, service-area map
 const W = require('./where'); // region pages: storage-systems-<region>.html + where-we-work.html
-const A = require('./apple'); // Oct 2026 reskin: Apple-style design system, nav, motion and page transitions
 // Website assistant (same one as obriensys.com). Switch to 'https://obriensys.com' once the chat is live there.
 const CHAT_API = 'https://chatbot.obriensys-web.pages.dev';
 
@@ -212,8 +211,328 @@ const BROCHURES = [
 const SB_CERT = `Commonwealth of Pennsylvania Small Business (SB) Certified`;
 const KEYSTONE = (cls) => `<svg class="${cls}" viewBox="0 0 100 100" role="img" aria-label="Pennsylvania keystone"><path d="M35 4 H65 V19 H96 L83 96 H60 V80 H40 V96 H17 L4 19 H35 Z" fill="#023c3f" stroke="#e8a33d" stroke-width="4" stroke-linejoin="round"/><text x="50" y="60" text-anchor="middle" font-size="32" font-weight="800" fill="#e8a33d">SB</text></svg>`;
 
-/* ---------------- shared CSS: the Apple-style design system lives in apple.js ---------------- */
-const CSS = A.CSS;
+/* ---------------- shared CSS ---------------- */
+const CSS = `
+:root{
+  --teal:#007377; --teal-dark:#00565a; --teal-ink:#023c3f; --teal-soft:#7fd6d9;
+  --ink:#1c2528; --muted:#5b6b6e; --line:#e3e9e9;
+  --paper:#ffffff; --mist:#f4f7f7;
+  --radius:14px; --shadow:0 10px 30px rgba(2,60,63,.10);
+  --font:"Segoe UI",system-ui,-apple-system,Arial,sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:var(--font);color:var(--ink);background:var(--paper);line-height:1.6}
+img{max-width:100%;display:block}
+a{color:var(--teal);text-decoration:none}
+h1,h2,h3,h4{line-height:1.15;font-weight:700}
+.wrap{max-width:1200px;margin:0 auto;padding:0 24px}
+.eyebrow{display:inline-block;font-size:.78rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--teal);margin-bottom:.6rem}
+.btn{display:inline-block;padding:.85rem 1.7rem;border-radius:999px;font-weight:700;font-size:.95rem;transition:transform .15s ease, box-shadow .15s ease;cursor:pointer;border:0}
+.btn:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,.18)}
+.btn-solid{background:var(--teal);color:#fff}
+.btn-white{background:#fff;color:var(--teal-ink)}
+.btn-ghost{background:transparent;color:#fff;border:2px solid rgba(255,255,255,.85)}
+.btn-ghost:hover{background:rgba(255,255,255,.12)}
+.ribbon{background:#1c2528;color:#9fb3b5;text-align:center;font-size:.75rem;letter-spacing:.08em;padding:4px 10px;text-transform:uppercase}
+.announce{background:var(--teal-ink);color:#cfe9ea;text-align:center;padding:8px 16px;font-size:.85rem}
+.announce a{color:var(--teal-soft);font-weight:700}
+header{position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid var(--line);box-shadow:0 2px 12px rgba(2,60,63,.06)}
+.nav{display:flex;align-items:center;gap:18px;height:76px}
+.logo img{height:52px;width:auto}
+nav.menu{display:flex;gap:0;margin-left:auto}
+nav.menu>div{position:relative}
+nav.menu a.top{display:block;padding:26px 10px;font-weight:600;font-size:.89rem;color:var(--ink);white-space:nowrap}
+nav.menu>div:hover a.top{color:var(--teal)}
+.mega{position:absolute;top:100%;left:50%;transform:translateX(-50%) translateY(8px);background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:22px;display:none;gap:10px 14px}
+.mega::before{content:"";position:absolute;left:-20px;right:-20px;top:-20px;height:24px}
+nav.menu>div:hover .mega,nav.menu>div:focus-within .mega{display:grid}
+.mega.sol{grid-template-columns:repeat(4,196px);gap:6px 22px;align-items:start}
+.mega .mcol{display:flex;flex-direction:column;gap:1px}
+.mega .gh{font-size:.68rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);padding:10px 10px 5px;border-bottom:1px solid var(--line);margin-bottom:5px}
+.mega .gh:not(:first-child){margin-top:14px}
+.mega a.pl{padding:6px 10px;border-radius:8px;font-size:.85rem;font-weight:600;color:var(--ink);line-height:1.3}
+.mega a.pl:hover{background:var(--mist);color:var(--teal)}
+.mega.ind{grid-template-columns:repeat(3,248px);gap:6px 18px}
+.mega a{display:block;padding:12px 14px;border-radius:10px}
+.mega a:hover{background:var(--mist)}
+.mega .t{font-weight:700;font-size:.9rem;color:var(--ink);line-height:1.35;display:block}
+.mega a:hover .t{color:var(--teal)}
+.mega .d{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.5;display:block}
+.mega .all{grid-column:1/-1;text-align:center;border-top:1px solid var(--line);margin-top:6px;padding-top:12px;font-weight:700;color:var(--teal);font-size:.85rem}
+.head-cta{display:flex;align-items:center;gap:14px}
+.head-phone{font-weight:800;color:var(--teal-ink);font-size:.92rem;white-space:nowrap}
+.head-cta .btn{padding:.65rem 1.2rem;font-size:.84rem;white-space:nowrap}
+.burger{display:none;flex-direction:column;justify-content:center;gap:5px;width:44px;height:44px;padding:10px;background:none;border:1px solid var(--line);border-radius:10px;cursor:pointer}
+.burger span{display:block;height:2px;background:var(--teal-ink);border-radius:2px;transition:transform .2s ease,opacity .2s ease}
+.burger[aria-expanded="true"] span:nth-child(1){transform:translateY(7px) rotate(45deg)}
+.burger[aria-expanded="true"] span:nth-child(2){opacity:0}
+.burger[aria-expanded="true"] span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
+.mnav{display:none;background:#fff;border-bottom:1px solid var(--line);box-shadow:0 14px 30px rgba(2,60,63,.12)}
+.mnav.open{display:block}
+.mnav .wrap{padding-top:10px;padding-bottom:22px}
+.mnav a{display:block;padding:11px 4px;font-weight:600;color:var(--ink);border-bottom:1px solid var(--mist);font-size:.98rem}
+.mnav a.sub{padding-left:22px;font-weight:500;font-size:.9rem;color:var(--muted)}
+.mnav a:active,.mnav a:hover{color:var(--teal)}
+.mnav .mnav-cta{margin-top:16px;display:flex;gap:12px;align-items:center}
+nav.menu a.top.nav-3d{margin:20px 0 20px 8px;padding:6px 12px;border:2px solid var(--teal);border-radius:999px;color:var(--teal);font-weight:700;line-height:1.4;transition:background .15s,color .15s}
+nav.menu>div:hover a.top.nav-3d,nav.menu a.top.nav-3d:focus-visible{background:var(--teal);color:#fff}
+.nav-3d .new,.mnav-3d .new{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;background:var(--gold,#e8a33d);color:var(--teal-ink);font-size:.62rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;vertical-align:2px}
+.mnav a.mnav-3d{display:flex;align-items:center;justify-content:center;margin:6px 0 10px;padding:12px;border:2px solid var(--teal);border-radius:12px;color:var(--teal);font-weight:700}
+
+/* home hero */
+.hero{position:relative;color:#fff;overflow:hidden}
+.hero::before{content:"";position:absolute;inset:0;background:var(--hero-img) center/cover no-repeat}
+.hero::after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,rgba(2,60,63,.88) 0%,rgba(2,60,63,.55) 55%,rgba(2,60,63,.25) 100%)}
+.hero .wrap{position:relative;z-index:2;padding-top:110px;padding-bottom:130px}
+.hero h1{font-size:clamp(2.2rem,5vw,3.7rem);max-width:14ch}
+.hero h1 em{font-style:normal;color:var(--teal-soft)}
+.hero p{max-width:52ch;margin:1.2rem 0 2rem;font-size:1.08rem;color:#e2f0f0}
+.hero .ctas{display:flex;gap:14px;flex-wrap:wrap}
+
+/* subpage hero */
+.page-hero{position:relative;color:#fff;overflow:hidden;background:var(--teal-ink)}
+.page-hero::before{content:"";position:absolute;inset:0;background:var(--hero-img) center/cover no-repeat;opacity:.30}
+.page-hero .wrap{position:relative;z-index:2;padding-top:72px;padding-bottom:72px}
+.page-hero .eyebrow{color:var(--teal-soft)}
+.page-hero h1{font-size:clamp(1.9rem,4vw,3rem);max-width:20ch}
+.page-hero p{max-width:60ch;margin-top:1rem;font-size:1.05rem;color:#dcecec}
+.crumbs{position:relative;z-index:2;font-size:.8rem;color:#9fc9ca;padding-top:22px}
+.crumbs a{color:#cfe9ea}
+
+.apps{position:relative;z-index:3;margin-top:-64px}
+.apps .grid{display:grid;grid-template-columns:repeat(7,1fr);background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.apps a{padding:22px 8px;text-align:center;border-left:1px solid var(--line);font-size:.78rem;font-weight:700;color:var(--ink);letter-spacing:.02em}
+.apps a:first-child{border-left:0}
+.apps a:hover{background:var(--mist);color:var(--teal)}
+.apps .ic{font-size:1.5rem;display:block;margin-bottom:8px}
+
+.stats{padding:64px 0 0}
+.stats .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;text-align:center}
+.stats b{display:block;font-size:2.1rem;color:var(--teal);font-variant-numeric:tabular-nums}
+.stats b.loc{font-size:1.45rem;line-height:2.52rem;white-space:nowrap}
+.stats span{font-size:.85rem;color:var(--muted)}
+.certbar{margin:44px auto 0;max-width:1200px;padding:0 24px;display:flex;justify-content:center}
+.sb-badge{position:relative;overflow:hidden;display:inline-flex;align-items:center;gap:18px;text-align:left;background:linear-gradient(135deg,#fefcf6 0%,#f7f0df 100%);border:1px solid #d9b25f;box-shadow:inset 0 0 0 3px #fff,0 6px 18px rgba(2,60,63,.10);border-radius:14px;padding:16px 30px 16px 22px}
+.sb-badge .keystone{width:54px;height:54px;flex:none;filter:drop-shadow(0 2px 3px rgba(2,60,63,.25))}
+.sb-text{display:flex;flex-direction:column;gap:2px}
+.sb-eyebrow{font-size:.68rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#a97e2f}
+.sb-text b{font-size:1.05rem;color:var(--teal-ink);line-height:1.25}
+.sb-sub{font-size:.76rem;color:var(--muted)}
+.sb-badge::after{content:"";position:absolute;top:0;bottom:0;left:-80%;width:50%;background:linear-gradient(105deg,transparent,rgba(255,255,255,.75),transparent);transform:skewX(-18deg)}
+.sb-badge:hover::after{animation:sheen 1.1s ease}
+@keyframes sheen{to{left:130%}}
+
+section.block{padding:72px 0}
+.block h2{font-size:clamp(1.6rem,3vw,2.3rem);max-width:26ch}
+.block h2 em{font-style:normal;color:var(--teal)}
+.lead{color:var(--muted);max-width:62ch;margin-top:.8rem}
+.sec-head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:36px}
+
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+.card{border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:#fff;transition:transform .15s ease, box-shadow .15s ease;display:flex;flex-direction:column}
+.card:hover{transform:translateY(-4px);box-shadow:var(--shadow)}
+.card .ph{height:190px;background-size:cover;background-position:center}
+.card .bd{padding:18px 20px 22px;display:flex;flex-direction:column;flex:1}
+.card h3{font-size:1.05rem;color:var(--ink)}
+.card p{font-size:.87rem;color:var(--muted);margin:.4rem 0 .9rem;flex:1}
+.card .go{font-weight:700;font-size:.85rem;color:var(--teal)}
+.card .meta{font-size:.75rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px}
+
+.compare{background:var(--teal-ink);color:#fff}
+.compare .eyebrow{color:var(--teal-soft)}
+.compare h2 em{color:var(--teal-soft)}
+.compare .lead{color:#bcd8d9}
+.compare .duo{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:40px}
+.compare .panel{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:var(--radius);padding:26px}
+.compare .panel h3{font-size:1rem;margin-bottom:14px;color:#fff}
+.compare .panel p{font-size:.85rem;color:#bcd8d9;margin-top:12px}
+.compare svg{width:100%;height:auto;display:block}
+/* before/after slider (shown only with JS; no-JS keeps the two panels) */
+.ba{display:none;margin:44px auto 0;max-width:860px}
+html.js .ba{display:block}
+html.js .compare .duo{display:none}
+.ba-frame{position:relative;border:1px solid rgba(255,255,255,.18);border-radius:var(--radius);overflow:hidden;background:rgba(255,255,255,.06);touch-action:none;box-shadow:0 18px 44px rgba(0,0,0,.28)}
+.ba-frame svg{display:block;width:100%;height:auto}
+.ba-top{position:absolute;inset:0;clip-path:inset(0 0 0 50%)}
+.ba-handle{position:absolute;top:0;bottom:0;left:50%;width:0;z-index:3;pointer-events:none}
+.ba-handle::before{content:"";position:absolute;top:0;bottom:0;left:-1.5px;width:3px;background:#fff;box-shadow:0 0 10px rgba(0,0,0,.45)}
+.ba-handle span{position:absolute;top:50%;left:0;transform:translate(-50%,-50%);width:46px;height:46px;border-radius:50%;background:#fff;color:var(--teal-ink);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.05rem;letter-spacing:-1px;box-shadow:0 6px 18px rgba(0,0,0,.4),0 0 0 4px rgba(255,255,255,.25);padding-bottom:2px}
+.ba-frame:hover .ba-handle span{background:var(--teal-soft)}
+.ba-range{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:ew-resize;z-index:4;margin:0}
+.ba-lbl{position:absolute;top:12px;z-index:2;font-size:.72rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;background:rgba(2,41,43,.82);color:#fff;padding:6px 12px;border-radius:999px;pointer-events:none}
+.ba-lbl.l{left:12px}
+.ba-lbl.r{right:12px;background:var(--gold,#e8a33d);color:var(--teal-ink)}
+.ba p{font-size:.88rem;color:#bcd8d9;margin-top:14px;text-align:center}
+.ba p b{color:#fff}
+
+/* industry showcase */
+.showcase{display:grid;grid-template-columns:290px 1fr;gap:28px;margin-top:38px}
+.sc-list{display:flex;flex-direction:column;align-self:start}
+.sc-item{padding:9px 16px;border-left:3px solid var(--line);font-weight:600;font-size:.92rem;color:var(--ink);transition:border-color .12s ease,background .12s ease,color .12s ease}
+.sc-item:hover,.sc-item.on{border-color:var(--teal);color:var(--teal);background:var(--mist)}
+.sc-stage{position:relative;display:block;border-radius:var(--radius);overflow:hidden;min-height:520px;background:var(--teal-ink)}
+.sc-img{position:absolute;inset:0;background-size:cover;background-position:center;transition:opacity .5s ease}
+.sc-img.hide{opacity:0}
+.sc-cap{position:absolute;left:0;right:0;bottom:0;z-index:2;padding:80px 28px 26px;background:linear-gradient(transparent,rgba(2,41,43,.88));color:#fff}
+.sc-cap .k{font-size:.72rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--teal-soft)}
+.sc-cap .t{font-size:1.25rem;font-weight:800;margin-top:6px;max-width:44ch}
+.sc-cap .go{display:inline-block;margin-top:10px;font-weight:700;font-size:.88rem;color:#fff}
+.badge{display:inline-block;background:var(--teal-soft);color:var(--teal-ink);font-size:.72rem;font-weight:800;padding:3px 10px;border-radius:999px;letter-spacing:.06em;text-transform:uppercase;margin-left:8px}
+
+.projects-bg{background:var(--mist)}
+
+
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-top:38px}
+.step{border-top:4px solid var(--teal);background:var(--mist);border-radius:0 0 var(--radius) var(--radius);padding:22px}
+.step .n{font-size:.8rem;font-weight:800;color:var(--teal);letter-spacing:.1em}
+.step h3{font-size:1.02rem;margin:.4rem 0 .5rem}
+.step p{font-size:.85rem;color:var(--muted)}
+
+/* subpage content */
+.twocol{display:grid;grid-template-columns:1.2fr .8fr;gap:44px;align-items:start}
+.twocol .body p{margin-bottom:1rem;color:#39494c}
+.side-img{border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+.side-img img{width:100%;height:100%;object-fit:cover}
+.feat{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-top:34px}
+.feat div{background:var(--mist);border-left:4px solid var(--teal);border-radius:0 10px 10px 0;padding:16px 18px}
+.feat b{display:block;font-size:.95rem;color:var(--teal-ink)}
+.feat span{font-size:.85rem;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:10px;margin-top:26px}
+.chips a{border:1px solid var(--line);border-radius:999px;padding:.5rem 1.1rem;font-size:.85rem;font-weight:600;color:var(--teal-ink);background:#fff}
+.chips a:hover{border-color:var(--teal);color:var(--teal)}
+.gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:38px}
+.gallery .g{height:230px;border-radius:var(--radius);background-size:cover;background-position:center;box-shadow:var(--shadow)}
+
+/* FAQ */
+.faq{margin-top:52px}
+.faq h2{font-size:1.35rem;margin-bottom:18px}
+.faq details{border:1px solid var(--line);border-radius:10px;margin-bottom:10px;background:#fff}
+.faq summary{cursor:pointer;font-weight:700;padding:14px 18px;color:var(--teal-ink);list-style:none;position:relative;padding-right:44px}
+.faq summary::after{content:"+";position:absolute;right:18px;top:50%;transform:translateY(-50%);color:var(--teal);font-size:1.3rem;font-weight:700}
+.faq details[open] summary::after{content:"\\2212"}
+.faq details p{padding:0 18px 16px;color:#39494c;font-size:.92rem}
+
+/* blog */
+.post-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+.post-hero{position:relative;color:#fff;overflow:hidden;background:var(--teal-ink)}
+.post-hero::before{content:"";position:absolute;inset:0;background:var(--hero-img) center/cover no-repeat;opacity:.25}
+.post-hero .wrap{position:relative;z-index:2;padding:64px 24px}
+.post-hero h1{font-size:clamp(1.7rem,3.5vw,2.6rem);max-width:26ch}
+.post-hero .meta{color:var(--teal-soft);font-weight:700;font-size:.85rem;letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px}
+.post-content{max-width:760px;margin:0 auto;padding:56px 24px}
+.post-content p{margin-bottom:1.1rem;color:#39494c}
+.post-content h2{font-size:1.45rem;margin:2rem 0 .8rem;color:var(--teal-ink)}
+.post-content h3{font-size:1.15rem;margin:1.6rem 0 .6rem;color:var(--teal-ink)}
+.post-content ul,.post-content ol{margin:0 0 1.1rem 1.4rem;color:#39494c}
+.post-content li{margin-bottom:.4rem}
+.post-content img{border-radius:var(--radius);margin:1.4rem auto;box-shadow:var(--shadow)}
+.post-content figure{margin:1.4rem 0}
+.post-content figcaption{font-size:.8rem;color:var(--muted);text-align:center}
+.post-content blockquote{border-left:4px solid var(--teal);padding:.4rem 0 .4rem 1.2rem;margin:1.4rem 0;color:var(--muted)}
+.post-content table{border-collapse:collapse;width:100%;margin:1.4rem 0;font-size:.9rem}
+.post-content th,.post-content td{border:1px solid var(--line);padding:8px 12px;text-align:left}
+.post-nav{max-width:760px;margin:0 auto;padding:0 24px 56px;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap}
+
+/* contact */
+.contact-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-bottom:44px}
+.ccard{border:1px solid var(--line);border-radius:var(--radius);padding:24px;background:#fff;text-align:center}
+.ccard .ic{font-size:1.8rem}
+.ccard b{display:block;margin:.5rem 0 .2rem;color:var(--teal-ink)}
+.ccard p{font-size:.88rem;color:var(--muted)}
+.ccard a.big{display:block;font-weight:800;font-size:1.05rem;color:var(--teal);margin-top:.4rem}
+.form{background:var(--mist);border:1px solid var(--line);border-radius:var(--radius);padding:30px}
+.form h2{font-size:1.25rem;margin-bottom:6px}
+.form .note{font-size:.85rem;color:var(--muted);margin-bottom:20px}
+.form .row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form label{display:block;font-size:.8rem;font-weight:700;color:var(--teal-ink);margin:12px 0 4px}
+.form input,.form select,.form textarea{width:100%;padding:.7rem .9rem;border:1px solid var(--line);border-radius:8px;font-family:var(--font);font-size:.92rem;background:#fff;color:var(--ink)}
+.form input:focus,.form select:focus,.form textarea:focus{outline:2px solid var(--teal);border-color:var(--teal)}
+.form button{margin-top:18px}
+
+/* team */
+.team{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:38px}
+.tm{border:1px solid var(--line);border-radius:var(--radius);padding:24px 18px;text-align:center;background:#fff}
+.tm .avatar{width:72px;height:72px;border-radius:50%;background:var(--teal-ink);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.4rem;margin:0 auto 12px}
+.tm b{display:block;color:var(--teal-ink)}
+.tm span{font-size:.82rem;color:var(--muted)}
+
+/* brochure covers */
+.dl-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-top:34px}
+.dlc{border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:#fff;display:flex;flex-direction:column;transition:transform .15s ease, box-shadow .15s ease}
+.dlc:hover{transform:translateY(-4px);box-shadow:var(--shadow)}
+.dlc .cover{height:220px;background-size:cover;background-position:top center}
+.dlc .bd{padding:16px 18px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.dlc b{color:var(--teal-ink);font-size:.95rem}
+.dlc .tag{font-size:.7rem;font-weight:800;background:var(--mist);color:var(--teal);padding:4px 10px;border-radius:999px;letter-spacing:.05em}
+
+/* services */
+.svc-cta{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:48px}
+.svc-cta a{position:relative;border-radius:var(--radius);overflow:hidden;color:#fff;padding:38px 30px;display:block;background:var(--teal-ink)}
+.svc-cta a::before{content:"";position:absolute;inset:0;background:var(--panel-img) center/cover;opacity:.22}
+.svc-cta a>*{position:relative;z-index:2}
+.svc-cta h3{font-size:1.3rem;margin-bottom:8px}
+.svc-cta p{font-size:.9rem;color:#cfe9ea;margin-bottom:14px}
+.svc-cta .go{font-weight:800;color:var(--teal-soft)}
+.svc-cta a:hover{outline:3px solid var(--teal-soft)}
+
+/* downloads */
+.dl-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:34px}
+.dl{display:flex;align-items:center;gap:14px;border:1px solid var(--line);border-radius:var(--radius);padding:18px;background:#fff;font-weight:700;color:var(--teal-ink);transition:border-color .15s ease}
+.dl:hover{border-color:var(--teal)}
+.dl .pdficon{flex:0 0 auto;width:40px;height:40px;border-radius:8px;background:var(--mist);display:flex;align-items:center;justify-content:center;color:var(--teal);font-size:.7rem;font-weight:800;letter-spacing:.05em}
+.dl span{display:block;font-size:.75rem;color:var(--muted);font-weight:400}
+
+.cta{position:relative;color:#fff;overflow:hidden}
+.cta::before{content:"";position:absolute;inset:0;background:url('${IMGS.mobileSol}') center/cover}
+.cta::after{content:"";position:absolute;inset:0;background:rgba(2,60,63,.9)}
+.cta .wrap{position:relative;z-index:2;padding:84px 24px;text-align:center}
+.cta h2{font-size:clamp(1.7rem,3.4vw,2.5rem)}
+.cta p{color:#cfe9ea;margin:1rem auto 2rem;max-width:56ch}
+.cta .phone-big{font-size:1.5rem;font-weight:800;color:var(--teal-soft);display:block;margin-top:1.6rem}
+.cta .cert{margin-top:1.6rem;font-size:.8rem;color:#9fc9ca}
+.cta .cert .keystone-sm{width:13px;height:13px;vertical-align:-2px;margin-right:7px}
+
+/* motion (guarded: no-JS and reduced-motion users see everything instantly) */
+header.scrolled{box-shadow:0 6px 22px rgba(2,60,63,.14)}
+@media (prefers-reduced-motion: no-preference){
+  .hero::before{animation:heroZoom 16s ease-out both}
+  @keyframes heroZoom{from{transform:scale(1.07)}to{transform:scale(1)}}
+  html.js .rv{opacity:0;transform:translateY(16px);transition:opacity .55s ease,transform .55s ease}
+  html.js .rv.in{opacity:1;transform:none}
+}
+
+footer{background:#02292b;color:#9fbcbd;font-size:.87rem}
+footer .cols{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:36px;padding:56px 0 40px}
+footer h4{color:#fff;font-size:.95rem;margin-bottom:14px}
+footer a{display:block;color:#9fbcbd;padding:3px 0}
+footer a:hover{color:var(--teal-soft)}
+footer .legal{border-top:1px solid rgba(255,255,255,.12);padding:18px 0;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+footer .legal a{display:inline;padding:0 10px}
+.float-cta{position:fixed;right:22px;bottom:22px;z-index:60;background:var(--teal);color:#fff;border-radius:999px;padding:.9rem 1.5rem;font-weight:700;box-shadow:0 10px 26px rgba(2,60,63,.4);font-size:.9rem}
+.float-cta:hover{background:var(--teal-dark)}
+
+@media (max-width:1060px){ .head-phone{display:none} }
+@media (max-width:960px){
+  nav.menu{display:none}
+  .burger{display:flex}
+  .head-cta .btn{display:none}
+  .apps .grid{grid-template-columns:repeat(4,1fr)}
+  .apps a:nth-child(4n+1){border-left:0}
+  .stats .grid,.compare .duo,.cards,.steps,.feat,.gallery,.post-grid,.dl-grid,.contact-cards,.team{grid-template-columns:1fr 1fr}
+  .twocol,.svc-cta,.form .row{grid-template-columns:1fr}
+  footer .cols{grid-template-columns:1fr 1fr}
+  .showcase{grid-template-columns:1fr}
+  .sc-list{flex-direction:row;flex-wrap:wrap;gap:8px}
+  .sc-item{border-left:0;border:1px solid var(--line);border-radius:999px;padding:7px 14px;font-size:.84rem}
+  .sc-item:hover,.sc-item.on{border-color:var(--teal)}
+  .sc-stage{min-height:340px}
+}
+@media (max-width:600px){
+  .apps .grid{grid-template-columns:repeat(2,1fr)}
+  .stats .grid,.compare .duo,.cards,.steps,.feat,.gallery,.post-grid,.dl-grid,.contact-cards,.team{grid-template-columns:1fr}
+}
+`;
 
 /* ---------------- site data ---------------- */
 const SOLUTIONS = [
@@ -273,155 +592,173 @@ const INDUSTRIES = [
 ];
 
 /* ---------------- partials ---------------- */
-const regionName = (r) => (r.short === 'Rest of Pennsylvania' ? 'Pennsylvania' : r.short === 'Philadelphia area' ? 'Philadelphia' : r.name);
-const regionLinks = W.REGIONS.map(r => [regionName(r), W.file(r.slug)]);
-const pick = (group) => PRODUCTS.filter(p => p.group === group).map(p => [p.name, `${p.slug}.html`]);
-const NAV = {
-  items: [['Solutions', 'solutions.html', 'sol'], ['Industries', 'industries.html', 'ind'], ['Services', 'services.html', 'svc'], ['Specify', 'design-specify.html'],
-    ['3D Showroom', 'showroom.html'], ['Where We Work', 'where-we-work.html', 'where'], ['About', 'about.html', 'about'], ['Blog', 'blog.html'], ['Contact', 'contact.html']],
-  flies: {
-    sol: [['Explore Solutions', [...SOLUTIONS.map(s => [s.name, `${s.slug}.html`]), ['All solutions', 'solutions.html']], true],
-      ['Shelving & Industrial', [...pick('Shelving'), ...pick('Industrial & Warehouse')]],
-      ['Security, Cabinets & Collections', [...pick('Lockers & Security'), ...pick('Cabinets & Filing'), ...pick('Museum & Archival'), ...pick('Casework & Mailroom')]],
-      ['See It First', [['3D Showroom', 'showroom.html'], ['Storage questions', 'storage-questions.html'], ['Brochures', 'resources.html']]]],
-    ind: [['Explore Industries', INDUSTRIES.slice(0, 6).map(i => [i.name, `${i.slug}.html`]), true],
-      ['More Industries', [...INDUSTRIES.slice(6).map(i => [i.name, `${i.slug}.html`]), ['All industries', 'industries.html']]],
-      ['Plan a Project', [['Design & Specify', 'design-specify.html'], ['Where We Work', 'where-we-work.html'], ['Free space assessment', 'contact.html?topic=assessment']]]],
-    svc: [['Explore Services', [['Services', 'services.html'], ['Request service', 'service.html'], ['Free space assessment', 'contact.html?topic=assessment'], ['Request a quote', 'contact.html?topic=quote']], true],
-      ['For Architects & Contractors', [['Design & Specify', 'design-specify.html'], ['GCs, Architects & Owners', 'general-contractors.html'], ['CAD and Revit', 'contact.html?topic=cad']]],
-      ['Get Help', [['610.825.3405', 'tel:6108253405'], ['sales@obriensys.com', 'mailto:sales@obriensys.com'], ['Storage questions', 'storage-questions.html']]]],
-    where: [['Where We Work', regionLinks.slice(0, 5), true],
-      ['More Regions', [...regionLinks.slice(5), ['All regions', 'where-we-work.html']]],
-      ['Headquarters', [['739 E. Elm Street, Conshohocken, PA', 'https://www.google.com/maps?q=739+E+Elm+Street+Conshohocken+PA+19428'], ['610.825.3405', 'tel:6108253405']]]],
-    about: [[`About O'Brien`, [['About us', 'about.html'], ['Where We Work', 'where-we-work.html'], ['Blog', 'blog.html'], ['Contact', 'contact.html']], true],
-      ['Resources', [['Brochures & downloads', 'resources.html'], ['Storage questions', 'storage-questions.html'], ['3D Showroom', 'showroom.html']]],
-      ['Reach Us', [['610.825.3405', 'tel:6108253405'], ['sales@obriensys.com', 'mailto:sales@obriensys.com'], ['Facebook', 'https://www.facebook.com/OBrienSystems/']]]],
-  },
-  quick: [['Get a quote', 'contact.html?topic=quote'], ['Book a free space assessment', 'contact.html?topic=assessment'], ['Request service', 'service.html'], ['3D Showroom', 'showroom.html'], ['Where We Work', 'where-we-work.html'], ['Storage questions', 'storage-questions.html']],
-  ribbon: `Free on-site space assessment. <a class="lnk" href="contact.html?topic=assessment">Schedule yours</a>`,
-};
-const HEADER = A.header(NAV);
+const megaGroup = (g) => `<span class="gh">${g.name}</span>\n            ` +
+  g.items.map(s=>`<a class="pl" href="${s.slug}.html">${s.name}</a>`).join('\n            ');
+const megaCol = (...groups) => `<div class="mcol">\n            ${groups.map(megaGroup).join('\n            ')}\n          </div>`;
+const navMegaSol =
+  megaCol(SOL_GROUPS[0], SOL_GROUPS[5]) + '\n          ' +
+  megaCol(SOL_GROUPS[1]) + '\n          ' +
+  megaCol(SOL_GROUPS[2], SOL_GROUPS[3]) + '\n          ' +
+  megaCol(SOL_GROUPS[4], SOL_GROUPS[6]) +
+  `\n          <a class="all" href="solutions.html">All solutions &rarr;</a>`
+  + `\n          <a class="all" href="showroom.html">Explore in 3D &rarr;</a>`;
+
+const navMegaInd = INDUSTRIES.map(i =>
+  `<a href="${i.slug}.html"><span class="t">${i.name}</span><span class="d">${i.short}</span></a>`).join('\n          ')
+  + `\n          <a class="all" href="industries.html">All industries &rarr;</a>`;
+
+const HEADER = `
+<div class="ribbon">Design concept. Internal mockup, not the live O'Brien Systems website</div>
+<div class="announce">Free on-site space assessment. <a href="contact.html">Schedule yours</a> or call <a href="tel:6108253405">610.825.3405</a> <span class="sep">&middot;</span> <a href="service.html">Request service</a> <span class="sep">&middot;</span> <a href="showroom.html">3D showroom</a></div>
+<header>
+  <div class="wrap nav">
+    <a class="logo" href="index.html"><img src="${IMGS.logo}" alt="O'Brien Systems, Storage Redefined"></a>
+    <nav class="menu">
+      <div>
+        <a class="top" href="solutions.html">Solutions &#9662;</a>
+        <div class="mega sol">
+          ${navMegaSol}
+        </div>
+      </div>
+      <div>
+        <a class="top" href="industries.html">Industries &#9662;</a>
+        <div class="mega ind">
+          ${navMegaInd}
+        </div>
+      </div>
+      <div><a class="top" href="services.html">Services</a></div>
+      <div><a class="top" href="design-specify.html">Specify</a></div>
+      <div><a class="top" href="resources.html">Resources</a></div>
+      <div><a class="top" href="blog.html">Blog</a></div>
+      <div><a class="top" href="about.html">About</a></div>
+      <div><a class="top" href="where-we-work.html">Where We Work</a></div>
+      <div><a class="top nav-3d" href="showroom.html">3D Showroom <span class="new">New</span></a></div>
+    </nav>
+    <div class="head-cta">
+      <span class="head-phone">610.825.3405</span>
+      <a class="btn btn-solid" href="contact.html">Free Assessment</a>
+      <button class="burger" aria-label="Open menu" aria-expanded="false" aria-controls="mnav"><span></span><span></span><span></span></button>
+    </div>
+  </div>
+  <nav class="mnav" id="mnav" aria-label="Mobile">
+    <div class="wrap">
+      <a class="mnav-3d" href="showroom.html">3D Showroom <span class="new">New</span></a>
+      <a href="solutions.html">Solutions</a>
+      ${SOLUTIONS.map(s=>`<a class="sub" href="${s.slug}.html">${s.name}</a>`).join('\n      ')}
+      <a href="industries.html">Industries</a>
+      <a href="services.html">Services</a>
+      <a href="design-specify.html">Design &amp; Specify</a>
+      <a href="service.html">Request Service</a>
+      <a href="resources.html">Resources</a>
+      <a href="blog.html">Blog</a>
+      <a href="about.html">About</a>
+      <a href="where-we-work.html">Where We Work</a>
+      <div class="mnav-cta"><a class="btn btn-solid" href="contact.html">Free Assessment</a><a class="head-phone" href="tel:6108253405">610.825.3405</a></div>
+    </div>
+  </nav>
+</header>`;
 
 const CTA = `
 <div class="cta" id="contact">
   <div class="wrap">
-    <span class="eyebrow">Free space assessment</span>
-    <h2>See how much space you're sitting on.</h2>
-    <p>We'll measure, plan and show you the options. No obligation, no generic quotes.</p>
-    <div class="ctas"><a class="btn btn-solid btn-lg" href="contact.html?topic=assessment">Schedule a free assessment</a><a class="lnk" href="tel:6108253405">Call 610.825.3405</a></div>
-    <p class="addr">739 E. Elm Street, Conshohocken, PA 19428</p>
+    <span class="eyebrow" style="color:var(--teal-soft)">Get In Touch</span>
+    <h2>See how much space you're sitting on</h2>
+    <p>Schedule a free on-site assessment. We'll measure, plan, and show you the options. No obligation, no generic quotes.</p>
+    <a class="btn btn-white" href="contact.html">Schedule My Free Assessment</a>
+    <span class="phone-big">610.825.3405</span>
+    <p style="margin-top:.4rem">739 E. Elm Street, Conshohocken, PA 19428</p>
     <p class="cert"><svg class="keystone-sm" viewBox="0 0 100 100" aria-hidden="true"><path d="M35 4 H65 V19 H96 L83 96 H60 V80 H40 V96 H17 L4 19 H35 Z" fill="#e8a33d"/></svg>${SB_CERT}</p>
   </div>
 </div>`;
 
-const FOOTER = A.footer({
-  notes: [`Design concept. Internal mockup, not the live O'Brien Systems website.`,
-    `We supply complete equipment loading data and work with your structural engineer of record, who makes every floor and structural determination.`],
-  cols: [
-    [['Solutions', [...SOLUTIONS.map(s => [s.name, `${s.slug}.html`]), ['All solutions', 'solutions.html']]]],
-    [['Industries', INDUSTRIES.map(i => [i.name, `${i.slug}.html`])]],
-    [['Where We Work', [...regionLinks, ['All regions', 'where-we-work.html']]]],
-    [['Services', [['Services', 'services.html'], ['Request service', 'service.html'], ['Design & Specify', 'design-specify.html'], ['3D Showroom', 'showroom.html']]],
-      ['Resources', [['Brochures & downloads', 'resources.html'], ['Storage questions', 'storage-questions.html'], ['Blog', 'blog.html']]]],
-    [[`O'Brien Systems`, [['About us', 'about.html'], ['Contact', 'contact.html'], ['Facebook', 'https://www.facebook.com/OBrienSystems/']]],
-      ['Talk to Us', [['610.825.3405', 'tel:6108253405'], ['sales@obriensys.com', 'mailto:sales@obriensys.com'], ['Free space assessment', 'contact.html?topic=assessment']]]],
-  ],
-  more: `More ways to reach us: call <a href="tel:6108253405">610.825.3405</a>, email <a href="mailto:sales@obriensys.com">sales@obriensys.com</a>, or visit us at 739 E. Elm Street, Conshohocken, PA 19428.`,
-  legal: `<span>Copyright &copy; 2026 O'Brien Systems. All rights reserved.</span><span><a href="#">Privacy Policy</a><a href="#">Accessibility</a><a href="sitemap.xml">Site Map</a><a href="storage-questions.html">Storage Questions</a></span>`,
-});
+const FOOTER = `
+<footer>
+  <div class="wrap">
+    <div class="cols">
+      <div>
+        <h4>O'Brien Systems</h4>
+        <p>Custom storage solutions since 1979: headquartered in Conshohocken, PA, serving Pennsylvania, New Jersey, Delaware, Maryland, Washington DC and New York, and traveling with our customers when their projects do.</p>
+        <p style="margin-top:10px;font-size:.8rem">PA Small Business (SB) Certified</p>
+        <h4 style="margin-top:18px">Where We Work</h4>
+        ${W.footerLinks()}<a href="where-we-work.html">All regions &rarr;</a>
+        <p style="margin-top:12px"><a href="tel:6108253405">610.825.3405</a><a href="mailto:sales@obriensys.com">sales@obriensys.com</a><a href="https://www.facebook.com/OBrienSystems/">Facebook</a></p>
+      </div>
+      <div>
+        <h4>Solutions</h4>
+        ${SOLUTIONS.map(s=>`<a href="${s.slug}.html">${s.name}</a>`).join('')}<a href="solutions.html">All solutions &rarr;</a>
+      </div>
+      <div>
+        <h4>Industries</h4>
+        ${INDUSTRIES.map(i=>`<a href="${i.slug}.html">${i.name}</a>`).join('')}
+      </div>
+      <div>
+        <h4>Company</h4>
+        <a href="about.html">About Us</a><a href="where-we-work.html">Where We Work</a><a href="services.html">Services</a><a href="showroom.html">3D Showroom</a><a href="design-specify.html">Design &amp; Specify</a><a href="service.html">Request Service</a><a href="resources.html">Resources &amp; Brochures</a><a href="blog.html">Blog</a><a href="contact.html">Contact</a>
+      </div>
+    </div>
+    <div class="legal">
+      <span>&copy; 2026 O'Brien Systems.</span>
+      <span><a href="#">Privacy Policy</a> | <a href="#">Accessibility Statement</a> | <a href="sitemap.xml">Sitemap</a> | <a href="storage-questions.html">Storage questions</a></span>
+    </div>
+  </div>
+</footer>
+`;
 
-// every inner page gets a sticky local nav (its title and one action); the home page keeps the global nav sticky instead
-const shell = (title, heroImgUrl, body, opt = {}) => {
-  const home = !!opt.home;
-  const ln = home ? '' : (opt.ln || A.localNav(opt.lnTitle || title.split(' | ')[0], [], ['Free assessment', 'contact.html?topic=assessment']));
-  return `<!DOCTYPE html>
+const shell = (title, heroImgUrl, body) => `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
 <title>${title}</title>
-<script>document.documentElement.classList.add('js')</script>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&amp;display=swap">
 <link rel="stylesheet" href="assets/style.css?v=${VER}">
 <script src="assets/site.js?v=${VER}" defer></script>
 <script src="assets/chat-config.js?v=${VER}"></script>
 <script type="module" src="${CHAT_API}/_chat/embed.js"></script>
 <style>:root{--hero-img:url('${heroImgUrl}')}</style>
 </head>
-<body class="${home ? 'home' : 'inner'}">
+<body>
 ${HEADER}
-<main id="main">
-${ln}
 ${body}
-</main>
 ${CTA}
 ${FOOTER}
 </body>
 </html>
 `;
-};
 
-// the first sentence or two of a page becomes the big statement; the rest reads as body copy
-function statement(paras) {
-  const ps = [...(paras || [])];
-  if (!ps.length) return ['', []];
-  const first = ps.shift();
-  if (/</.test(first)) return [first, ps];
-  const sentences = first.split(/(?<=[.!?])\s+(?=[A-Z0-9"'])/);
-  const out = [];
-  const words = (t) => t.split(/\s+/).length;
-  while (sentences.length && (!out.length || (words(out.join(' ')) < 24 && words(out.join(' ')) + words(sentences[0]) <= 40))) out.push(sentences.shift());
-  const rest = sentences.join(' ').trim();
-  return [out.join(' '), rest ? [rest, ...ps] : ps];
-}
-
-/* subpage skeleton: hero, overview statement, highlights, details, 3D, questions */
+/* subpage skeleton */
 function subpage(p) {
   const feats = (p.features||[]).map(f=>`<div><b>${f[0]}</b><span>${f[1]}</span></div>`).join('\n      ');
-  const gal = (p.gallery||[]).map(g=>`\n      <div class="g" style="background-image:url('${g}')"></div>`).join('');
+  const gal = (p.gallery||[]).map(g=>`<div class="g" style="background-image:url('${g}')"></div>`).join('\n      ');
   const chips = (p.related||[]).map(r=>`<a href="${r.slug}.html">${r.name}</a>`).join('\n      ');
   const faqs = (p.faqs||[]).map(f=>`<details><summary>${f[0]}</summary><p>${f[1]}</p></details>`).join('\n      ');
-  const [big, rest] = statement(p.paras);
-  const v3d = p.slug ? X.viewer3d(p.slug, p.name) : '';
-  const extra = (p.extra || '') + (p.slug ? X.specPanel(p.slug, p.name, BROCHURES) : '');
-  const quote = p.hub === 'industries' ? ['Free assessment', 'contact.html?topic=assessment'] : ['Get a quote', `contact.html?topic=quote&amp;product=${p.slug}`];
-  const links = [['overview', 'Overview'], ['highlights', 'Highlights'], extra.trim() ? ['details', 'Details'] : null, v3d ? ['explore-3d', '3D'] : null, faqs ? ['faq', 'Questions'] : null].filter(Boolean);
-  const name = p.name.replace(/\s*\(VLM\)/, '');
-  return shell(`${p.name} | O'Brien Systems`, p.sideImg || p.img, `
-<section class="page-hero" id="top">
+  return shell(`${p.name} | O'Brien Systems`, p.banner || p.img, `
+<div class="page-hero">
   <div class="wrap crumbs"><a href="index.html">Home</a> / <a href="${p.hub}.html">${p.hubName}</a> / ${p.name}</div>
-  <div class="ph-text">
-    <span class="eyebrow">${p.eyebrow.split(" / ").pop()}</span>
+  <div class="wrap">
+    <span class="eyebrow">${p.eyebrow}</span>
     <h1>${p.h1}</h1>
     <p>${p.lead}</p>
-    <div class="ph-ctas"><a class="btn btn-solid" href="${quote[1]}">${quote[0]}</a>${v3d ? '<a class="lnk" href="#explore-3d">Explore in 3D</a>' : '<a class="lnk" href="#overview">Learn more</a>'}</div>
   </div>
-  <div class="ph-media" data-scroll="zoom"><div class="ph-img" role="img" aria-label="${name}"></div></div>
-</section>
-<section class="block" id="overview">
-  <div class="wrap narrow"><p class="hl-text" data-scroll="hl">${big}</p></div>
-  <div class="wrap ov-grid">
-    ${rest.length ? `<div class="body">\n      ${rest.map(t=>`<p>${t}</p>`).join('\n      ')}\n    </div>` : ''}
-    <div class="side-img"><img src="${p.sideImg||p.img}" alt="${name}" loading="lazy"></div>
+</div>
+<section class="block">
+  <div class="wrap twocol">
+    <div class="body">
+      ${p.paras.map(t=>`<p>${t}</p>`).join('\n      ')}
+    </div>
+    <div class="side-img"><img src="${p.sideImg||p.img}" alt="${p.name}" loading="lazy"></div>
   </div>
-</section>
-<section class="block alt" id="highlights">
   <div class="wrap">
-    <h2 class="sh sh-center">${name} at a glance.</h2>
-    ${feats ? `<div class="feat">\n      ${feats}\n    </div>` : ''}
-    <div class="gallery">${gal}\n    </div>
+    <div class="feat">
+      ${feats}
+    </div>
+    ${p.extra||''}
+    ${p.slug ? X.specPanel(p.slug, p.name, BROCHURES) : ''}
+    ${gal?`<div class="gallery">\n      ${gal}\n    </div>`:''}
+    ${faqs?`<div class="faq">\n      <h2>Frequently asked questions</h2>\n      ${faqs}\n    </div>`:''}
+    ${chips?`<h2 style="margin-top:52px;font-size:1.25rem">${p.chipsTitle}</h2>\n    <div class="chips">\n      ${chips}\n    </div>`:''}
   </div>
-</section>
-${extra.trim() ? `<section class="block" id="details"><div class="wrap">
-    ${extra}
-</div></section>` : ''}
-${v3d}
-${faqs || chips ? `<section class="block${v3d ? ' alt' : ''}" id="faq"><div class="wrap">
-    ${faqs ? `<div class="faq">\n      <h2>Questions, answered.</h2>\n      ${faqs}\n    </div>` : ''}
-    ${chips ? `<div class="related">\n      <h2>${p.chipsTitle}</h2>\n      <div class="chips">\n      ${chips}\n      </div>\n    </div>` : ''}
-</div></section>` : ''}`, { ln: A.localNav(name, links, quote) });
+</section>${p.slug ? X.viewer3d(p.slug, p.name) : ''}`);
 }
 
 /* ---------------- page content ---------------- */
@@ -1153,7 +1490,7 @@ const INDUSTRY_PAGES = {
 /* ---------------- hub + static pages ---------------- */
 const cardGrid = (items) => `<div class="cards">` + items.map(x=>`
   <a class="card" href="${x.slug}.html"><div class="ph" style="background-image:url('${x.img}')"></div>
-    <div class="bd"><h3>${x.name}</h3><p>${x.short}.</p><span class="go">Learn more</span></div></a>`).join('') + `</div>`;
+    <div class="bd"><h3>${x.name}</h3><p>${x.short}.</p><span class="go">Explore &rarr;</span></div></a>`).join('') + `</div>`;
 
 const solutionsHub = shell(`Storage Solutions | O'Brien Systems`, IMGS.compact, `
 <div class="page-hero">
@@ -1162,16 +1499,16 @@ const solutionsHub = shell(`Storage Solutions | O'Brien Systems`, IMGS.compact, 
     <span class="eyebrow">Solutions</span>
     <h1>What do you need to store?</h1>
     <p>Twenty-plus storage systems across fourteen manufacturer lines, and one local team that plans, installs, and services all of it. Start with a family, or jump straight to the system you already know you need.</p>
-    <div class="ctas"><a class="btn btn-solid" href="contact.html?topic=assessment">Book a free assessment</a><a class="lnk" href="showroom.html">Explore in 3D</a></div>
   </div>
 </div>
-<section class="block alt">
 ${SOL_GROUPS.map(g=>`
-  <div class="wrap hub-sec">
-    <h2>${g.name}</h2>
+<section class="block" style="padding-bottom:0">
+  <div class="wrap">
+    <h2 style="font-size:1.45rem;margin-bottom:6px">${g.name}</h2>
     ${cardGrid(g.items)}
-  </div>`).join('')}
-</section>`);
+  </div>
+</section>`).join('')}
+<div style="height:72px"></div>`);
 
 const industriesHub = shell(`Industries We Serve | O'Brien Systems`, IMGS.banHome2, `
 <div class="page-hero">
@@ -1180,10 +1517,9 @@ const industriesHub = shell(`Industries We Serve | O'Brien Systems`, IMGS.banHom
     <span class="eyebrow">Industries</span>
     <h1>Storage, planned around your work</h1>
     <p>Every industry stores something different. These are the ones we know inside out, from evidence rooms to grow rooms.</p>
-    <div class="ctas"><a class="btn btn-solid" href="contact.html?topic=assessment">Book a free assessment</a><a class="lnk" href="where-we-work.html">Where we work</a></div>
   </div>
 </div>
-<section class="block alt"><div class="wrap">
+<section class="block"><div class="wrap">
 ${cardGrid(INDUSTRIES)}
 </div></section>`);
 
@@ -1355,13 +1691,12 @@ const postPage = (p, idx) => {
     <h1>${p.title}</h1>
   </div>
 </div>
-<div class="post-cover"><div role="img" aria-label="${p.title.replace(/"/g, '&quot;')}"></div></div>
 <article class="post-content">
 ${p.content}
 </article>
 <div class="post-nav">
-  ${prev?`<a class="btn btn-ghost" href="post-${prev.slug}.html">Older: ${prev.title.slice(0,36)}${prev.title.length>36?'...':''}</a>`:'<span></span>'}
-  ${next?`<a class="btn btn-ghost" href="post-${next.slug}.html">Newer: ${next.title.slice(0,36)}${next.title.length>36?'...':''}</a>`:'<span></span>'}
+  ${prev?`<a class="btn btn-solid" href="post-${prev.slug}.html">&larr; Older: ${prev.title.slice(0,36)}${prev.title.length>36?'...':''}</a>`:'<span></span>'}
+  ${next?`<a class="btn btn-solid" href="post-${next.slug}.html">Newer: ${next.title.slice(0,36)}${next.title.length>36?'...':''} &rarr;</a>`:'<span></span>'}
 </div>`);
 };
 
@@ -1374,7 +1709,7 @@ const blogPage = shell(`Blog | O'Brien Systems`, IMGS.bg4, `
     <p>Practical writing on storage planning, space recovery, and facility organization from the O'Brien Systems team.</p>
   </div>
 </div>
-<section class="block alt"><div class="wrap">
+<section class="block"><div class="wrap">
   <div class="post-grid">
     ${BLOG.map(postCard).join('\n    ')}
   </div>
@@ -1389,7 +1724,7 @@ const resourcesPage = shell(`Resources & Brochures | O'Brien Systems`, IMGS.hami
     <p>Product and industry brochures, ready to share with your team, your architect, or your purchasing department.</p>
   </div>
 </div>
-<section class="block alt"><div class="wrap">
+<section class="block"><div class="wrap">
   <div class="dl-grid">
     ${BROCHURES.map(b=>`<a class="dlc" href="${b[1]}" target="_blank" rel="noopener"><div class="cover" style="background-image:url('${COVERS[b[2]]}')"></div><div class="bd"><b>${b[0]}</b><span class="tag">PDF</span></div></a>`).join('\n    ')}
   </div>
@@ -1419,126 +1754,292 @@ const SVG_MOBILE = `<svg viewBox="0 0 400 150" role="img" aria-label="Mobile she
 const SVG_FIXED_BA = SVG_FIXED.replace(/<text[\s\S]*?<\/text>/g, '');
 const SVG_MOBILE_BA = SVG_MOBILE.replace(/<text[\s\S]*?<\/text>/g, '');
 
-const MFR = '/assets/media/mfr';
-const tile = (t) => `
-<section class="tile${t.cls ? ' ' + t.cls : ''}"${t.id ? ` id="${t.id}"` : ''}>
-  <div class="tile-text">
-    <span class="eyebrow">${t.eyebrow}</span>
-    <h2>${t.h2}</h2>
-    <p class="sub">${t.sub}</p>
-    <div class="ctas">${t.ctas.map(([label, href], i) => `<a class="btn ${i ? 'btn-ghost' : 'btn-solid'}" href="${href}">${label}</a>`).join('')}</div>
-  </div>${t.img ? `
-  <div class="tile-media" data-scroll="parallax" data-vt-img style="background-image:url('${t.img}')"></div>` : ''}${t.after || ''}
-</section>`;
-const railCard = (href, img, small, title, text) => `<a class="rail-card" href="${href}"><div class="ri" data-vt-img style="background-image:url('${img}')"></div><div class="rt">${small ? `<small>${small}</small>` : ''}<b>${title}</b><span>${text}</span></div></a>`;
-
 const homeBody = `
-<section class="hero ah" id="top">
-  <div class="ah-in">
-    <span class="eyebrow">O'Brien Systems</span>
-    <h1>Storage solved.<br><em>Space reclaimed.</em></h1>
-    <p>Custom storage, planned, supplied and installed by one family-owned team since 1979.</p>
-    <div class="ctas"><a class="btn btn-solid btn-lg" href="contact.html?topic=assessment">Book a free assessment</a><a class="lnk" href="solutions.html">Explore solutions</a></div>
-  </div>
-  <div class="ah-media" data-scroll="zoom"><img class="ah-img" src="${IMGS.hdLibrary}" alt="High-density mobile shelving in a university library" fetchpriority="high" loading="eager" decoding="async"></div>
-</section>
-
-<section class="block statement"><div class="wrap narrow">
-  <p class="hl-text" data-scroll="hl">Most storage rooms are half aisle. We measure what you keep, choose the system that fits it, and install it with our own crews, so the room you already have holds far more.</p>
-</div></section>
-
-<div class="tiles">
-${tile({ cls: 'dark', id: 'hd', eyebrow: 'High-Density Mobile Storage', h2: 'Twice the storage.<br>Same floor.', sub: 'Put shelving on carriages and the wasted aisles disappear.',
-  ctas: [['Learn more', 'high-density-mobile-storage.html'], ['See it in 3D', 'showroom.html?model=hd-mobile']],
-  after: `
-  <div class="ba">
-    <div class="ba-frame">
-      ${SVG_FIXED_BA}
-      <div class="ba-top">${SVG_MOBILE_BA}</div>
-      <div class="ba-handle" style="left:50%"><span>&#8249;&nbsp;&#8250;</span></div>
-      <span class="ba-lbl l">Fixed &middot; 4 rows</span>
-      <span class="ba-lbl r">Mobile &middot; 8 rows</span>
-      <input class="ba-range" type="range" min="0" max="100" value="50" aria-label="Compare fixed shelving with high-density mobile on the same floor">
-    </div>
-    <p><b>Drag the divider.</b> Same floor: four rows fixed, or eight rows on mobile carriages.</p>
-  </div>` })}
-${tile({ eyebrow: 'Lifts &amp; Carousels', h2: 'Goods to person.', sub: 'Automated vertical storage that brings every tray to waist height.',
-  ctas: [['Learn more', 'lifts-carousels.html'], ['See it in 3D', 'showroom.html?model=vlm']], img: `${MFR}/lifts-carousels--1.jpg` })}
-</div>
-<div class="tile-grid" style="margin-top:12px">
-${tile({ cls: 'white', eyebrow: 'Lockers', h2: 'Every kind of locker.', sub: 'Smart, evidence, athletic and personal storage.', ctas: [['Learn more', 'lockers.html'], ['Get a quote', 'contact.html?topic=quote&amp;product=lockers']], img: `${MFR}/lockers--1.jpg` })}
-${tile({ cls: 'dark', eyebrow: 'Museums', h2: 'Made for collections.', sub: 'Cabinets, art screens and racks that protect what matters.', ctas: [['Learn more', 'museums.html'], ['See it in 3D', 'showroom.html?model=museum-cabinet']], img: `${MFR}/museums--1.jpg` })}
-${tile({ eyebrow: 'Static Shelving', h2: 'The workhorse.', sub: 'Four-post, wire, cantilever and pallet rack.', ctas: [['Learn more', 'static-shelving.html'], ['Get a quote', 'contact.html?topic=quote&amp;product=static-shelving']], img: `${MFR}/static-shelving--1.jpg` })}
-${tile({ cls: 'white', eyebrow: 'Modular Casework', h2: 'Built to change.', sub: 'Casework and lab furniture you can reconfigure.', ctas: [['Learn more', 'modular-casework.html'], ['Get a quote', 'contact.html?topic=quote&amp;product=modular-casework']], img: `${MFR}/modular-casework--1.jpg` })}
-${tile({ cls: 'dark', eyebrow: 'Evidence Lockers', h2: 'Chain of custody, built in.', sub: 'Pass-through lockers for property and evidence rooms.', ctas: [['Learn more', 'evidence-lockers.html'], ['See it in 3D', 'showroom.html?model=evidence-lockers']], img: `${MFR}/evidence-lockers--1.jpg` })}
-${tile({ eyebrow: 'Cabinets', h2: 'Files, fully handled.', sub: 'Rotary, lateral, fireproof and museum-grade cabinets.', ctas: [['Learn more', 'cabinets.html'], ['Get a quote', 'contact.html?topic=quote&amp;product=cabinets']], img: `${MFR}/cabinets--1.jpg` })}
-</div>
-
-<section class="block" id="industries">
-  <div class="wrap sh-center center">
-    <span class="eyebrow">Industries</span>
-    <h2 class="sh" style="margin:0 auto">Built around your work.</h2>
-    <p class="lead">Thirteen industries, each with its own storage problems. Pick yours.</p>
-  </div>
-  <div class="rail">
-    ${INDUSTRIES.map(i => railCard(`${i.slug}.html`, i.img, 'Industries', i.name, `${i.short}.`)).join('\n    ')}
-  </div>
-</section>
-
-<section class="block dark" id="numbers">
-  <div class="wrap center">
-    <h2 class="sh" style="margin:0 auto">One team, start to finish.</h2>
-    <p class="lead" style="margin-left:auto;margin-right:auto">The people who measure your room are the people who plan it, install it and answer the phone afterward.</p>
-    <div class="nums">
-      <div><b>1979</b><span>Family-owned since</span></div>
-      <div><b data-count="14">14</b><span>Manufacturer lines</span></div>
-      <div><b data-count="13">13</b><span>Industries we plan for</span></div>
-      <div><b>Free</b><span>On-site space assessments</span></div>
-    </div>
-  </div>
-</section>
-${X.home3d()}
-<section class="block alt" id="how">
+<div class="hero">
   <div class="wrap">
-    <div class="sh-center center">
-      <span class="eyebrow">Working with us</span>
-      <h2 class="sh" style="margin:0 auto">From walkthrough to working storage.</h2>
+    <h1><em>Storage solved.</em> Space reclaimed.</h1>
+    <p>For 45+ years, O'Brien Systems has planned, supplied, and installed custom storage from our Philadelphia-area headquarters, at home in the region and wherever our customers need us.</p>
+    <div class="ctas">
+      <a class="btn btn-white" href="contact.html">Schedule a Free Space Assessment</a>
+      <a class="btn btn-ghost" href="solutions.html">Explore Solutions</a>
     </div>
-    <div class="story" data-scroll="story">
-      <div class="story-media">
-        <div class="sm on" style="background-image:url('${IMGS.maximize}')"></div>
-        <div class="sm" style="background-image:url('${IMGS.gcProject}')"></div>
-        <div class="sm" style="background-image:url('${IMGS.installer}')"></div>
-        <div class="sm" style="background-image:url('${IMGS.svcMain}')"></div>
+  </div>
+</div>
+
+<div class="apps wrap">
+  <div class="grid">
+    <a href="museums.html"><span class="ic">&#127963;&#65039;</span>Museums</a>
+    <a href="libraries.html"><span class="ic">&#128218;</span>Libraries</a>
+    <a href="education.html"><span class="ic">&#127891;</span>Education</a>
+    <a href="government-public-safety.html"><span class="ic">&#128737;&#65039;</span>Public Safety</a>
+    <a href="pharmaceutical-healthcare.html"><span class="ic">&#9877;&#65039;</span>Healthcare</a>
+    <a href="material-handling-warehouse.html"><span class="ic">&#127981;</span>Warehouse</a>
+    <a href="industries.html"><span class="ic">&#8594;</span>All 13 Industries</a>
+  </div>
+</div>
+
+<div class="stats wrap">
+  <div class="grid">
+    <div><b>1979</b><span>family-owned since</span></div>
+    <div><b class="loc">Conshohocken,&nbsp;PA</b><span>serving the region, traveling with our customers</span></div>
+    <div><b>14</b><span>manufacturer lines carried</span></div>
+    <div><b>Free</b><span>on-site space assessments</span></div>
+  </div>
+</div>
+<div class="certbar"><div class="sb-badge">
+  ${KEYSTONE('keystone')}
+  <div class="sb-text">
+    <span class="sb-eyebrow">Commonwealth of Pennsylvania</span>
+    <b>Small Business (SB) Certified</b>
+    <span class="sb-sub">Certified vendor for public procurement</span>
+  </div>
+</div></div>
+
+<section class="block" id="solutions">
+  <div class="wrap">
+    <div class="sec-head">
+      <div>
+        <span class="eyebrow">Solutions</span>
+        <h2>What do you need to <em>store</em>?</h2>
+        <p class="lead">Every system is planned around what you actually keep, from evidence and archives to pallets and paintings, and installed by our own factory-trained crews.</p>
       </div>
-      <div class="story-steps">
-        <div class="st on"><div class="st-img" style="background-image:url('${IMGS.maximize}')"></div><span class="n">01 Assess</span><h3>A free space assessment.</h3><p>We walk your space, measure what you store, and find the capacity you didn't know you had.</p></div>
-        <div class="st"><div class="st-img" style="background-image:url('${IMGS.gcProject}')"></div><span class="n">02 Design</span><h3>Layout and specification.</h3><p>Drawings, equipment load data and an itemized quote, matched to the right manufacturer line.</p></div>
-        <div class="st"><div class="st-img" style="background-image:url('${IMGS.installer}')"></div><span class="n">03 Install</span><h3>Factory-trained installation.</h3><p>Our own crews deliver, anchor and level, coordinated around your operating hours.</p></div>
-        <div class="st"><div class="st-img" style="background-image:url('${IMGS.svcMain}')"></div><span class="n">04 Support</span><h3>Service and relocation.</h3><p>Maintenance, reconfiguration, teardown and moves, even for systems we didn't originally supply.</p></div>
+      <a class="btn btn-solid" href="contact.html">Talk to a Planner</a>
+    </div>
+    ${cardGrid(SOLUTIONS)}
+    <p style="text-align:center;margin-top:28px"><a class="btn btn-solid" href="solutions.html">Browse the full catalog: ${SOLUTIONS.length + PRODUCTS.length} storage systems &rarr;</a></p>
+  </div>
+</section>
+
+<section class="block compare">
+  <div class="wrap">
+    <span class="eyebrow">The Case for Compact Storage</span>
+    <h2>We make <em>every inch</em> count</h2>
+    <p class="lead">Fixed aisles waste up to half your floor. Putting the same shelving on mobile carriages removes the empty aisles. Same footprint, twice the storage, or the same storage in half the space.</p>
+    <div class="duo">
+      <div class="panel">
+        <h3>Conventional fixed shelving</h3>
+        ${SVG_FIXED}
+        <p>Every row needs its own access aisle, so more than half the floor is air.</p>
       </div>
+      <div class="panel">
+        <h3>O'Brien high-density mobile <span class="badge">2&times; capacity</span></h3>
+        ${SVG_MOBILE}
+        <p>Carriages glide on rails to open one aisle where you need it. The rest of the floor works for you.</p>
+      </div>
+    </div>
+    <div class="ba">
+      <div class="ba-frame">
+        ${SVG_FIXED_BA}
+        <div class="ba-top">${SVG_MOBILE_BA}</div>
+        <div class="ba-handle" style="left:50%"><span>&#8249;&nbsp;&#8250;</span></div>
+        <span class="ba-lbl l">Fixed &middot; 4 rows</span>
+        <span class="ba-lbl r">Mobile &middot; 8 rows</span>
+        <input class="ba-range" type="range" min="0" max="100" value="50" aria-label="Compare fixed shelving with high-density mobile on the same floor">
+      </div>
+      <p><b>Drag the divider.</b> Same floor: four rows fixed, or eight rows on mobile carriages.</p>
     </div>
   </div>
 </section>
 
-<section class="block" id="blog">
-  <div class="wrap sh-center center">
-    <span class="eyebrow">From the blog</span>
-    <h2 class="sh" style="margin:0 auto">Storage, thought through.</h2>
-    <p class="lead"><a class="lnk" href="blog.html">All posts</a></p>
+<section class="block" id="industry-showcase">
+  <div class="wrap">
+    <div class="sec-head">
+      <div>
+        <span class="eyebrow">Industries</span>
+        <h2>Built around <em>your work</em></h2>
+        <p class="lead">Thirteen industries, each with its own storage problems. Pick yours and see how we solve them.</p>
+      </div>
+      <a class="btn btn-solid" href="industries.html">All Industries</a>
+    </div>
+    <div class="showcase">
+      <div class="sc-list">
+        ${INDUSTRIES.map((i,idx)=>`<a class="sc-item${idx===0?' on':''}" href="${i.slug}.html" data-img="${i.img}" data-name="${i.name}" data-short="${i.short}">${i.name}</a>`).join('\n        ')}
+      </div>
+      <a class="sc-stage" href="${INDUSTRIES[0].slug}.html">
+        <div class="sc-img a" style="background-image:url('${INDUSTRIES[0].img}')"></div>
+        <div class="sc-img b hide"></div>
+        <div class="sc-cap"><span class="k">${INDUSTRIES[0].name}</span><div class="t">${INDUSTRIES[0].short}.</div><span class="go">Explore &rarr;</span></div>
+      </a>
+    </div>
   </div>
-  <div class="rail posts">
-    ${BLOG.slice(0, 8).map(p => railCard(`post-${p.slug}.html`, p.img || IMGS.banResources, fmtDate(p.date), p.title, '')).join('\n    ')}
+</section>
+
+<section class="block projects-bg" id="services" >
+  <div class="wrap">
+    <span class="eyebrow">Working With Us</span>
+    <h2>From walkthrough to <em>working storage</em></h2>
+    <p class="lead">Buying storage isn't buying steel. It's buying a plan. Here's how we run every project, whether it's one evidence room or a whole facility.</p>
+    <div class="steps">
+      <div class="step"><span class="n">01 &middot; ASSESS</span><h3>Free Space Assessment</h3><p>We walk your space, measure what you store, and find the capacity you didn't know you had.</p></div>
+      <div class="step"><span class="n">02 &middot; DESIGN</span><h3>Layout &amp; Specification</h3><p>Drawings, equipment load data, and an itemized quote, matched to the right manufacturer line.</p></div>
+      <div class="step"><span class="n">03 &middot; INSTALL</span><h3>Factory-Trained Installation</h3><p>Our own crews deliver, anchor, and level, coordinated around your operating hours.</p></div>
+      <div class="step"><span class="n">04 &middot; SUPPORT</span><h3>Service &amp; Relocation</h3><p>Maintenance, reconfiguration, teardown and moves, even for systems we didn't originally supply.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="blog" style="padding-top:0">
+  <div class="wrap">
+    <div class="sec-head">
+      <div>
+        <span class="eyebrow">From the Blog</span>
+        <h2>Storage, <em>thought through</em></h2>
+      </div>
+      <a class="btn btn-solid" href="blog.html">All Posts</a>
+    </div>
+    <div class="post-grid">
+      ${BLOG.slice(0,3).map(postCard).join('\n      ')}
+    </div>
   </div>
 </section>`;
-
 
 /* ---------------- write files ---------------- */
+const SITE_JS = `document.documentElement.classList.add('js');
+// card and banner photos arrive as they scroll near (data-bg), so a page shows up fast and scrolls light
+(function(){
+  var els = document.querySelectorAll('[data-bg]'); if (!els.length) return;
+  var show = function(el){ el.style.backgroundImage = "url('" + el.getAttribute('data-bg') + "')"; el.removeAttribute('data-bg'); };
+  if (!('IntersectionObserver' in window)) { els.forEach(show); return; }
+  var io = new IntersectionObserver(function(es){ es.forEach(function(e){ if (e.isIntersecting) { show(e.target); io.unobserve(e.target); } }); }, { rootMargin: '500px' });
+  els.forEach(function(el){ io.observe(el); });
+})();
+(function(){
+  var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var hdr = document.querySelector('header');
+  addEventListener('scroll', function(){ if (hdr) hdr.classList.toggle('scrolled', scrollY > 8); }, {passive:true});
+  if (reduce || !('IntersectionObserver' in window)) return;
+
+  /* scroll-reveal: fade-up as tiles enter the viewport */
+  var els = document.querySelectorAll('.card,.dlc,.steps>div,.stats .grid>div,.sb-badge,.gallery img,.ccard,.team>div');
+  els.forEach(function(el,i){ el.classList.add('rv'); el.style.transitionDelay = Math.min((i%6)*60,300)+'ms'; });
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if (!e.isIntersecting) return;
+      var el = e.target;
+      el.classList.add('in');
+      io.unobserve(el);
+      /* hand transforms back to the hover styles once the reveal finishes */
+      setTimeout(function(){ el.classList.remove('rv','in'); el.style.transitionDelay=''; }, 1000);
+    });
+  }, {rootMargin:'0px 0px -8% 0px', threshold:.08});
+  els.forEach(function(el){ io.observe(el); });
+
+  /* count-up on numeric stats */
+  document.querySelectorAll('.stats b').forEach(function(b){
+    var txt = b.textContent.trim();
+    if (!/^\\d{1,4}$/.test(txt)) return;
+    var target = parseInt(txt,10), done = false;
+    var cio = new IntersectionObserver(function(es){
+      es.forEach(function(e){
+        if (!e.isIntersecting || done) return;
+        done = true; cio.disconnect();
+        var t0 = performance.now(), dur = 1100;
+        (function tick(now){
+          var p = Math.min(((now||performance.now())-t0)/dur, 1);
+          p = 1-Math.pow(1-p,3);
+          b.textContent = Math.round(target*p);
+          if (p<1) requestAnimationFrame(tick);
+        })(t0);
+      });
+    }, {threshold:.6});
+    cio.observe(b);
+  });
+})();
+
+/* mobile menu */
+(function(){
+  var burger = document.querySelector('.burger'), panel = document.getElementById('mnav');
+  if (!burger || !panel) return;
+  burger.addEventListener('click', function(){
+    var open = panel.classList.toggle('open');
+    burger.setAttribute('aria-expanded', open ? 'true' : 'false');
+    burger.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+  });
+})();
+
+/* before/after compare slider */
+(function(){
+  var frame = document.querySelector('.ba-frame');
+  if (!frame) return;
+  var range = frame.querySelector('.ba-range'), top = frame.querySelector('.ba-top'), handle = frame.querySelector('.ba-handle');
+  var set = function(v){
+    top.style.clipPath = 'inset(0 0 0 ' + v + '%)';
+    handle.style.left = v + '%';
+  };
+  range.addEventListener('input', function(){ set(range.value); });
+  set(range.value);
+  /* one-time damped wobble when the slider first scrolls into view: a drag hint */
+  var userTouched = false;
+  range.addEventListener('pointerdown', function(){ userTouched = true; }, {once:true});
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches && 'IntersectionObserver' in window) {
+    var hinted = false;
+    var hio = new IntersectionObserver(function(es){
+      es.forEach(function(e){
+        if (!e.isIntersecting || hinted) return;
+        hinted = true; hio.disconnect();
+        var t0 = null, D = 1800;
+        (function tick(now){
+          if (userTouched) { set(range.value); return; }
+          if (!t0) t0 = now || performance.now();
+          var p = Math.min(((now || performance.now()) - t0) / D, 1);
+          var v = 50 + Math.sin(p * Math.PI * 2) * 15 * (1 - p);
+          range.value = v; set(v);
+          if (p < 1) requestAnimationFrame(tick); else { range.value = 50; set(50); }
+        })();
+      });
+    }, {threshold:.65});
+    hio.observe(frame);
+  }
+})();
+
+/* industry showcase */
+(function(){
+  var list = document.querySelector('.sc-list');
+  if (!list) return;
+  var items = [].slice.call(list.querySelectorAll('.sc-item'));
+  var stage = document.querySelector('.sc-stage');
+  var imgA = stage.querySelector('.sc-img.a'), imgB = stage.querySelector('.sc-img.b');
+  var capK = stage.querySelector('.sc-cap .k'), capT = stage.querySelector('.sc-cap .t');
+  var front = imgA, back = imgB, current = 0, interacted = false, timer = null;
+  items.forEach(function(a){ new Image().src = a.dataset.img; });
+  function show(idx){
+    if (idx === current) return;
+    current = idx;
+    var a = items[idx];
+    items.forEach(function(x,i){ x.classList.toggle('on', i===idx); });
+    back.style.backgroundImage = "url('" + a.dataset.img + "')";
+    back.classList.remove('hide');
+    front.classList.add('hide');
+    var t = front; front = back; back = t;
+    capK.textContent = a.dataset.name;
+    capT.textContent = a.dataset.short + '.';
+    stage.href = a.href;
+  }
+  items.forEach(function(a, idx){
+    a.addEventListener('mouseenter', function(){ interacted = true; stopAuto(); show(idx); });
+    a.addEventListener('focus', function(){ interacted = true; stopAuto(); show(idx); });
+    a.addEventListener('touchstart', function(){ interacted = true; stopAuto(); }, {passive:true});
+  });
+  function stopAuto(){ if (timer) { clearInterval(timer); timer = null; } }
+  /* gentle auto-advance until the visitor takes over; skipped for reduced motion */
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches && 'IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function(es){
+      es.forEach(function(e){
+        if (e.isIntersecting && !interacted && !timer) {
+          timer = setInterval(function(){ show((current + 1) % items.length); }, 3500);
+        } else if (!e.isIntersecting) { stopAuto(); }
+      });
+    }, {threshold:.4});
+    io.observe(stage);
+  }
+})();
+`;
 fs.mkdirSync(path.join(OUT,'assets'), {recursive:true});
-fs.writeFileSync(path.join(OUT,'assets','style.css'), CSS + X.CSS + X.CSS3D + G.CSS + W.CSS + A.CSS_AFTER);
+fs.writeFileSync(path.join(OUT,'assets','style.css'), CSS + X.CSS + X.CSS3D + G.CSS + W.CSS);
+fs.writeFileSync(path.join(OUT,'assets','site.js'), SITE_JS);
 
 const pages = {
-  'index.html': shell(`O'Brien Systems | Custom Storage Solutions | Design Concept`, IMGS.heroHome, homeBody, { home: true }),
+  'index.html': shell(`O'Brien Systems | Custom Storage Solutions | Design Concept`, IMGS.heroHome, homeBody + X.home3d()),
   'showroom.html': X.showroomPage(shell, IMGS.banMobile),
   'design-specify.html': X.designSpecifyPage(shell, IMGS.gcProject),
   'service.html': X.servicePage(shell, IMGS.banServices),
@@ -1569,14 +2070,6 @@ pages['storage-questions.html'] = G.answersPage(shell, IMGS.heroHome);
 Object.assign(pages, W.pages(shell, IMGS.heroHome));
 pages['about.html'] = pages['about.html'].replace('<div class="cta" id="contact">', G.aboutMap().replace('</figure>', '</figure>\n  <p class="gx-more"><a href="where-we-work.html">See every region we work in</a></p>') + '<div class="cta" id="contact">');
 
-{ const kindOf = (f) => /^post-/.test(f) ? 'Blog' : /^storage-systems-|where-we-work/.test(f) ? 'Where we work'
-    : INDUSTRIES.some(i => `${i.slug}.html` === f) ? 'Industry' : [...SOLUTIONS, ...PRODUCTS].some(x => `${x.slug}.html` === f) ? 'Solution' : 'Page';
-  const index = Object.entries(pages).filter(([f]) => f !== '404.html').map(([f, html]) => {
-    const t = ((html.match(/<title>([^<]*)<\/title>/) || [])[1] || f).split(' | ')[0].replace(/&amp;/g, '&').replace(/&#39;/g, "'");
-    const kw = ((html.match(/<h1>([\s\S]*?)<\/h1>/) || [])[1] || '').replace(/<[^>]+>/g, '').replace(/&amp;/g, '&');
-    return [f === 'index.html' ? 'Home' : t, f, kindOf(f), kw];
-  });
-  fs.writeFileSync(path.join(OUT, 'assets', 'site.js'), A.siteJs(index)); }
 let n = 0;
 for (const [file, html] of Object.entries(pages)) {
   // copy rules are enforced here: the build fails rather than publish a violation
