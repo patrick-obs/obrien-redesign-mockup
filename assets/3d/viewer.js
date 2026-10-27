@@ -42,15 +42,15 @@ function bake(THREE, root) {
 }
 
 const GROUPS = [
-  { name: 'Mobile & automated', ids: ['hd-mobile', 'wire-track', 'vlm', 'vertical-carousel', 'rotary'] },
-  { name: 'Shelving & racks', ids: ['four-post', 'bin-shelving', 'wire-shelving', 'library', 'tire-rack'] },
-  { name: 'Lockers & security', ids: ['lockers', 'smart-lockers', 'athletic', 'evidence-lockers', 'weapons'] },
-  { name: 'Cabinets', ids: ['flat-files', 'fireproof', 'museum-cabinet', 'wardrobe'] },
-  { name: 'Museum & art', ids: ['art-screens', 'wall-art', 'painting-bins', 'textile-rack', 'pallet-museum', 'wall-etrack'] },
-  { name: 'Workspace', ids: ['casework', 'workstation', 'ss-table', 'mail-sorter'] },
+  { name: 'Mobile & Automated', ids: ['hd-mobile', 'wire-track', 'vlm', 'vertical-carousel'] },
+  { name: 'Shelving', ids: ['four-post', 'bin-shelving', 'wire-shelving', 'library', 'tire-rack'] },
+  { name: 'Lockers & Security', ids: ['lockers', 'smart-lockers', 'athletic', 'evidence-lockers', 'weapons'] },
+  { name: 'Cabinets & Filing', ids: ['flat-files', 'fireproof', 'museum-cabinet', 'wardrobe', 'rotary'] },
+  { name: 'Museum & Archival', ids: ['art-screens', 'wall-art', 'painting-bins', 'textile-rack', 'pallet-museum', 'wall-etrack'] },
+  { name: 'Casework & Workspace', ids: ['casework', 'workstation', 'ss-table', 'mail-sorter'] },
   { name: 'Residential & campus', ids: ['bike-storage'] },
-  { name: 'Industrial', ids: ['pallet-rack', 'mezzanine', 'wire-cage'] },
-  { name: 'For architects & GCs', ids: ['install'] },
+  { name: 'Industrial & Warehouse', ids: ['pallet-rack', 'mezzanine', 'wire-cage'] },
+  { name: 'For General Contractors & Architects', ids: ['install'] },
 ];
 
 function viewer(el) {

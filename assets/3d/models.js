@@ -605,7 +605,7 @@ function fourPost(id, name, dims0, preset) {
     };
   });
 }
-fourPost('four-post', '4-Post Steel Shelving', 'Standard sizes and heights; single run, pass-through or two runs; holds record boxes, solander boxes or bins', { bays: 1 });
+fourPost('four-post', '4-Post Shelving', 'Standard sizes and heights; single run, pass-through or two runs; holds record boxes, solander boxes or bins', { bays: 1 });
 fourPost('four-post-solander', 'Solander Box Shelving', 'Museum 4-post shelving at close spacing, a shelf for every solander box', { size: 2, cont: 1, bays: 1 });
 
 /* ---------------- 2. bin & parts storage ---------------- */
@@ -870,7 +870,7 @@ function wireModel(id, name, dims0, start, layouts) {
 wireModel('wire-shelving', 'Chrome Wire Shelving', 'Chrome wire units, from a pair to a walk-in room layout', 'pair', ['pair', 'wall', 'L', 'U']);
 
 /* ---------------- 4. library cantilever shelving ---------------- */
-def('library', 'Library Cantilever Shelving', 'Double-faced cantilever shelving, counter height to 90", three to eight sections', ({ THREE, wake, bake, refit }) => {
+def('library', 'Cantilever Library Shelving', 'Double-faced cantilever shelving, counter height to 90", three to eight sections', ({ THREE, wake, bake, refit }) => {
   const k = kit(THREE), { M, bx, group, many } = k, root = new THREE.Group();
   const paint = k.std(0xbfc4c7, 0.5, 0.3), post = k.keyMat(paint), wood = k.std(0xc79a66, 0.7, 0);
   const HEIGHTS = [{ h: 42, n: 3, label: 'Height: 42" counter' }, { h: 66, n: 5, label: 'Height: 66"' }, { h: 84, n: 7, label: 'Height: 84"' }, { h: 90, n: 7, label: 'Height: 90"' }];
@@ -953,7 +953,7 @@ const HD_KINDS = {
   athletic: { label: 'Storage: athletic gear', L: 108, d: 22, h: 84, N: 3, aisle: 48, cH: 6, panels: true, gear: 0 },
   golf: { label: 'Storage: golf bags', L: 108, d: 22, h: 84, N: 3, aisle: 48, cH: 6, panels: true, gear: 1 },
   instruments: { label: 'Storage: musical instruments', L: 108, d: 22, h: 84, N: 3, aisle: 48, cH: 6, panels: true, gear: 2 },
-  bins: { label: 'Storage: painting bins', L: 144, d: 44, h: 96, N: 3, aisle: 60, cH: 6, panels: true },
+  bins: { label: 'Storage: framed art bins', L: 144, d: 44, h: 96, N: 3, aisle: 60, cH: 6, panels: true },
   wardrobe: { label: 'Storage: wardrobe cabinets', L: 108, d: 24, h: 78, N: 3, aisle: 60, cH: 6, panels: true },
   museum: { label: 'Storage: museum cabinets', L: 147, d: 31, h: 84, N: 3, aisle: 60, cH: 6, panels: true },
   tire: { label: 'Storage: tire racks', L: 144, d: 28, h: 94, N: 3, aisle: 48, cH: 6 },
@@ -1638,7 +1638,7 @@ hdMobile('hd-mobile-art', 'Mobile Art Screens', 'Art screens on skinny mobile ca
 hdMobile('hd-mobile-gear', 'Mobile Athletic Storage', 'Mobile shelving with helmet shelves, pad and jersey hangers, ball racks', 'athletic');
 hdMobile('hd-mobile-golf', 'Mobile Golf Bag Storage', 'Golf bag bays with dividers and strap bars on mobile carriages', 'golf');
 hdMobile('hd-mobile-instruments', 'Mobile Instrument Storage', 'Instrument cubbies sized to each case, on mobile carriages', 'instruments');
-hdMobile('hd-mobile-bins', 'Mobile Painting Bins', 'Painting bins on mobile carriages, with or without roll-up doors', 'bins');
+hdMobile('hd-mobile-bins', 'Mobile Framed Art Bins', 'Painting bins on mobile carriages, with or without roll-up doors', 'bins');
 hdMobile('hd-mobile-wardrobe', 'Mobile Wardrobe Cabinets', 'Steel wardrobe cabinets on mobile carriages, doors that open', 'wardrobe');
 hdMobile('hd-mobile-artrack', 'Museum Object Rack, Mobile', 'White rack with 3-piece perforated aluminum decks for sculpture and crated works, on mobile carriages', 'artrack');
 hdMobile('hd-mobile-weapons', 'Mobile Weapons Storage', 'Rifle racks with locking bars, pistol racks and ammo shelves on mobile carriages', 'weapons');
@@ -1841,7 +1841,7 @@ def('flat-files', 'Flat File Cabinets', 'Flat files from 50" x 38" to 72" x 54",
 });
 
 /* ---------------- 8. rotary cabinet ---------------- */
-def('rotary', 'Rotary File Cabinet', '46" W x 41" D x 84" H: the shelving unit turns inside a tight case, foot pedal release', ({ THREE, tween }) => {
+def('rotary', 'Rotary Cabinet', '46" W x 41" D x 84" H: the shelving unit turns inside a tight case, foot pedal release', ({ THREE, tween }) => {
   const k = kit(THREE), { M, bx, cyl, group, many } = k, root = new THREE.Group();
   const paint = k.std(0xc9cdcf, 0.45, 0.35), cast = k.std(0x2a2d30, 0.55, 0.5), r = rng(5);
   // square rotor with clipped corners: its faces sit flush with the case front, its corners just clear the walls
@@ -2007,7 +2007,7 @@ def('museum-cabinet', 'Museum Storage Cabinet', '48" W x 30" D x 88" H, full-hei
 });
 
 /* ---------------- 10. art screens ---------------- */
-def('art-screens', 'Sliding Art Screens', 'Two facing banks of 8 ft x 8 ft mesh screens, pulled into a center aisle', ({ THREE, tween }) => {
+def('art-screens', 'Pull-Out Art Screens', 'Two facing banks of 8 ft x 8 ft mesh screens, pulled into a center aisle', ({ THREE, tween }) => {
   const k = kit(THREE), { M, bx, cyl, group } = k, root = new THREE.Group();
   const white = k.std(0xf3f4f2, 0.45, 0.25), rail = k.std(0xdfe2e0, 0.4, 0.6), mesh = k.meshMat(96, 96, 2, '#c3c9cd', 0.85);
   const Ls = 96, H = 96, A = 104, n = 6, gap = 18, r = rng(9);
@@ -2697,7 +2697,7 @@ def('workstation', 'Industrial Workstation', '72" W x 30" D bench, adjustable he
 });
 
 /* ---------------- 21. fireproof file cabinets ---------------- */
-def('fireproof', 'Fireproof File Cabinets', 'A 4-drawer vertical (21" W x 31" D) and a 3-drawer lateral (38" W), fire and impact rated', ({ THREE, tween }) => {
+def('fireproof', 'Fire-Rated File Cabinets', 'A 4-drawer vertical (21" W x 31" D) and a 3-drawer lateral (38" W), fire and impact rated', ({ THREE, tween }) => {
   const k = kit(THREE), { M, bx, cyl, group, many } = k, root = new THREE.Group();
   const paint = k.std(0xd6ccb9, 0.45, 0.3), inner = k.std(0x8c9296, 0.5, 0.3), r = rng(17);
   const drawers = [];
@@ -2734,7 +2734,7 @@ def('fireproof', 'Fireproof File Cabinets', 'A 4-drawer vertical (21" W x 31" D)
 });
 
 /* ---------------- 22. wall-mounted art screens ---------------- */
-def('wall-art', 'Stationary Art Screens', 'White mesh panels fixed to the wall on standoffs, or freestanding double-sided screens on feet; picture ledges and wall-mounted sculpture', ({ THREE, tween, wake, refit, bake }) => {
+def('wall-art', 'Wall-Mounted Art Screens', 'White mesh panels fixed to the wall on standoffs, or freestanding double-sided screens on feet; picture ledges and wall-mounted sculpture', ({ THREE, tween, wake, refit, bake }) => {
   const k = kit(THREE), { M, bx, cyl, group } = k, root = new THREE.Group();
   const white = k.std(0xf3f4f2, 0.45, 0.25), wall = k.std(0x56606a, 0.85, 0), gilt = k.std(0xa6832f, 0.35, 0.7), mesh = k.meshMat(48, 96, 2, '#c3c9cd', 0.85), ledgeM = k.std(0xf6f6f3, 0.5, 0.15);
   const PW = 48, PH = 96;
@@ -2926,7 +2926,7 @@ def('ss-table', 'Stainless Steel Work Table', '60" W x 30" D x 34" H: stainless 
 });
 
 /* ---------------- 27. install sequence ---------------- */
-def('install', 'Mobile Storage Install, Step by Step', 'Rails in the floor or on a raised deck, then carriages, shelving, drive and handles: pick the floor method and play it', ({ THREE, tween, wait, wake, refresh }) => {
+def('install', 'High-Density Mobile Storage Install, Step by Step', 'Rails in the floor or on a raised deck, then carriages, shelving, drive and handles: pick the floor method and play it', ({ THREE, tween, wait, wake, refresh }) => {
   const k = kit(THREE), { M, bx, cyl, group } = k, root = new THREE.Group();
   const paint = k.std(0xbfc4c7, 0.5, 0.3), panel = k.std(0x2c2f31, 0.45, 0.25), black = k.std(0x1c1e20, 0.45, 0.15);
   const concrete = k.std(0xb9bcbc, 0.9, 0), plug = k.std(0xaeb2b2, 0.92, 0), slc = k.std(0x9fa4a5, 0.8, 0), kerf = k.std(0x55595b, 0.9, 0);
@@ -3134,7 +3134,7 @@ def('install', 'Mobile Storage Install, Step by Step', 'Rails in the floor or on
 });
 
 /* ---------------- 28. painting storage bins ---------------- */
-def('painting-bins', 'Painting Storage Bins', 'Steel shelving with dividers on 12" centers for framed art, split in two if needed, roll-up doors to keep the dust out', ({ THREE, tween, wake, bake, refit }) => {
+def('painting-bins', 'Framed Art Storage Bins', 'Steel shelving with dividers on 12" centers for framed art, split in two if needed, roll-up doors to keep the dust out', ({ THREE, tween, wake, bake, refit }) => {
   const k = kit(THREE), { M, bx, group, many } = k, root = new THREE.Group();
   const paint = k.std(0xbfc4c7, 0.5, 0.3), post = k.keyMat(paint), bk = binKit(THREE, k, 48, 96), slatM = [], hoodM = k.std(0xf1f2f0, 0.35, 0.3), guideM = k.std(0xdfe2e4, 0.35, 0.5);
   const W = 48, D = 48, H = 96, r = rng(33);
@@ -3563,5 +3563,5 @@ def('bike-storage', 'Bike Room Storage', 'Apartment and campus bike rooms: two-t
   };
 });
 
-const SHORT = { 'four-post': '4-post', 'bin-shelving': 'Bin shelving', 'wire-shelving': 'Wire', library: 'Library', 'hd-mobile': 'Mobile', lockers: 'Lockers', 'evidence-lockers': 'Evidence', 'flat-files': 'Flat files', rotary: 'Rotary', 'museum-cabinet': 'Museum cabinet', 'art-screens': 'Art screens', 'pallet-rack': 'Pallet rack', mezzanine: 'Mezzanine', vlm: 'VLM', casework: 'Casework', 'wire-cage': 'Wire cage', athletic: 'Athletic', 'mail-sorter': 'Mail sorter', weapons: 'Weapons', 'tire-rack': 'Tire rack', 'wire-track': 'Wire on track', 'ss-table': 'Stainless tables', install: 'Install steps', 'hd-mobile-open': 'Mobile shelving', 'hd-mobile-tire': 'Mobile tires', 'hd-mobile-grow': 'Mobile grow racks', 'hd-mobile-flat': 'Mobile flat files', 'hd-mobile-museum': 'Mobile cabinets', 'hd-mobile-library': 'Mobile library', 'hd-mobile-textile': 'Mobile textiles', 'hd-mobile-art': 'Mobile art screens', 'hd-mobile-mezz': 'Two-level mobile', 'pallet-museum': 'Object rack, stationary', 'hd-mobile-artrack': 'Object rack, mobile', 'hd-mobile-wardrobe': 'Mobile wardrobes', 'hd-mobile-gear': 'Mobile athletic', 'hd-mobile-golf': 'Mobile golf', 'hd-mobile-instruments': 'Mobile instruments', 'hd-mobile-bins': 'Mobile painting bins', 'bike-storage': 'Bike rooms', 'painting-bins': 'Painting bins', 'four-post-solander': 'Solander boxes', workstation: 'Workstation', fireproof: 'Fireproof', 'wall-art': 'Stationary screens', 'textile-rack': 'Textile racks', 'hd-mobile-weapons': 'Mobile weapons', 'hd-mobile-pallet': 'Mobile pallet rack', wardrobe: 'Wardrobes', 'wall-etrack': 'Wall E-track', 'smart-lockers': 'Smart lockers', 'vertical-carousel': 'Carousel' };
+const SHORT = { 'four-post': '4-post', 'bin-shelving': 'Bin shelving', 'wire-shelving': 'Wire', library: 'Library', 'hd-mobile': 'Mobile', lockers: 'Lockers', 'evidence-lockers': 'Evidence', 'flat-files': 'Flat files', rotary: 'Rotary', 'museum-cabinet': 'Museum cabinet', 'art-screens': 'Pull-out art screens', 'pallet-rack': 'Pallet rack', mezzanine: 'Mezzanine', vlm: 'VLM', casework: 'Casework', 'wire-cage': 'Wire cage', athletic: 'Athletic', 'mail-sorter': 'Mail sorter', weapons: 'Weapons', 'tire-rack': 'Tire rack', 'wire-track': 'Wire on track', 'ss-table': 'Stainless tables', install: 'Install steps', 'hd-mobile-open': 'Mobile shelving', 'hd-mobile-tire': 'Mobile tires', 'hd-mobile-grow': 'Mobile grow racks', 'hd-mobile-flat': 'Mobile flat files', 'hd-mobile-museum': 'Mobile cabinets', 'hd-mobile-library': 'Mobile library', 'hd-mobile-textile': 'Mobile textiles', 'hd-mobile-art': 'Mobile art screens', 'hd-mobile-mezz': 'Two-level mobile', 'pallet-museum': 'Object rack, stationary', 'hd-mobile-artrack': 'Object rack, mobile', 'hd-mobile-wardrobe': 'Mobile wardrobes', 'hd-mobile-gear': 'Mobile athletic', 'hd-mobile-golf': 'Mobile golf', 'hd-mobile-instruments': 'Mobile instruments', 'hd-mobile-bins': 'Mobile framed art bins', 'bike-storage': 'Bike rooms', 'painting-bins': 'Framed art bins', 'four-post-solander': 'Solander boxes', workstation: 'Workstation', fireproof: 'Fire-rated', 'wall-art': 'Wall-mounted screens', 'textile-rack': 'Textile racks', 'hd-mobile-weapons': 'Mobile weapons', 'hd-mobile-pallet': 'Mobile pallet rack', wardrobe: 'Wardrobes', 'wall-etrack': 'Wall E-track', 'smart-lockers': 'Smart lockers', 'vertical-carousel': 'Carousel' };
 for (const [id, s] of Object.entries(SHORT)) if (MODELS[id]) MODELS[id].short = s;

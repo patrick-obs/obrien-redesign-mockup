@@ -19,7 +19,7 @@ const CSI = {
   'athletic-storage': '10 56 26 Mobile Storage Shelving',
   'wire-partitions': '10 22 13 Wire Mesh Partitions',
   'mail-sorters': '10 55 00 Postal Specialties',
-  'modular-casework': '12 35 53 Laboratory Casework',
+  'modular-casework': '12 32 00 Manufactured Wood Casework / 12 35 53 Laboratory Casework',
   'art-screens': '10 56 26 Mobile Storage Shelving',
 };
 const BROCHURE_FOR = {
@@ -32,18 +32,22 @@ const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<':
 const attr = (s) => esc(s).replace(/'/g, '&#39;');
 
 /* ---------------- Specify & quote panel ---------------- */
+const READY_AS = { 'museum-cabinets': 'museum storage cabinets', 'mail-sorters': 'mail sorters and mailroom casework' };
+// load data only where the product puts heavy or concentrated loads on the floor or structure (#70)
+const LOAD_DATA = new Set(['high-density-mobile-storage', 'lifts-carousels', 'pallet-rack', 'mezzanines', 'art-screens', 'weapons-storage', 'athletic-storage']);
 function specPanel(slug, name, brochures) {
   const csi = CSI[slug];
   const b = BROCHURE_FOR[slug] && brochures.find(x => x[2] === BROCHURE_FOR[slug]);
   if (!csi && !b) return '';
+  // CSI sections live on the Architects & Designers page (#323); the heading names the full product (#24)
+  const ready = READY_AS[slug] || name.toLowerCase().replace(/ & /g, ' and ');
   return `
 <section class="spec" aria-label="Specify and quote">
   <div class="spec-l">
     <span class="eyebrow">Specify &amp; quote</span>
-    <h2>Ready to plan ${esc(name.toLowerCase())}?</h2>
+    <h2>Ready to explore ${esc(ready)}?</h2>
     <dl>
-      ${csi ? `<dt>Typical CSI section</dt><dd>${esc(csi)} <small>(confirm against your project manual)</small></dd>` : ''}
-      <dt>What you get</dt><dd>Layout drawings, equipment load data for your structural engineer, and an itemized quote</dd>
+      <dt>What you get</dt><dd>${LOAD_DATA.has(slug) ? 'Layout drawings, equipment load data for your structural engineer, and an itemized quote' : 'Layout drawings and an itemized quote'}</dd>
       ${b ? `<dt>Brochure</dt><dd><a href="${b[1]}" target="_blank" rel="noopener">${esc(b[0])} (PDF)</a></dd>` : ''}
     </dl>
   </div>
@@ -55,45 +59,16 @@ function specPanel(slug, name, brochures) {
 </section>`;
 }
 
-/* ---------------- Design & Specify hub ---------------- */
-function designSpecifyPage(shell, heroImg) {
+/* ---------------- CSI table (lives on the Architects & Designers page) ---------------- */
+function csiTable() {
   const rows = Object.entries(CSI).reduce((m, [slug, sec]) => { (m[sec] = m[sec] || []).push(slug); return m; }, {});
   const names = { 'high-density-mobile-storage': 'High-density mobile storage', 'static-shelving': 'Static shelving', 'four-post-shelving': '4-post shelving', 'bin-storage': 'Bin & parts storage', 'lockers': 'Lockers', 'evidence-lockers': 'Evidence lockers', 'athletic-storage': 'Athletic storage', 'wire-partitions': 'Wire partitions', 'mail-sorters': 'Mail sorters', 'modular-casework': 'Modular & lab casework', 'art-screens': 'Art screens' };
-  return shell(`Design & Specify | Architects and Designers | O'Brien Systems`, heroImg, `
-<div class="page-hero">
-  <div class="wrap crumbs"><a href="index.html">Home</a> / Design &amp; Specify</div>
-  <div class="wrap">
-    <span class="eyebrow">For architects, designers &amp; spec writers</span>
-    <h1>Design &amp; specify storage with one call</h1>
-    <p>One dealer covering fourteen manufacturer lines. We help write the storage scope, lay it out on your plans, and carry it through submittals and installation.</p>
-  </div>
-</div>
-<section class="block">
-  <div class="wrap">
-    <div class="feat">
-      <div><b>Layouts on your plans</b><span>Send a CAD or PDF plan and we return a storage layout with capacities.</span></div>
-      <div><b>Spec language</b><span>Performance specs written around the requirement, not one brand, so bids stay competitive.</span></div>
-      <div><b>Load data</b><span>Complete equipment loading data for your structural engineer of record, who makes the floor determination.</span></div>
-      <div><b>Submittals</b><span>Shop drawings, product data and samples, then installation coordinated with the GC.</span></div>
-    </div>
-    <h2 class="sec-h">Where our scope usually lands (CSI MasterFormat)</h2>
+  return `<h2 class="sec-h">Where our scope usually lands (CSI MasterFormat)</h2>
     <table class="csi">
       <thead><tr><th>Section</th><th>Typical O'Brien scope</th></tr></thead>
       <tbody>${Object.entries(rows).map(([sec, slugs]) => `<tr><td>${esc(sec)}</td><td>${slugs.map(s => `<a href="${s}.html">${esc(names[s] || s)}</a>`).join(', ')}</td></tr>`).join('')}</tbody>
     </table>
-    <p class="est-note">Section numbers follow MasterFormat conventions; confirm against the edition your project manual uses.</p>
-    <h2 class="sec-h">Manufacturer specs, CAD and Revit</h2>
-    <p class="lead">Every line we install publishes its own specifications, data sheets, and CAD or Revit content. Tell us what you're drawing and we'll send the current files for the products on your project, so your documents match what gets installed.</p>
-    <div class="spec" style="margin-top:44px">
-      <div class="spec-l"><span class="eyebrow">Working on a project?</span><h2>Send us the plan</h2><p style="margin:0">We'll return a layout, capacities and a budget number for the storage scope, usually within a few business days.</p></div>
-      <div class="spec-r">
-        <a class="btn btn-solid" href="contact.html?topic=cad">Request a layout or CAD</a>
-        <a class="btn btn-ghost" href="contact.html?topic=talk">Book a lunch-and-learn</a>
-        <a class="btn btn-ghost" href="general-contractors.html">For general contractors &rarr;</a>
-      </div>
-    </div>
-  </div>
-</section>${viewer3d('design-specify', 'the install')}`);
+    <p class="est-note">Section numbers follow MasterFormat conventions; confirm against the edition your project manual uses.</p>`;
 }
 
 /* ---------------- Request service ---------------- */
@@ -104,7 +79,7 @@ function servicePage(shell, heroImg) {
   <div class="wrap">
     <span class="eyebrow">Service &amp; repair</span>
     <h1>Request service</h1>
-    <p>Mobile systems, lockers, cabinets and lifts, including brands we didn't originally supply. Tell us what's happening and we'll get the right technician scheduled.</p>
+    <p>High-density mobile storage, lockers, cabinets, and vertical lift modules, including brands we didn't originally supply. Tell us what's happening, and we'll schedule the right technician.</p>
   </div>
 </div>
 <section class="block svc-wrap">
@@ -117,7 +92,7 @@ function servicePage(shell, heroImg) {
 
       <div class="svc-step"><span class="svc-n">2</span><div><h2>The equipment</h2><p>Your best guess is fine. We service many brands.</p></div></div>
       <div class="row2">
-        <label>Equipment<select><option>Mobile shelving (high-density)</option><option>Vertical lift module / carousel</option><option>Lockers</option><option>Cabinets / rotary files</option><option>Shelving or rack</option><option>Other</option></select></label>
+        <label>Equipment<select><option>High-density mobile storage</option><option>Vertical lift module / carousel</option><option>Lockers</option><option>Cabinets / rotary files</option><option>Shelving or rack</option><option>Other</option></select></label>
         <label>Brand, if known<input placeholder="Check the end panel or carriage label"></label>
       </div>
       <fieldset class="svc-chips"><legend>Drive type</legend>
@@ -140,11 +115,11 @@ function servicePage(shell, heroImg) {
       </div>
       <div class="svc-card">
         <h3>Service agreements</h3>
-        <p>Scheduled preventive maintenance keeps carriages, drives and safety features working and extends system life.</p>
+        <p>Scheduled preventive maintenance keeps carriages, drives and safety features working and helps extend system life.</p>
         <a href="services.html">See our services &rarr;</a>
       </div>
       <div class="svc-card">
-        <h3>Any brand</h3>
+        <h3>Most brands</h3>
         <p>We maintain, repair, relocate and expand systems from many manufacturers, not just the ones we sold.</p>
         <button type="button" class="btn btn-ghost" data-chat-ask="I need service on a storage system. What information will your technician need?">Ask our assistant</button>
       </div>
@@ -172,7 +147,7 @@ const ORG = {
   name: "O'Brien Systems", url: 'https://obriensys.com/', telephone: '+1-610-825-3405', email: 'sales@obriensys.com', foundingDate: '1979',
   address: { '@type': 'PostalAddress', streetAddress: '739 E. Elm Street', addressLocality: 'Conshohocken', addressRegion: 'PA', postalCode: '19428', addressCountry: 'US' },
   areaServed: { '@type': 'Place', name: 'Greater Philadelphia region' },
-  description: 'Storage solutions dealer and installer: high-density mobile shelving, lockers, cabinets, casework and automated storage.',
+  description: 'Storage solutions designer, supplier, and installer: high-density mobile shelving, lockers, cabinets, casework and automated storage.',
 };
 const strip = (s) => s.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ').replace(/&#39;/g, "'").replace(/&[a-z]+;/g, ' ').replace(/\s+/g, ' ').trim();
 function enrich(file, html) {
@@ -247,6 +222,7 @@ button.btn{font:inherit;font-weight:700;cursor:pointer}
 .csi th{color:var(--muted);font-weight:600;font-size:.85rem;text-transform:uppercase;letter-spacing:.04em}
 .csi td:first-child{white-space:nowrap;font-weight:600;color:var(--teal-ink)}
 .csi a{color:var(--teal)}
+.step ul{margin:.6rem 0 0 1.1rem;font-size:.85rem;color:var(--muted)}.step li{margin:.3rem 0}.csi td:first-child{white-space:normal}
 
 /* service */
 .svc-wrap{background:var(--mist)}
@@ -324,7 +300,7 @@ const VIEW3D = {
   'static-shelving': 'four-post,bin-shelving,wire-shelving,library,tire-rack', 'high-density-mobile-storage': 'hd-mobile,hd-mobile-museum,hd-mobile-flat,hd-mobile-artrack,hd-mobile-pallet,hd-mobile-mezz,wire-track', 'lockers': 'lockers,smart-lockers,athletic,evidence-lockers,weapons', 'evidence-lockers': 'evidence-lockers',
   'cabinets': 'flat-files,fireproof,rotary,museum-cabinet', 'rotary-cabinets': 'rotary', 'museum-cabinets': 'museum-cabinet,hd-mobile-museum,four-post-solander,textile-rack,hd-mobile-textile', 'art-screens': 'art-screens,wall-art,hd-mobile-art,painting-bins,hd-mobile-bins,wall-etrack',
   'pallet-rack': 'pallet-rack,hd-mobile-pallet', 'mezzanines': 'mezzanine,hd-mobile-mezz', 'lifts-carousels': 'vlm,vertical-carousel', 'modular-casework': 'casework,ss-table', 'wire-partitions': 'wire-cage,bike-storage',
-  'weapons-storage': 'weapons,hd-mobile-weapons', 'athletic-storage': 'athletic,hd-mobile-gear,lockers', 'athletics': 'athletic,hd-mobile-gear,hd-mobile-golf,lockers', 'mail-sorters': 'mail-sorter', 'fireproof-cabinets': 'fireproof', 'wardrobe-cabinets': 'wardrobe,hd-mobile-wardrobe',
+  'weapons-storage': 'weapons,hd-mobile-weapons', 'athletic-storage': 'athletic,hd-mobile-gear,lockers', 'athletics': 'athletic,hd-mobile-gear,hd-mobile-golf,lockers', 'mail-sorters': 'mail-sorter', 'fire-rated-cabinets': 'fireproof', 'wardrobe-cabinets': 'wardrobe,hd-mobile-wardrobe',
   'military': 'weapons,hd-mobile-weapons,pallet-rack,hd-mobile-pallet', 'museums': 'four-post-solander,painting-bins,hd-mobile-bins,art-screens,wall-art,hd-mobile-art,hd-mobile-artrack,wall-etrack,museum-cabinet,hd-mobile-museum,textile-rack,hd-mobile-textile', 'libraries': 'library,hd-mobile-library', 'material-handling-warehouse': 'hd-mobile-open,hd-mobile-pallet,hd-mobile-mezz,pallet-rack,mezzanine,vlm,bin-shelving,workstation,wire-cage,wall-etrack',
   'vertical-farming': 'hd-mobile-grow,ss-table,wire-track', 'pharmaceutical-healthcare': 'casework,ss-table,vertical-carousel,wire-track,hd-mobile', 'education': 'lockers,smart-lockers,bike-storage,athletic,hd-mobile-gear,hd-mobile-instruments,library,hd-mobile,mail-sorter', 'government-public-safety': 'evidence-lockers,weapons,hd-mobile-weapons,hd-mobile,wire-cage',
   'corporate-legal': 'hd-mobile,rotary,fireproof,hd-mobile-flat,mail-sorter', 'automotive': 'tire-rack,hd-mobile-tire,bin-shelving,workstation,pallet-rack,vlm', 'retail': 'hd-mobile,four-post,bin-shelving,wire-track',
@@ -352,7 +328,7 @@ function showroomPage(shell, heroImg) {
   <div class="wrap">
     <span class="eyebrow">3D showroom</span>
     <h1>Walk around the products</h1>
-    <p>${ALL3D.split(',').length} of the systems we plan and install, as interactive models. Drag to see every side, zoom in on the details, and try how they move.</p>
+    <p>${ALL3D.split(',').length} of the systems we design and install, as interactive models. Drag to see every side, zoom in on the details, and try how they move.</p>
   </div>
 </div>
 <section class="v3d-sec v3d-room"><div class="wrap">
@@ -520,7 +496,7 @@ const CSS3D = `.v3d-ov{position:absolute;right:12px;top:12px;z-index:6;width:min
 .v3d-set [hidden]{display:none!important}
 @media (max-width:640px){.v3d-cust{margin-left:0}.v3d-panel .v3d-set{grid-template-columns:1fr}}`;
 
-module.exports = { viewer3d, home3d, showroomPage, with3d, lazyMedia, CSS3D, photos, specPanel, designSpecifyPage, servicePage, notFound, enrich, sitemap, ROBOTS, CSS };
+module.exports = { viewer3d, home3d, showroomPage, with3d, lazyMedia, CSS3D, photos, specPanel, csiTable, servicePage, notFound, enrich, sitemap, ROBOTS, CSS };
 
 /* customer presentations: a clean page for one customer, and the builder that makes its link or a single-file download */
 const PRESENT_GROUPS = [
