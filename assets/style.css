@@ -626,3 +626,51 @@ button.btn{font:inherit;font-weight:700;cursor:pointer}
 /* header: room for Where We Work; the phone number stays in the announcement bar and the mobile menu */
 header .logo{flex-shrink:0}
 .head-cta .head-phone{display:none}
+
+/* the Storage Redefined entry (.sr) is styled once, in build.js */
+
+/* industry guide pages */
+.gd h1,.gd h2,.gd-card h3,.gd-app h3{text-transform:uppercase;letter-spacing:.01em}
+.gd h2{font-size:clamp(1.55rem,3vw,2.2rem);line-height:1.15;color:var(--ink);max-width:none}
+.gd-hero{position:relative;min-height:500px;display:flex;flex-direction:column;justify-content:flex-end;color:#fff;background:var(--teal-ink);overflow:hidden}
+.gd-hero-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.gd-hero::after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,rgba(2,41,43,.92) 0%,rgba(2,60,63,.76) 55%,rgba(2,60,63,.45) 100%)}
+.gd-hero .crumbs{position:absolute;top:0;left:0;right:0;z-index:2}
+.gd-hero-in{position:relative;z-index:2;width:100%;padding-top:96px;padding-bottom:60px}
+.gd-hero .eyebrow{color:var(--teal-soft)}
+.gd-hero h1{font-size:clamp(2rem,5vw,3.4rem);line-height:1.05;max-width:20ch;margin:.1rem 0 .9rem;color:#fff}
+.gd-tag{font-size:clamp(1rem,2vw,1.2rem);color:#e2f0f0;max-width:60ch}
+.gd-intro{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:48px;align-items:center;padding-top:72px;padding-bottom:72px}
+.gd-intro p{font-size:1.04rem;line-height:1.7;color:#39494c;margin-top:14px}
+.gd-intro img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:var(--radius);box-shadow:var(--shadow)}
+.gd-band{background:var(--mist);padding:72px 0}
+.gd-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:22px;margin-top:30px}
+.gd-card{background:#fff;border-radius:var(--radius);overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.06),0 6px 18px rgba(2,60,63,.07);display:flex;flex-direction:column}
+.gd-card img{width:100%;aspect-ratio:4/3;object-fit:cover;background:#e9efef}
+.gd-card-b{padding:18px 18px 22px;display:flex;flex-direction:column;flex:1}
+.gd-card h3{font-size:1rem;line-height:1.25;color:var(--teal-ink);margin-bottom:8px}
+.gd-card p{font-size:.9rem;line-height:1.55;color:#3b4a4d}
+.gd-3dlink{align-self:flex-start;margin-top:14px;padding:8px 14px;border:0;border-radius:999px;background:#e3f1f1;color:var(--teal-dark);font:inherit;font-weight:700;font-size:.8rem;line-height:1;cursor:pointer;transition:background .15s,color .15s}
+.gd-3dlink:hover{background:var(--teal);color:#fff}
+.gd-3d{padding-top:72px;padding-bottom:72px}
+.gd-3d>p{color:var(--muted);max-width:720px;margin-top:10px}
+.gd-3d .v3d{margin-top:24px}
+.gd-spec{color:#3b4a4d;max-width:820px;margin-top:12px;font-size:1.02rem}
+.gd-apps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px;margin-top:26px}
+.gd-app{background:#fff;border-radius:12px;padding:18px 20px;border-top:3px solid var(--teal)}
+.gd-app h3{font-size:.95rem;line-height:1.3;color:var(--teal-ink);margin-bottom:8px}
+.gd-app ul{padding-left:18px;font-size:.9rem;line-height:1.75;color:#3b4a4d}
+.gd-gallery{display:grid;grid-template-columns:1fr 1fr;gap:22px;padding-top:72px;padding-bottom:72px}
+.gd-gallery img{width:100%;aspect-ratio:3/2;object-fit:cover;border-radius:var(--radius);background:#e9efef}
+.gd-cta{background:var(--teal-ink);color:#fff;padding:72px 0;text-align:center}
+.gd-cta h2{color:#fff;margin:0 auto}
+.gd-cta p{max-width:640px;margin:14px auto 26px;color:#cfe9ea;font-size:1.05rem}
+.gd-actions{display:flex;flex-wrap:wrap;gap:12px;justify-content:center}
+.gd-btn{display:inline-block;padding:13px 22px;border-radius:999px;background:#fff;color:var(--teal-ink);font-weight:700;transition:transform .15s ease,background .15s ease}
+.gd-btn:hover{transform:translateY(-1px)}
+.gd-btn-o{background:transparent;color:#fff;box-shadow:inset 0 0 0 2px rgba(255,255,255,.7)}
+.gd-btn-o:hover{background:rgba(255,255,255,.12)}
+.gd-hub .card .ph{height:200px}
+@media (max-width:1100px){.gd-grid,.gd-apps{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:800px){.gd-intro,.gd-gallery{grid-template-columns:1fr;gap:24px;padding-top:52px;padding-bottom:52px}.gd-band,.gd-cta{padding:52px 0}.gd-3d{padding-top:52px;padding-bottom:52px}.gd-hero{min-height:440px}}
+@media (max-width:560px){.gd-grid,.gd-apps{grid-template-columns:1fr}.gd-hero-in{padding-top:72px;padding-bottom:40px}.gd .sr-w{font-size:1.2rem}.gd-btn{width:100%;text-align:center}}

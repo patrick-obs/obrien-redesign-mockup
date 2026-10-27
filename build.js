@@ -9,6 +9,7 @@ const VER = Date.now().toString(36);
 const X = require('./extras'); // Sept 2026 upgrades: specify panel, specify hub, service, SEO plumbing
 const G = require('./growth'); // Oct 2026 search pass: deeper product pages, answers page, quote form, service-area map
 const W = require('./where'); // region pages: storage-systems-<region>.html + where-we-work.html
+const GD = require('./guides'); // industry guides: guides/<slug>/index.html + guides/index.html
 // Website assistant (same one as obriensys.com). Switch to 'https://obriensys.com' once the chat is live there.
 const CHAT_API = 'https://chatbot.obriensys-web.pages.dev';
 
@@ -761,7 +762,7 @@ const FOOTER = `
       </div>
       <div>
         <h4>Company</h4>
-        <a href="about.html">About Us</a><a href="where-we-work.html">Where We Work</a><a href="services.html">Services</a><a href="showroom.html">3D Showroom</a><a href="service.html">Request Service</a><a href="resources.html">Resources &amp; Brochures</a><a href="blog.html">Blog</a><a href="contact.html">Contact</a>
+        <a href="about.html">About Us</a><a href="where-we-work.html">Where We Work</a><a href="services.html">Services</a><a href="showroom.html">3D Showroom</a><a href="service.html">Request Service</a><a href="resources.html">Resources &amp; Brochures</a><a href="guides/">Industry Guides</a><a href="blog.html">Blog</a><a href="contact.html">Contact</a>
       </div>
     </div>
     <div class="legal">
@@ -1503,6 +1504,17 @@ const INDUSTRY_PAGES = {
   },
 };
 
+/* industry pages link to their guide */
+const GUIDE_FOR = { museums:'museum-collections', libraries:'libraries', education:'education', athletics:'athletics', 'government-public-safety':'government-public-safety', military:'military', 'pharmaceutical-healthcare':'healthcare-pharmaceutical', 'corporate-legal':'corporate-legal', automotive:'automotive' };
+const guideCallout = (slug, name) => {
+  const g = GUIDE_FOR[slug] && GD.GUIDES.find(x => x.slug === GUIDE_FOR[slug]);
+  return g ? `
+    <div class="spec" style="margin-top:44px">
+      <div class="spec-l"><span class="eyebrow">Industry guide</span><h2>${g.title}</h2><p style="margin:0">${g.sr.redefined}</p></div>
+      <div class="spec-r"><a class="btn btn-solid" href="guides/${g.slug}/">Read the guide &rarr;</a><a class="btn btn-ghost" href="guides/">All industry guides</a></div>
+    </div>` : '';
+};
+
 /* ---------------- hub + static pages ---------------- */
 const cardGrid = (items, sr) => `<div class="cards">` + items.map(x=>`
   <a class="card" href="${x.slug}.html"><div class="ph" style="background-image:url('${x.img}')"></div>
@@ -1750,6 +1762,9 @@ const resourcesPage = shell(`Resources & Brochures | O'Brien Systems`, IMGS.hami
   <div class="dl-grid">
     ${BROCHURES.map(b=>`<a class="dlc" href="${b[1]}" target="_blank" rel="noopener"><div class="cover" style="background-image:url('${COVERS[b[2]]}')"></div><div class="bd"><b>${b[0]}</b><span class="tag">PDF</span></div></a>`).join('\n    ')}
   </div>
+  <h2 style="font-size:1.45rem;margin:52px 0 6px">Industry guides</h2>
+  <p class="lead" style="margin-top:0">Storage options, 3D models, and applications for each industry, in one page.</p>
+  <div class="chips">${GD.GUIDES.map(g=>`<a href="guides/${g.slug}/">${g.name}</a>`).join('')}<a href="guides/">All industry guides &rarr;</a></div>
   <div class="chips" style="margin-top:36px"><a href="storage-questions.html">Storage questions answered</a><a href="architects-designers.html">Architects &amp; Designers: CSI sections, CAD and Revit</a><a href="service.html">Request service</a></div>
   <p class="lead" style="margin-top:28px">Need drawings, specifications, or manufacturer literature for a specific product line? <a href="contact.html">Ask us</a> and we'll pull the current documents from the manufacturer.</p>
 </div></section>`);
@@ -2084,7 +2099,7 @@ for (const p of PRODUCTS) {
 }
 for (const i of INDUSTRIES) {
   const d = INDUSTRY_PAGES[i.slug];
-  pages[`${i.slug}.html`] = subpage({ ...d, extra:(d.extra||'') + G.extra(i.slug, i.name, 'industry'), faqs:[...(d.faqs||[]), ...G.faqs(i.slug)], slug:i.slug, eyebrow:'Industries', name:i.name, img:i.img, banner:i.banner, hub:'industries', hubName:'Industries' });
+  pages[`${i.slug}.html`] = subpage({ ...d, extra:(d.extra||'') + guideCallout(i.slug, i.name) + G.extra(i.slug, i.name, 'industry'), faqs:[...(d.faqs||[]), ...G.faqs(i.slug)], slug:i.slug, eyebrow:'Industries', name:i.name, img:i.img, banner:i.banner, hub:'industries', hubName:'Industries' });
 }
 BLOG.forEach((p, idx) => { pages[`post-${p.slug}.html`] = postPage(p, idx); });
 pages['storage-questions.html'] = G.answersPage(shell, IMGS.heroHome);
@@ -2100,6 +2115,9 @@ for (const [file, html] of Object.entries(pages)) {
   fs.writeFileSync(path.join(OUT, file), X.lazyMedia(X.enrich(file, X.with3d(X.photos(file, html), VER))));
   n++;
 }
+// industry guides: guides/<slug>/index.html plus the hub (guides.js)
+fs.appendFileSync(path.join(OUT, 'assets', 'style.css'), GD.guideCss);
+for (const p of GD.allPages(shell, { X, VER })) { fs.mkdirSync(path.join(OUT, path.dirname(p.path)), { recursive: true }); fs.writeFileSync(path.join(OUT, p.path), p.html); pages[p.path] = p.html; n++; }
 // customer presentations: unlisted, never in the sitemap
 { const names = Object.fromEntries([...SOLUTIONS, ...PRODUCTS, ...INDUSTRIES].map(p => [p.slug, p.name]));
   for (const [file, html] of Object.entries(X.presentPages(VER, IMGS.logo, names))) fs.writeFileSync(path.join(OUT, file), html); }

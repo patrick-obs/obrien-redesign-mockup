@@ -71,7 +71,7 @@ function viewer(el) {
   <div class="v3d-wrap${side ? ' has-side' : ''}">
     ${side ? `<nav class="v3d-side" aria-label="Choose a product"><input class="v3d-find" type="search" placeholder="Find a system" aria-label="Find a system">${groups.map(g => `<details class="v3d-g"><summary>${g.name}<em>${g.ids.length}</em></summary>${g.ids.map(id => `<button type="button" data-id="${id}">${MODELS[id].name}</button>`).join('')}</details>`).join('')}</nav>
       <label class="v3d-pick"><span>Product</span><select>${groups.map(g => `<optgroup label="${g.name}">${g.ids.map(id => `<option value="${id}">${MODELS[id].name}</option>`).join('')}</optgroup>`).join('')}</select></label>`
-      : ids.length > 1 ? `<div class="v3d-seg" role="tablist">${ids.map(id => `<button type="button" role="tab" data-id="${id}">${MODELS[id].short || MODELS[id].name}</button>`).join('')}</div>` : ''}
+      : ids.length > 1 ? `<div class="v3d-seg" role="tablist">${ids.map(id => `<button type="button" role="tab" data-id="${id}">${el.dataset.tabs === 'full' ? MODELS[id].name : (MODELS[id].short || MODELS[id].name)}</button>`).join('')}</div>` : ''}
     <div class="v3d-main">
       <div class="v3d-top">
         ${ids.length > 1 ? '<div class="v3d-steps"><button type="button" class="v3d-step" data-step="-1" aria-label="Previous system">&lsaquo;</button><button type="button" class="v3d-step" data-step="1" aria-label="Next system">&rsaquo;</button></div>' : ''}<div class="v3d-title"><b></b><span></span></div>

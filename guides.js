@@ -1899,7 +1899,7 @@ const GUIDES = [
    ]
   },
   "appsHeading": "Applications for every school",
-  "appsIntro": "Public and private K–12 schools, charter schools, school districts, colleges, and universities.",
+  "appsIntro": "Public and private K-12 schools, charter schools, school districts, colleges, and universities.",
   "apps": [
    {
     "title": "Classrooms",
@@ -2353,7 +2353,7 @@ function guideBody(g, ver) {
     <span class="eyebrow">${esc(g.v3d.eyebrow)}</span>
     <h2>${esc(g.v3d.heading)}</h2>
     <p>${esc(g.v3d.sub)}</p>
-    <div class="v3d" data-models="${esc(models.join(','))}" data-lite="1" data-src="assets/3d/viewer.js${ver ? `?v=${esc(ver)}` : ''}"></div>
+    <div class="v3d" data-models="${esc(models.join(','))}" data-lite="1" data-tabs="full" data-src="assets/3d/viewer.js${ver ? `?v=${esc(ver)}` : ''}"></div>
   </section>
 
   <section class="gd-band">
@@ -2440,18 +2440,7 @@ const allPages = (shell, ctx) => [...guidePages(shell, ctx), guidesIndex(shell, 
 
 /* ---------------- CSS (appended to assets/style.css) ---------------- */
 const guideCss = `
-/* Storage Redefined dictionary entry (reusable: .sr on light backgrounds, .sr.dark on dark heroes) */
-.sr{max-width:600px;margin:0 0 24px;font-size:1rem;line-height:1.5;color:var(--ink)}
-.sr-h{margin-bottom:4px}
-.sr-w{font-size:1.4rem;font-weight:800;letter-spacing:.01em}
-.sr-pos{font-style:italic;font-size:.92rem;color:var(--muted);margin-left:2px}
-.sr-old{color:#8a9799;text-decoration:line-through;text-decoration-thickness:1px}
-.sr-new{color:var(--ink)}
-.sr-lab{color:var(--teal);font-weight:700}
-.sr.dark,.sr.dark .sr-new{color:#fff}
-.sr.dark .sr-pos{color:#d3e3e3}
-.sr.dark .sr-old{color:#b7c4c5;text-decoration-color:#b7c4c5}
-.sr.dark .sr-lab{color:var(--teal-soft)}
+/* the Storage Redefined entry (.sr) is styled once, in build.js */
 
 /* industry guide pages */
 .gd h1,.gd h2,.gd-card h3,.gd-app h3{text-transform:uppercase;letter-spacing:.01em}
@@ -2497,7 +2486,7 @@ const guideCss = `
 .gd-hub .card .ph{height:200px}
 @media (max-width:1100px){.gd-grid,.gd-apps{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:800px){.gd-intro,.gd-gallery{grid-template-columns:1fr;gap:24px;padding-top:52px;padding-bottom:52px}.gd-band,.gd-cta{padding:52px 0}.gd-3d{padding-top:52px;padding-bottom:52px}.gd-hero{min-height:440px}}
-@media (max-width:560px){.gd-grid,.gd-apps{grid-template-columns:1fr}.gd-hero-in{padding-top:72px;padding-bottom:40px}.sr-w{font-size:1.2rem}.gd-btn{width:100%;text-align:center}}
+@media (max-width:560px){.gd-grid,.gd-apps{grid-template-columns:1fr}.gd-hero-in{padding-top:72px;padding-bottom:40px}.gd .sr-w{font-size:1.2rem}.gd-btn{width:100%;text-align:center}}
 `;
 
 module.exports = { GUIDES, guideCss, srEntry, guidePages, guidesIndex, allPages, relink };
