@@ -740,7 +740,7 @@ const FOOTER = `
     <div class="cols">
       <div>
         <h4>O'Brien Systems</h4>
-        <p>Custom storage solutions since 1979: headquartered in Conshohocken, PA, installing across Pennsylvania, New Jersey, Delaware, Maryland, Washington DC, New York, and New England, and traveling with our customers when their projects do.</p>
+        <p>Custom storage solutions, headquartered in Conshohocken, PA. Installing across Pennsylvania, New Jersey, Delaware, Maryland, Washington DC, New York, and New England since 1979, and serving customers all across the country.</p>
         <p style="margin-top:10px;font-size:.8rem">PA Small Business (SB) Certified</p>
         <h4 style="margin-top:18px">Where We Work</h4>
         ${W.footerLinks()}<a href="where-we-work.html">All regions &rarr;</a>
