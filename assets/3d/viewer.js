@@ -4,7 +4,6 @@
 // Models are built in code (models.js) from typical dimensions: representative, not a spec.
 import * as THREE from '../vendor/three.module.min.js';
 import { OrbitControls } from '../vendor/OrbitControls.js';
-import { RoomEnvironment } from '../vendor/RoomEnvironment.js';
 import { mergeGeometries } from '../vendor/BufferGeometryUtils.js';
 // models.js carries the same version as this file, so a new build never mixes with a cached copy
 const { MODELS } = await import('./models.js' + new URL(import.meta.url).search);
@@ -43,15 +42,15 @@ function bake(THREE, root) {
 }
 
 const GROUPS = [
-  { name: 'Mobile & automated', ids: ['hd-mobile', 'wire-track', 'vlm', 'vertical-carousel', 'rotary'] },
-  { name: 'Shelving & racks', ids: ['four-post', 'bin-shelving', 'wire-shelving', 'library', 'tire-rack'] },
-  { name: 'Lockers & security', ids: ['lockers', 'smart-lockers', 'athletic', 'evidence-lockers', 'weapons'] },
-  { name: 'Cabinets', ids: ['flat-files', 'fireproof', 'museum-cabinet', 'wardrobe'] },
-  { name: 'Museum & art', ids: ['art-screens', 'wall-art', 'painting-bins', 'textile-rack', 'pallet-museum', 'wall-etrack'] },
-  { name: 'Workspace', ids: ['casework', 'workstation', 'ss-table', 'mail-sorter'] },
+  { name: 'Mobile & Automated', ids: ['hd-mobile', 'wire-track', 'vlm', 'vertical-carousel'] },
+  { name: 'Shelving', ids: ['four-post', 'bin-shelving', 'wire-shelving', 'library', 'tire-rack'] },
+  { name: 'Lockers & Security', ids: ['lockers', 'smart-lockers', 'athletic', 'evidence-lockers', 'weapons'] },
+  { name: 'Cabinets & Filing', ids: ['flat-files', 'fireproof', 'museum-cabinet', 'wardrobe', 'rotary'] },
+  { name: 'Museum & Archival', ids: ['art-screens', 'wall-art', 'painting-bins', 'textile-rack', 'pallet-museum', 'wall-etrack'] },
+  { name: 'Casework & Workspace', ids: ['casework', 'workstation', 'ss-table', 'mail-sorter'] },
   { name: 'Residential & campus', ids: ['bike-storage'] },
-  { name: 'Industrial', ids: ['pallet-rack', 'mezzanine', 'wire-cage'] },
-  { name: 'For architects & GCs', ids: ['install'] },
+  { name: 'Industrial & Warehouse', ids: ['pallet-rack', 'mezzanine', 'wire-cage'] },
+  { name: 'For General Contractors & Architects', ids: ['install'] },
 ];
 
 function viewer(el) {
@@ -72,7 +71,7 @@ function viewer(el) {
   <div class="v3d-wrap${side ? ' has-side' : ''}">
     ${side ? `<nav class="v3d-side" aria-label="Choose a product"><input class="v3d-find" type="search" placeholder="Find a system" aria-label="Find a system">${groups.map(g => `<details class="v3d-g"><summary>${g.name}<em>${g.ids.length}</em></summary>${g.ids.map(id => `<button type="button" data-id="${id}">${MODELS[id].name}</button>`).join('')}</details>`).join('')}</nav>
       <label class="v3d-pick"><span>Product</span><select>${groups.map(g => `<optgroup label="${g.name}">${g.ids.map(id => `<option value="${id}">${MODELS[id].name}</option>`).join('')}</optgroup>`).join('')}</select></label>`
-      : ids.length > 1 ? `<div class="v3d-seg" role="tablist">${ids.map(id => `<button type="button" role="tab" data-id="${id}">${MODELS[id].short || MODELS[id].name}</button>`).join('')}</div>` : ''}
+      : ids.length > 1 ? `<div class="v3d-seg" role="tablist">${ids.map(id => `<button type="button" role="tab" data-id="${id}">${el.dataset.tabs === 'full' ? MODELS[id].name : (MODELS[id].short || MODELS[id].name)}</button>`).join('')}</div>` : ''}
     <div class="v3d-main">
       <div class="v3d-top">
         ${ids.length > 1 ? '<div class="v3d-steps"><button type="button" class="v3d-step" data-step="-1" aria-label="Previous system">&lsaquo;</button><button type="button" class="v3d-step" data-step="1" aria-label="Next system">&rsaquo;</button></div>' : ''}<div class="v3d-title"><b></b><span></span></div>
@@ -113,8 +112,8 @@ function viewer(el) {
   renderer.shadowMap.autoUpdate = false;
 
   const scene = new THREE.Scene();
-  const pmrem = new THREE.PMREMGenerator(renderer);
-  if (window.V3D_PBR) scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  // the physically based look (window.V3D_PBR, for comparison) loads its room environment only when asked for
+  if (window.V3D_PBR) import('../vendor/RoomEnvironment.js').then(({ RoomEnvironment }) => { scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture; wake(); });
   const sun = new THREE.DirectionalLight(0xffffff, 1.6);
   sun.castShadow = true; sun.shadow.mapSize.set(LOW ? 1024 : 2048, LOW ? 1024 : 2048); sun.shadow.bias = -0.0008; sun.shadow.normalBias = 1.2;
   // the fast materials take no reflections from the environment, so the sky and ambient light carry the fill
@@ -131,6 +130,13 @@ function viewer(el) {
   controls.enableZoom = false;
   controls.enableDamping = true; controls.dampingFactor = 0.08; controls.maxPolarAngle = Math.PI * 0.495; controls.enablePan = false;
   controls.autoRotateSpeed = 1.2;
+  // phones scroll past the viewer: a vertical swipe scrolls the page, a sideways drag turns the model, two fingers zoom.
+  // In the guided tour every drag looks around. (OrbitControls sets touch-action none on the canvas; this overrides it.)
+  const COARSE = matchMedia('(pointer: coarse)').matches;
+  const setTouch = () => { const v = COARSE && !walking ? 'pan-y' : 'none'; canvas.style.touchAction = v; stage.style.touchAction = v; };
+  // switching models: the old one fades out while the new one loads, the new one fades in (CSS only, free on the GPU)
+  if (!reduce) canvas.style.transition = 'opacity .16s ease';
+  const fadeOut = () => { if (!reduce && shown) canvas.style.opacity = '0'; }, fadeIn = () => { canvas.style.opacity = ''; };
 
   // tiny tween system shared with the models
   const tweens = [];
@@ -145,12 +151,13 @@ function viewer(el) {
   const wait = ms => tween({ t: 0 }, 't', 1, ms, 'lin');
 
   let current = null, frame = 0, dirty = true, home = null, clickables = [], slow = 0, pr = Math.min(devicePixelRatio, PR_MAX), last = 0;
-  let lastDraw = 0, wasActive = false, sceneDirty = true, lowRes = false, heavy = false, measured = false, shadowTick = 0;
+  let lastDraw = 0, lastUpd = 0, wasActive = false, sceneDirty = true, lowRes = false, heavy = false, measured = false, shadowTick = 0, pressed = false, onScreen = true, walking = false;
   const wake = () => { dirty = true; if (!frame) frame = requestAnimationFrame(loop); };
   const modelWake = () => { sceneDirty = true; wake(); };
   // while anything moves, render a little softer; one crisp frame when it settles
   const setRes = (low) => { if (low === lowRes) return; lowRes = low; renderer.setPixelRatio(low ? Math.min(pr, 1) : pr); renderer.setSize(stage.clientWidth, stage.clientHeight, false); };
   controls.addEventListener('change', wake);
+  setTouch();
 
   let ovClean = null;
   const closePanel = () => { stage.querySelector('.v3d-ov')?.remove(); ovClean?.(); ovClean = null; };
@@ -172,8 +179,8 @@ function viewer(el) {
   };
   const syncActs = () => el.querySelectorAll('.v3d-bar .v3d-ctl').forEach(b => b._sync?.());
   const scan = () => { clickables = []; current?.group.traverse(o => { if (o.userData.onClick) clickables.push(o); }); };
-  let walking = false, walkB = null, rings = null, walkFloor = null;
-  const keys = new Set(), peg = el.querySelector('.v3d-peg'), walkbar = el.querySelector('.v3d-walkbar'), toastEl = el.querySelector('.v3d-toast');
+  let walkB = null, walkFloor = null;
+  const peg = el.querySelector('.v3d-peg'), walkbar = el.querySelector('.v3d-walkbar'), toastEl = el.querySelector('.v3d-toast');
   let toastT = 0;
   const toast = (msg) => { toastEl.textContent = msg; toastEl.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { toastEl.hidden = true; }, 3200); };
   // eye-level look: yaw and pitch you steer by dragging (or arrow keys); the orbit controls rest while you walk
@@ -197,18 +204,55 @@ function viewer(el) {
     sun.target.position.set(p.x, walkB ? walkB.floor : p.y - 64, p.z); sun.position.copy(sun.target.position).add(new THREE.Vector3(R * 0.6, R * 1.4, R * 0.9));
     s2.left = s2.bottom = -R; s2.right = s2.top = R; s2.near = 10; s2.far = R * 4; s2.updateProjectionMatrix(); renderer.shadowMap.needsUpdate = true;
   };
+  // a glide never passes through the model: it backs out of an aisle along the aisle first, goes round the model's box
+  // (wide enough to clear its corners) to a stop on another side, and walks into an aisle the same way. Rays against the
+  // model decide: a clear straight line is taken as it is.
+  const ray2 = new THREE.Raycaster(), seeThrough = h => { const m = h.object.material; return !h.object.visible || (m && m.transparent && m.opacity < 0.6); };
+  const clear = (a, b) => { const d = b.clone().sub(a), L = d.length(); if (L < 1) return true; ray2.set(a, d.divideScalar(L)); ray2.far = L; return !ray2.intersectObject(current.group, true).some(h => !seeThrough(h)); };
+  const planPath = (a, b) => {
+    if (!current || clear(a, b)) return new THREE.LineCurve3(a, b);
+    const box = new THREE.Box3().setFromObject(current.group), c = box.getCenter(new THREE.Vector3()), hx = (box.max.x - box.min.x) / 2, hz = (box.max.z - box.min.z) / 2;
+    const inside = p => p.x > box.min.x && p.x < box.max.x && p.z > box.min.z && p.z < box.max.z && p.y < box.max.y;
+    // out of (or into) an aisle: straight to just past the nearest open end of the box
+    const mouth = p => {
+      const outs = [['x', box.min.x - 30, p.x - box.min.x], ['x', box.max.x + 30, box.max.x - p.x], ['z', box.min.z - 30, p.z - box.min.z], ['z', box.max.z + 30, box.max.z - p.z]].sort((u, v) => u[2] - v[2]);
+      for (const [ax, v] of outs) { const q = p.clone(); q[ax] = v; if (clear(p, q)) return q; }
+      const q = p.clone(); q[outs[0][0]] = outs[0][1]; return q;
+    };
+    const A = inside(a) ? mouth(a) : a, B = inside(b) ? mouth(b) : b, pts = [a];
+    if (A !== a) pts.push(A);
+    if (!clear(A, B)) {
+      // round the model: polar about its center, never closer than its outline plus 24"
+      const th = p => Math.atan2(p.x - c.x, p.z - c.z), rho = p => Math.hypot(p.x - c.x, p.z - c.z), edge = t => Math.min(hx / Math.max(1e-3, Math.abs(Math.sin(t))), hz / Math.max(1e-3, Math.abs(Math.cos(t)))) + 24;
+      const t0 = th(A), dt = Math.atan2(Math.sin(th(B) - t0), Math.cos(th(B) - t0)), r0 = rho(A), r1 = rho(B), n = Math.max(3, Math.ceil(Math.abs(dt) / 0.18));
+      for (let i = 1; i < n; i++) { const s = i / n, t = t0 + dt * s, r = Math.max(r0 + (r1 - r0) * s, edge(t)); pts.push(new THREE.Vector3(c.x + Math.sin(t) * r, A.y + (B.y - A.y) * s, c.z + Math.cos(t) * r)); }
+    }
+    if (B !== b) pts.push(B);
+    pts.push(b);
+    return new THREE.CatmullRomCurve3(pts, false, 'centripetal');
+  };
+  // glide to a stop, turning the look on the way; a newer glide takes over from wherever this one is
+  let flyTok = 0;
+  const TOUR_FOV = 78;
   const fly = (pos, target, ms = 800) => {
-    walking = true; walkLight(true); shadowAround(pos, true); flying = true; controls.enabled = false; controls.autoRotate = false; tween(camera, 'fov', 96, ms);
+    const tok = ++flyTok, from = camera.position.clone(), cd = camera.getWorldDirection(new THREE.Vector3());
+    // the look starts from where the camera really points (the overview, or a glide cut short)
+    yaw = Math.atan2(-cd.x, -cd.z); pitch = Math.asin(Math.max(-1, Math.min(1, cd.y)));
+    walking = true; setTouch(); walkLight(true); shadowAround(pos, true); flying = true; controls.enabled = false; controls.autoRotate = false; tween(camera, 'fov', TOUR_FOV, ms);
     // up close nothing should slice open: a 1" near plane at eye level (big models use a far one for the overview)
     if (!walkNear) walkNear = camera.near; camera.near = 1; camera.updateProjectionMatrix();
-    const d = target.clone().sub(pos).normalize(); yaw = Math.atan2(-d.x, -d.z); pitch = Math.asin(Math.max(-1, Math.min(1, d.y)));
-    const t8 = pos.clone().add(d.multiplyScalar(8));
-    ['x', 'y', 'z'].forEach(a => { tween(camera.position, a, pos[a], ms, 'out'); tween(controls.target, a, t8[a], ms, 'out'); });
-    setTimeout(() => { flying = false; }, ms + 30);
+    const d = target.clone().sub(pos).normalize(), yaw0 = yaw, pitch0 = pitch, yaw1 = Math.atan2(-d.x, -d.z), pitch1 = Math.asin(Math.max(-1, Math.min(1, d.y)));
+    const dy = Math.atan2(Math.sin(yaw1 - yaw0), Math.cos(yaw1 - yaw0)), path = planPath(from, pos.clone()), len = path.getLength(), P = new THREE.Vector3();
+    const step = { v: 0, get t() { return this.v; }, set t(v) {
+      this.v = v; if (tok !== flyTok) return;
+      path.getPointAt(Math.min(1, v), P); camera.position.copy(P); yaw = yaw0 + dy * v; pitch = pitch0 + (pitch1 - pitch0) * v;
+      controls.target.copy(camera.position).add(lookDir().multiplyScalar(8));
+    } };
+    tween(step, 't', 1, Math.max(ms, Math.min(2600, 500 + len * 1.15)), 'io').then(() => { if (tok === flyTok) { flying = false; wake(); } });
     el.querySelector('.v3d-main').classList.add('v3d-walk');
   };
   const overview = (ms = 700) => {
-    if (!home) return; walking = false; flying = false; walkB = null; walkLight(false); floorDisc.visible = true; keys.clear(); if (rings) { scene.remove(rings); rings = null; } dropFloor();
+    if (!home) return; walking = false; flying = false; flyTok++; walkB = null; walkLight(false); floorDisc.visible = true; dropFloor(); setTouch();
     controls.enabled = true; if (walkNear) { camera.near = walkNear; walkNear = 0; camera.updateProjectionMatrix(); } controls.minDistance = home.r * 0.6; controls.maxDistance = home.r * 4; tween(camera, 'fov', 32, ms);
     walkbar.hidden = true; peg.hidden = !current;
     ['x', 'y', 'z'].forEach(a => { tween(camera.position, a, home.pos[a], ms, 'out'); tween(controls.target, a, home.target[a], ms, 'out'); });
@@ -248,7 +292,6 @@ function viewer(el) {
     el.querySelector('.v3d-prompt')?.classList.add('gone'); el.focus({ preventScroll: true }); modelWake();
   };
   const toLocal = () => camera.position.clone().applyMatrix4(new THREE.Matrix4().copy(current.group.matrixWorld).invert());
-  const walkKeys = () => false;
   el.v3dDebug = () => ({ camera, controls, group: current?.group, THREE, wake: modelWake, renderer });
   el.tabIndex = -1; el.v3dState = () => ({ cam: camera.position.toArray().map(Math.round), walking, stop: tourAt, active: document.activeElement?.className });
   addEventListener('keydown', e => {
@@ -269,7 +312,7 @@ function viewer(el) {
   el.querySelector('.v3d-exit').addEventListener('click', () => { overview(); syncActs(); showActs(); });
 
   // left alone, a model slowly turns and demonstrates itself (doors, drawers, carriages); any touch hands over control
-  let demoOn = false, demoT = 0, demoVisible = true, touched = false;
+  let demoOn = false, demoT = 0, touched = false;
   const demoHit = (o) => {
     if (o.isInstancedMesh) return { instanceId: Math.floor(Math.random() * o.count), point: new THREE.Vector3() };
     const b = new THREE.Box3().setFromObject(o), p = new THREE.Vector3(THREE.MathUtils.lerp(b.min.x, b.max.x, 0.3 + Math.random() * 0.4), THREE.MathUtils.lerp(b.min.y, b.max.y, 0.2 + Math.random() * 0.6), b.max.z);
@@ -277,7 +320,7 @@ function viewer(el) {
   };
   const demoStep = () => {
     if (!demoOn) return;
-    if (!demoVisible || document.hidden || walking) { demoT = setTimeout(demoStep, 1500); return; }
+    if (!onScreen || document.hidden || walking) { demoT = setTimeout(demoStep, 1500); return; }
     const vis = clickables.filter(o => { let q = o; while (q) { if (!q.visible) return false; q = q.parent; } return true; });
     if (!vis.length) { demoT = setTimeout(demoStep, 3000); return; }
     const o = vis[Math.floor(Math.random() * vis.length)], h = demoHit(o);
@@ -286,12 +329,14 @@ function viewer(el) {
   };
   // the idle spin is short and polite: 20 seconds at most, paused while the page scrolls, never on light devices
   let spinStop = 0, scrollT = 0;
-  addEventListener('scroll', () => { if (!demoOn) return; controls.autoRotate = false; clearTimeout(scrollT); scrollT = setTimeout(() => { if (demoOn) { controls.autoRotate = true; wake(); } }, 900); }, { passive: true });
+  addEventListener('scroll', () => { if (!demoOn) return; controls.autoRotate = false; clearTimeout(scrollT); scrollT = setTimeout(() => { if (demoOn && onScreen) { controls.autoRotate = true; wake(); } }, 900); }, { passive: true });
   const startDemo = () => { if (reduce || touched || LOW || window.V3D_NODEMO) return; clearTimeout(spinStop); spinStop = setTimeout(() => { if (demoOn) { demoOn = false; controls.autoRotate = false; clearTimeout(demoT); } }, 20000); demoOn = true; controls.autoRotate = true; controls.autoRotateSpeed = 0.6; el.querySelector('[data-v=spin]')?.setAttribute('aria-pressed', 'true'); clearTimeout(demoT); if (!LOW) demoT = setTimeout(demoStep, 5000); wake(); };
   function stopDemoTimers() { clearTimeout(demoT); }
   function stopDemo() { if (touched) return; touched = true; demoOn = false; clearTimeout(demoT); controls.autoRotate = false; controls.autoRotateSpeed = 1.2; el.querySelector('[data-v=spin]')?.setAttribute('aria-pressed', 'false'); }
   ['pointerdown', 'wheel', 'keydown', 'touchstart'].forEach(t => el.addEventListener(t, stopDemo, { capture: true, passive: true }));
-  new IntersectionObserver(es => es.forEach(e => { demoVisible = e.isIntersecting; if (demoVisible && demoOn) wake(); })).observe(el);
+  // off-screen the loop rests; back on screen the demo spin resumes and one frame catches up
+  new IntersectionObserver(es => es.forEach(e => { onScreen = e.isIntersecting; if (onScreen) { if (demoOn) controls.autoRotate = true; wake(); } })).observe(el);
+  canvas.addEventListener('pointerdown', () => { pressed = true; }); addEventListener('pointerup', () => { pressed = false; }); addEventListener('pointercancel', () => { pressed = false; });
   addEventListener('v3d-tex', () => modelWake());
 
   function fit(group, view) {
@@ -302,7 +347,7 @@ function viewer(el) {
     home = { pos: c.clone().add(dir.multiplyScalar(dist)), target: c.clone() };
     camera.fov = 32; camera.near = r / 50; camera.far = r * 40; camera.updateProjectionMatrix();
     camera.position.copy(home.pos); controls.target.copy(home.target);
-    controls.minDistance = r * 0.6; controls.maxDistance = r * 4; home.r = r; walking = false; flying = false; controls.enabled = true;
+    controls.minDistance = r * 0.6; controls.maxDistance = r * 4; home.r = r; walking = false; flying = false; flyTok++; controls.enabled = true; setTouch();
     ground.scale.setScalar(r * 3); ground.position.set(c.x, box.min.y + 0.05, c.z);
     floorDisc.scale.setScalar(r * 1.35); floorDisc.position.set(c.x, box.min.y + 0.02, c.z); floorDisc.visible = true;
     sun.position.set(c.x + r * 1.2, c.y + r * 2.4, c.z + r * 1.6); sun.target.position.copy(c);
@@ -318,7 +363,7 @@ function viewer(el) {
     if (!MODELS[id]) return; curId = id; clearTimeout(loadT);
     el.querySelector('.v3d-title b').textContent = MODELS[id].name; el.querySelector('.v3d-title span').textContent = MODELS[id].dims || '';
     el.querySelectorAll('[data-id]').forEach(x => x.setAttribute('aria-selected', String(x.dataset.id === id)));
-    el.querySelector('.v3d-load').hidden = false;
+    const L = el.querySelector('.v3d-load'); L.textContent = 'Loading 3D model...'; L.hidden = false; fadeOut();
     loadT = setTimeout(() => load(id), current ? 100 : 0);
   };
   // geometry and one-off textures go; materials stay, so their compiled shaders are reused by the next model (no recompile hitch)
@@ -334,23 +379,41 @@ function viewer(el) {
   }
   const release = (g) => g.traverse(o => { if (!o.geometry?.userData?.keep) o.geometry?.dispose?.(); for (const m of [].concat(o.material || [])) { if (!m) continue; for (const k of ['map', 'alphaMap', 'normalMap']) { const t = m[k]; if (t && !t.userData?.keep) t.dispose(); } } });
   const cache = new Map(), CACHE_N = LOW ? 2 : 4;
-  const park = (m) => { if (!m) return; cache.delete(m._id); cache.set(m._id, m); while (cache.size > CACHE_N) { const [k0, old] = cache.entries().next().value; cache.delete(k0); if (old.group !== shown && old !== current) release(old.group); } };
+  // a model built again while an older copy was still compiling replaces that copy, which gives its memory back
+  const park = (m) => { if (!m) return; const prev = cache.get(m._id); if (prev && prev !== m && prev.group !== shown && prev !== current) release(prev.group); cache.delete(m._id); cache.set(m._id, m); while (cache.size > CACHE_N) { const [k0, old] = cache.entries().next().value; cache.delete(k0); if (old.group !== shown && old !== current) release(old.group); } };
   async function load(id) {
     const tok = ++loadTok;
     closePanel(); stopDemoTimers();
     if (walking) overview(1);
     // a model whose shaders are still compiling is released only after the compile settles (never mid-compile)
+    const before = current;
     if (current) { if (current._compiling) current._stale = true; else park(current); current = null; clickables = []; }
     // yield with a plain task, not a frame: frames stop while the GPU is busy or the tab is hidden, and a load must never wait on one
     await new Promise(r => setTimeout(r, 0)); if (tok !== loadTok) return;
-    const def = MODELS[id], T0 = performance.now(), hit = cache.get(id); if (hit) cache.delete(id);
+    // a cached model comes back fresh: one parked while it was still compiling (stale then) shows again
+    const def = MODELS[id], hit = cache.get(id); if (hit) { cache.delete(id); hit._stale = false; }
+    try {
     current = hit || def.build({ THREE, tween, wait, wake: modelWake, bake: g => bake(THREE, g), panel, toast, lite: el.dataset.lite === '1', fly: (p, t) => { const m = current.group.matrixWorld; fly(new THREE.Vector3(...p).applyMatrix4(m), new THREE.Vector3(...t).applyMatrix4(m)); }, overview: () => overview(), isWalking: () => walking, playerPos: () => (walking ? toLocal() : null), refresh: () => { syncActs(); showActs(); }, refit: () => { if (current) { if (walking) overview(1); fit(current.group, current.view); wake(); } } });
     current._id = id; scan();
-    const T1 = performance.now(); if (!hit) { current.group.traverse(o => { if (o.isMesh && !o.userData.noShadow) { o.castShadow = true; o.receiveShadow = true; } }); bake(THREE, current.group); } const T2 = performance.now();
+    if (!hit) { current.group.traverse(o => { if (o.isMesh && !o.userData.noShadow) { o.castShadow = true; o.receiveShadow = true; } }); bake(THREE, current.group); }
     // every instanced batch carries per-instance colors, so they all share one shader
     if (!hit) current.group.traverse(o => { if (o.isInstancedMesh && !o.instanceColor) { const c = new THREE.Color(1, 1, 1); for (let i = 0; i < o.count; i++) o.setColorAt(i, c); } });
     const sph = new THREE.Sphere();
     if (!hit) current.group.traverse(o => { if (!o.isMesh || o.userData.noShadow) return; if (o.isInstancedMesh) { o.castShadow = false; return; } if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere(); sph.copy(o.geometry.boundingSphere); o.castShadow = sph.radius * Math.max(o.scale.x, o.scale.y, o.scale.z) > 5; });
+    } catch (err) {
+      // a model that fails to build says so and the one before it stays on screen and in charge
+      console.error('3D model ' + id + ' could not load', err);
+      current = null; if (tok !== loadTok) return;
+      const L = el.querySelector('.v3d-load'); L.textContent = 'This model could not load.'; L.hidden = false; fadeIn();
+      setTimeout(() => { if (tok === loadTok) { L.hidden = true; L.textContent = 'Loading 3D model...'; } }, 2600);
+      if (before && before.group === shown) {
+        cache.delete(before._id); current = before; curId = before._id; scan();
+        el.querySelector('.v3d-title b').textContent = MODELS[curId].name; el.querySelector('.v3d-title span').textContent = MODELS[curId].dims || '';
+        el.querySelectorAll('[data-id]').forEach(x => x.setAttribute('aria-selected', String(x.dataset.id === curId)));
+        const sel = el.querySelector('.v3d-pick select'); if (sel) sel.value = curId;
+      }
+      return;
+    }
     const built = current; built._compiling = true;
     // the model waits for its shaders at most 2.5 s; after that it shows anyway and the driver finishes on first draw
     try { await Promise.race([renderer.compileAsync(built.group, camera, scene), new Promise(r => setTimeout(r, 2500))]); } catch (err) { /* older browsers compile on first draw */ }
@@ -360,7 +423,7 @@ function viewer(el) {
     const inCache = g => [...cache.values()].some(m => m.group === g);
     if (shown && shown !== built.group) { scene.remove(shown); if (!inCache(shown)) release(shown); }
     scene.add(current.group); shown = current.group; measured = false;
-    fit(current.group, current.view);
+    fit(current.group, current.view); fadeIn();
     curId = id; el.querySelectorAll('.v3d-side details').forEach(d => { if (d.querySelector('[data-id="' + id + '"]')) d.open = true; });
     { const nb = el.querySelector('.v3d-side [data-id="' + id + '"]'), nav = nb?.closest('.v3d-side'); if (nb && nav && nb.offsetTop - nav.scrollTop > nav.clientHeight - 40) nav.scrollTop = nb.offsetTop - nav.clientHeight / 2; }
     el.querySelector('.v3d-title b').textContent = def.name;
@@ -404,7 +467,7 @@ function viewer(el) {
       node._act = a; node.classList.add('v3d-ctl');
       (a.options || a.toggle ? setGrid : btnRow).appendChild(node);
     });
-    peg.hidden = false; walkbar.hidden = true; if (rings) { scene.remove(rings); rings = null; } dropFloor(); walkB = null;
+    peg.hidden = false; walkbar.hidden = true; dropFloor(); walkB = null;
     const pr = el.querySelector('.v3d-presets'), pl = el.dataset.lite === '1' ? [] : current.presets || [];
     pr.hidden = !pl.length; pr.replaceChildren(...(pl.length ? [Object.assign(document.createElement('span'), { textContent: 'Start from' })] : []), ...pl.map(p => { const b = document.createElement('button'); b.type = 'button'; b.textContent = p.label; b.addEventListener('click', () => { exitWalk(); pr.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); p.run(); after(); }); return b; }));
     syncActs(); showActs(); setPanel(panelOpen && !el.querySelector('.v3d-cust').hidden);
@@ -417,6 +480,11 @@ function viewer(el) {
 
   function loop(now) {
     frame = 0;
+    // nothing draws while the viewer is off-screen (the guided tour and full screen excepted); scrolling back wakes it
+    if (!onScreen && !walking && !document.fullscreenElement) { lastUpd = 0; return; }
+    // the idle spin (nothing else moving, no finger on it) draws 30 frames a second at full resolution
+    const spinOnly = controls.autoRotate && !tweens.length && !walking && !pressed;
+    if (spinOnly && now - lastDraw < 32) { frame = requestAnimationFrame(loop); return; }
     let active = false; const stepped = tweens.length > 0;
     for (let i = tweens.length - 1; i >= 0; i--) {
       const tw = tweens[i]; if (tw.t0 === null) tw.t0 = now;
@@ -424,23 +492,24 @@ function viewer(el) {
       tw.obj[tw.key] = tw.from + (tw.to - tw.from) * tw.fn(k);
       if (k >= 1) { tweens.splice(i, 1); tw.done(); } else active = true;
     }
-    // slow machine: step the render resolution down instead of dropping frames
+    // slow machine: step the render resolution down instead of dropping frames (the throttled spin does not count)
     if (last && now - last > 26) { if (++slow > 24 && pr > 1) { pr = Math.max(1, pr - 0.25); renderer.setPixelRatio(pr); resize(); slow = 0; } } else slow = Math.max(0, slow - 1);
-    last = active || controls.autoRotate || lowRes ? now : 0;
     if (stepped) { current?.tick?.(); camera.updateProjectionMatrix(); }
-    let stepping = false; try { stepping = walkKeys(now); } catch (err) { console.error('walk', err.message, String(err.stack).slice(0, 300)); keys.clear(); }
-    const moving = walking ? false : controls.update(); if (walking && !flying) applyLook(); else if (walking) camera.lookAt(controls.target);
+    // the spin turns by the clock, so it is the same speed at 60, 120 or 144 Hz and when frames are skipped
+    const dt = lastUpd ? Math.min(0.1, (now - lastUpd) / 1000) : 1 / 60; lastUpd = now;
+    const moving = walking ? false : controls.update(dt); if (walking && !flying) applyLook(); else if (walking) camera.lookAt(controls.target);
     if (walking) { fill.position.copy(camera.position); fill.target.position.copy(controls.target); fill.target.updateMatrixWorld(); if (!flying) shadowAround(camera.position); }
-    const busy = active || moving || controls.autoRotate || stepping;
-    if (busy) setRes(true);
+    const busy = active || moving, motion = active || (moving && !spinOnly);
+    last = motion || lowRes ? now : 0;
+    // while something moves, render a little softer; the idle spin stays sharp
+    if (motion) setRes(true); else if (lowRes && spinOnly) setRes(false);
     // moving parts refresh shadows every few frames; a settled frame always gets a fresh shadow map
     if (sceneDirty || (active && !heavy && !LOW && ++shadowTick % 4 === 0) || (wasActive && !active)) { renderer.shadowMap.needsUpdate = true; sceneDirty = false; }
     wasActive = active;
-    const idleSpin = demoOn && !active && !stepping && !dirty && now - lastDraw < 32;
-    if ((dirty || busy) && !idleSpin) { lastDraw = now; renderer.render(scene, camera); dirty = false; if (!measured) { measured = true; heavy = renderer.info.render.calls > 90; } }
+    if (dirty || busy) { lastDraw = now; renderer.render(scene, camera); dirty = false; if (!measured) { measured = true; heavy = renderer.info.render.calls > 90; } }
     // exactly one frame is ever queued: controls.update() above fires change -> wake(), which may already have queued it
     if (busy) { if (!frame) frame = requestAnimationFrame(loop); }
-    else if (lowRes) { setRes(false); renderer.shadowMap.needsUpdate = true; renderer.render(scene, camera); }
+    else if (lowRes) { setRes(false); renderer.shadowMap.needsUpdate = true; renderer.render(scene, camera); lastDraw = now; }
   }
 
   function resize() {

@@ -1,0 +1,354 @@
+[
+ {
+  "slug": "philadelphia",
+  "name": "Philadelphia and the suburbs",
+  "short": "Philadelphia area",
+  "match": {
+   "states": [
+    "PA"
+   ],
+   "cities": [
+    "Philadelphia",
+    "Conshohocken",
+    "King of Prussia",
+    "Exton",
+    "Malvern",
+    "West Chester",
+    "Wayne",
+    "Radnor",
+    "Bryn Mawr",
+    "Villanova",
+    "Swarthmore",
+    "Media",
+    "Fort Washington",
+    "Horsham",
+    "Blue Bell",
+    "Norristown",
+    "Collegeville",
+    "Doylestown",
+    "Bryn Athyn",
+    "Kennett Square",
+    "Upper Providence",
+    "Pottstown",
+    "West Point"
+   ]
+  },
+  "title": "Storage Systems in Philadelphia & the Suburbs | O'Brien Systems",
+  "description": "High-density shelving, lockers, casework and museum storage designed and installed in Philadelphia and Montgomery, Bucks, Chester and Delaware counties since 1979.",
+  "h1": "Storage systems for Philadelphia and the suburbs",
+  "lede": "Our home market since 1979. We are based in Conshohocken and work across the city and all four suburban counties.",
+  "intro": [
+   "Most of our work over the last four decades has been within an hour of our Conshohocken office. That includes Center City law firms and city agencies, pharmaceutical campuses along Route 202 and Route 422, college libraries on the Main Line, and township and county buildings across the suburbs.",
+   "Being close means we can walk the space, measure, and come back with a layout quickly. It also means our service team is nearby after the job is done."
+  ],
+  "areas": [
+   "Philadelphia",
+   "Montgomery County: Conshohocken, King of Prussia, Norristown, Blue Bell, Fort Washington, Horsham, Collegeville, Pottstown",
+   "Chester County: Exton, Malvern, West Chester, Kennett Square",
+   "Delaware County: Media, Swarthmore, Radnor",
+   "Bucks County: Doylestown, Bryn Athyn",
+   "Main Line: Bryn Mawr, Villanova, Wayne"
+  ],
+  "clients": [
+   "Law firms and courts",
+   "City, county and township offices",
+   "Police departments and evidence rooms",
+   "Pharmaceutical and life sciences sites",
+   "Museums, libraries and archives",
+   "Colleges and schools",
+   "Corporate offices and warehouses"
+  ]
+ },
+ {
+  "slug": "pennsylvania",
+  "name": "Central, Eastern and Western Pennsylvania",
+  "short": "Rest of Pennsylvania",
+  "match": {
+   "states": [
+    "PA"
+   ],
+   "exclude": [
+    "Philadelphia",
+    "Conshohocken",
+    "King of Prussia",
+    "Exton",
+    "Malvern",
+    "West Chester",
+    "Wayne",
+    "Radnor",
+    "Bryn Mawr",
+    "Villanova",
+    "Swarthmore",
+    "Media",
+    "Fort Washington",
+    "Horsham",
+    "Blue Bell",
+    "Norristown",
+    "Collegeville",
+    "Doylestown",
+    "Bryn Athyn",
+    "Kennett Square",
+    "Upper Providence",
+    "Pottstown",
+    "West Point"
+   ]
+  },
+  "title": "Storage Systems in Harrisburg, Lancaster, Reading & Pittsburgh | O'Brien Systems",
+  "description": "High-density shelving, records storage, lockers and museum storage installed across Pennsylvania: Harrisburg, Lancaster, Reading, the Lehigh Valley, Scranton, Wilkes-Barre and Pittsburgh.",
+  "h1": "Storage systems across Pennsylvania",
+  "lede": "County courthouses, state offices, museums and law firms from Reading and Harrisburg to Wilkes-Barre and Pittsburgh.",
+  "intro": [
+   "Outside the Philadelphia area, much of our Pennsylvania work is for county governments and courts. Records rooms, prothonotary and clerk of courts offices and domestic relations offices all run out of space, and high-density storage is often the fix that avoids an addition.",
+   "We have also installed collections storage for museums and historical societies, file systems for law firms in Harrisburg and Pittsburgh, and storage at military and state facilities in Central and Northeastern Pennsylvania."
+  ],
+  "areas": [
+   "Berks County: Reading",
+   "Lancaster",
+   "Harrisburg, Carlisle and York",
+   "Chambersburg",
+   "Lehigh Valley: Allentown, Bethlehem",
+   "Northeastern Pennsylvania: Wilkes-Barre, Scranton",
+   "Danville",
+   "Pittsburgh"
+  ],
+  "clients": [
+   "County governments and courts",
+   "State agencies",
+   "Museums and historical societies",
+   "Law firms",
+   "Banks",
+   "Hospitals",
+   "Military facilities"
+  ]
+ },
+ {
+  "slug": "new-jersey",
+  "name": "New Jersey",
+  "short": "New Jersey",
+  "match": {
+   "states": [
+    "NJ"
+   ]
+  },
+  "title": "Storage Systems in New Jersey | O'Brien Systems",
+  "description": "High-density shelving, lockers, casework and records storage installed across South, Central and North Jersey for law firms, counties, pharma, schools and military sites.",
+  "h1": "Storage systems across New Jersey",
+  "lede": "From Cherry Hill and Atlantic City to Princeton, Morristown and Newark, New Jersey is our second biggest market.",
+  "intro": [
+   "South Jersey is a short drive from our Conshohocken office, and we have worked there for decades: law firms in Cherry Hill and Voorhees, county offices in Camden, Cape May and Salem counties, and casino and hospitality back-of-house space in Atlantic City.",
+   "Farther north we have installed records and file storage for law firms and county governments, high-density and lab storage at pharmaceutical and research sites around Princeton, New Brunswick and Rahway, and storage at military installations in Burlington and Morris counties."
+  ],
+  "areas": [
+   "South Jersey: Cherry Hill, Camden, Voorhees, Moorestown, Mount Laurel, Marlton, Pennsauken, Glassboro, Vineland, Salem",
+   "Jersey Shore: Atlantic City, Cape May Court House, Toms River, Red Bank, Freehold",
+   "Central Jersey: Princeton, Trenton, Lawrenceville, Ewing, Hightstown, Bordentown, New Brunswick, Edison, Bridgewater",
+   "North Jersey: Morristown, Newark, Florham Park, Short Hills, Rahway, Kenilworth"
+  ],
+  "clients": [
+   "Law firms",
+   "County offices, courts and prosecutors",
+   "Police and fire departments",
+   "Pharmaceutical and research sites",
+   "Colleges and private schools",
+   "Military installations",
+   "Banks and corporate offices"
+  ]
+ },
+ {
+  "slug": "delaware",
+  "name": "Delaware",
+  "short": "Delaware",
+  "match": {
+   "states": [
+    "DE"
+   ]
+  },
+  "title": "Storage Systems in Delaware | O'Brien Systems",
+  "description": "High-density file storage, shelving, lockers and museum storage installed in Wilmington, Newark and across Delaware for law firms, banks, hospitals and museums.",
+  "h1": "Storage systems in Delaware",
+  "lede": "Wilmington is about 40 minutes from our Conshohocken office, and we work across the state.",
+  "intro": [
+   "Delaware's law firms and banks keep a lot of paper, and high-density file storage is a large share of our work there. We have also moved and rebuilt file rooms when firms relocate, and set up mailrooms and records centers for financial companies.",
+   "Beyond offices, we have installed collections storage for museums and historic estates in the Brandywine Valley, storage for hospitals and research labs, and records storage for state offices."
+  ],
+  "areas": [
+   "Wilmington",
+   "Newark",
+   "New Castle",
+   "Middletown",
+   "Dover",
+   "Georgetown"
+  ],
+  "clients": [
+   "Law firms",
+   "Banks and financial companies",
+   "Hospitals and health systems",
+   "Museums and historic estates",
+   "Chemical and life sciences companies",
+   "State offices"
+  ]
+ },
+ {
+  "slug": "maryland",
+  "name": "Maryland",
+  "short": "Maryland",
+  "match": {
+   "states": [
+    "MD"
+   ]
+  },
+  "title": "Storage Systems in Maryland | O'Brien Systems",
+  "description": "Museum collections storage, high-density shelving and records storage installed in Baltimore, Montgomery County and across Maryland for museums, law firms, state and federal agencies and biopharma.",
+  "h1": "Storage systems in Maryland",
+  "lede": "Museums, law firms, state and federal agencies, military sites and biopharma labs from Baltimore to Montgomery County.",
+  "intro": [
+   "In Baltimore our work has centered on collections storage for museums and historical collections, file and records systems for law firms, and records storage for state agencies.",
+   "Around Washington we have installed storage for biopharma labs in Montgomery County and for federal collections facilities, and we have worked at military and federal sites around the state."
+  ],
+  "areas": [
+   "Baltimore and Hunt Valley",
+   "Montgomery County: Rockville",
+   "Prince George's County: Suitland",
+   "Harford County: Aberdeen",
+   "Anne Arundel and Howard counties: Columbia",
+   "Southern Maryland: Lexington Park",
+   "Western Maryland: Smithsburg",
+   "Cecil County: Elkton"
+  ],
+  "clients": [
+   "Museums and historical collections",
+   "Law firms",
+   "State and federal agencies",
+   "Military installations",
+   "Biopharma and research labs",
+   "Libraries"
+  ]
+ },
+ {
+  "slug": "washington-dc",
+  "name": "Washington, DC",
+  "short": "Washington, DC",
+  "match": {
+   "states": [
+    "DC"
+   ]
+  },
+  "title": "Storage Systems in Washington, DC | O'Brien Systems",
+  "description": "Museum collections storage, art storage, high-density shelving and file systems installed in Washington, DC for museums, cultural institutions, federal agencies and law firms.",
+  "h1": "Storage systems in Washington, DC",
+  "lede": "Collections storage for museums and cultural institutions, and file systems for law firms and federal offices.",
+  "intro": [
+   "Most of our Washington work is collections storage: museum cabinets, art storage and high-density systems for museums and cultural institutions. Those projects follow conservation requirements closely, and we plan them with collections staff, architects and general contractors from the start.",
+   "We have also installed file and records systems for law firm offices and federal agencies in the District."
+  ],
+  "areas": [
+   "Downtown and the National Mall",
+   "Federal offices across the District",
+   "Nearby: Suitland and Rockville, Maryland; McLean, Virginia"
+  ],
+  "clients": [
+   "Museums and cultural institutions",
+   "Federal agencies",
+   "Law firms",
+   "Libraries and archives"
+  ]
+ },
+ {
+  "slug": "virginia",
+  "name": "Virginia",
+  "short": "Virginia",
+  "match": {
+   "states": [
+    "VA"
+   ]
+  },
+  "title": "Storage Systems in Virginia | O'Brien Systems",
+  "description": "High-density shelving, file systems and storage installed in Northern Virginia, Richmond and the Shenandoah Valley for law firms, defense contractors and pharmaceutical sites.",
+  "h1": "Storage systems in Virginia",
+  "lede": "Law firms, defense contractors and pharmaceutical sites from Northern Virginia to Richmond and the Shenandoah Valley.",
+  "intro": [
+   "In Northern Virginia and Richmond we have installed file and records systems for law firm offices, and storage for a defense contractor in Prince William County.",
+   "In the Shenandoah Valley we have worked at a pharmaceutical manufacturing site. On new buildings and renovations we plan the work with the architect and general contractor from the start."
+  ],
+  "areas": [
+   "Northern Virginia: McLean, Manassas",
+   "Richmond",
+   "Shenandoah Valley: Elkton"
+  ],
+  "clients": [
+   "Law firms",
+   "Defense contractors",
+   "Pharmaceutical manufacturing"
+  ]
+ },
+ {
+  "slug": "new-york",
+  "name": "New York",
+  "short": "New York",
+  "match": {
+   "states": [
+    "NY"
+   ]
+  },
+  "title": "Storage Systems in New York | O'Brien Systems",
+  "description": "Museum collections storage, high-density shelving, file systems and back-of-house storage installed in New York City, Long Island, Westchester, the Hudson Valley and upstate New York.",
+  "h1": "Storage systems in New York",
+  "lede": "Museums, law firms, retailers, hospitals and colleges from Manhattan and Brooklyn to the Hudson Valley and the Finger Lakes.",
+  "intro": [
+   "In New York City our work has included collections storage for major museums and a film preservation center, file and records systems for law firms and financial offices, storage for an academic medical center, and back-of-house storage for retail stores.",
+   "Outside the city we have installed storage for law offices on Long Island and in Westchester, for colleges in the Hudson Valley and the Finger Lakes, and for a museum in the Southern Tier."
+  ],
+  "areas": [
+   "Manhattan and Brooklyn",
+   "Long Island: Melville",
+   "Westchester: White Plains",
+   "Hudson Valley: Newburgh, Poughkeepsie, Central Valley",
+   "Finger Lakes and Southern Tier: Ithaca, Corning"
+  ],
+  "clients": [
+   "Museums and cultural institutions",
+   "Law firms",
+   "Financial offices",
+   "Retail stores",
+   "Hospitals and medical schools",
+   "Colleges and universities"
+  ]
+ },
+ {
+  "slug": "new-england",
+  "name": "New England",
+  "short": "New England",
+  "match": {
+   "states": [
+    "CT",
+    "MA",
+    "RI",
+    "VT",
+    "NH",
+    "ME"
+   ]
+  },
+  "title": "Storage Systems in New England | O'Brien Systems",
+  "description": "Museum and historical society storage, courthouse records storage, high-density shelving and file systems installed in Connecticut, Massachusetts, Rhode Island, Vermont and Maine.",
+  "h1": "Storage systems in New England",
+  "lede": "Museums, historical societies, courts, banks and pharmaceutical companies from Greenwich to Boston and Portland.",
+  "intro": [
+   "In New England we have installed collections storage for museums and historical societies in Connecticut and Massachusetts, records storage for a courthouse in Western Massachusetts, and file systems for law offices in Boston.",
+   "We have also worked for banks in Rhode Island, Vermont and Maine, and for a pharmaceutical company in Rhode Island."
+  ],
+  "areas": [
+   "Connecticut: Greenwich",
+   "Massachusetts: Boston, Concord, Springfield",
+   "Rhode Island: Providence",
+   "Vermont: Burlington",
+   "Maine: Portland"
+  ],
+  "clients": [
+   "Museums and historical societies",
+   "Courts",
+   "Banks",
+   "Law firms",
+   "Pharmaceutical companies"
+  ]
+ }
+]

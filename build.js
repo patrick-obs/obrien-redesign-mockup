@@ -7,6 +7,9 @@ const OUT = __dirname;
 // every build gets a new asset version so browsers never mix new pages with an old cached stylesheet
 const VER = Date.now().toString(36);
 const X = require('./extras'); // Sept 2026 upgrades: specify panel, specify hub, service, SEO plumbing
+const G = require('./growth'); // Oct 2026 search pass: deeper product pages, answers page, quote form, service-area map
+const W = require('./where'); // region pages: storage-systems-<region>.html + where-we-work.html
+const GD = require('./guides'); // industry guides: guides/<slug>/index.html + guides/index.html
 // Website assistant (same one as obriensys.com). Switch to 'https://obriensys.com' once the chat is live there.
 const CHAT_API = 'https://chatbot.obriensys-web.pages.dev';
 
@@ -209,6 +212,36 @@ const BROCHURES = [
 const SB_CERT = `Commonwealth of Pennsylvania Small Business (SB) Certified`;
 const KEYSTONE = (cls) => `<svg class="${cls}" viewBox="0 0 100 100" role="img" aria-label="Pennsylvania keystone"><path d="M35 4 H65 V19 H96 L83 96 H60 V80 H40 V96 H17 L4 19 H35 Z" fill="#023c3f" stroke="#e8a33d" stroke-width="4" stroke-linejoin="round"/><text x="50" y="60" text-anchor="middle" font-size="32" font-weight="800" fill="#e8a33d">SB</text></svg>`;
 
+/* "Storage Redefined" dictionary entries (Jess's headers): bold word, italic part of speech, the old definition struck through,
+   then a teal "Redefined:" label and the new one. Headlines, eyebrows, card tops and page headers only. */
+const SRDATA = {
+  home: { w:'stor&middot;age', pos:'n.', old:'A room where things go to be forgotten.', re:'A plan for everything you keep, so you can find it when you need it.' },
+  sqft: { w:'square foot&middot;age', pos:'n.', old:'The space you have.', re:'The space you have, plus the space your aisles are hiding.' },
+  'high-density-mobile-storage': { w:'aisle', pos:'n.', old:'Wasted floor space.', re:'A gap you only open when you need it.' },
+  'lifts-carousels': { w:'re&middot;triev&middot;al', pos:'n.', old:'A ladder and a long walk.', re:'Push a button. Your item comes to you.' },
+  'lockers': { w:'lock&middot;er', pos:'n.', old:'A metal box in the hallway.', re:'Secure storage for evidence, gear, and everything in between.' },
+  'static-shelving': { w:'shelv&middot;ing', pos:'n.', old:'Whatever was here when you moved in.', re:'Sized for what you store, rated for what it weighs.' },
+  'cabinets': { w:'cab&middot;i&middot;net', pos:'n.', old:'A place to put things away.', re:'Museum-grade protection for things that cannot be replaced.' },
+  'modular-casework': { w:'case&middot;work', pos:'n.', old:'Built in, and stuck that way.', re:'Furniture that changes when your room does.' },
+  'museums': { w:'col&middot;lec&middot;tion', pos:'n.', old:'Whatever fits in the back room.', re:'Irreplaceable objects, stored to conservation standards.' },
+  'government-public-safety': { w:'chain of cus&middot;to&middot;dy', pos:'n.', old:'A paper log and a padlock.', re:'Every item tracked, secured, and accounted for, from intake to court.' },
+  'athletics': { w:'equip&middot;ment room', pos:'n.', old:'Where gear piles up between seasons.', re:'Every piece of equipment stored, sorted, and ready for game day.' },
+  'material-handling-warehouse': { w:'pick path', pos:'n.', old:'The long way around.', re:'The shortest walk between your team and the next order.' },
+  'pharmaceutical-healthcare': { w:'sup&middot;ply room', pos:'n.', old:'Wherever there was an empty closet.', re:'Clean, organized supplies, ready the moment care teams need them.' },
+  'automotive': { w:'parts room', pos:'n.', old:'Where the part should be. Somewhere.', re:'Every part exactly where your system says it is.' },
+  'libraries': { w:'stacks', pos:'n.', old:'Rows of shelving that take up the whole floor.', re:'Your full collection, with room left for readers.' },
+  'corporate-legal': { w:'file room', pos:'n.', old:'Boxes, binders, and a lot of guesswork.', re:'Every file in order and easy to find.' },
+  'education': { w:'store&middot;room', pos:'n.', old:"Wherever last year's materials ended up.", re:'Every textbook, lab kit, and instrument with a place of its own.' },
+  'military': { w:'ar&middot;mo&middot;ry', pos:'n.', old:'A locked room and a clipboard.', re:'Every weapon secured, tracked, and ready to issue.' },
+  'retail': { w:'stock&middot;room', pos:'n.', old:'The room behind the door marked Employees Only.', re:'More inventory in less space, so the sales floor can grow.' },
+  'vertical-farming': { w:'grow room', pos:'n.', old:'One aisle for every row.', re:'More growing space, with one shared aisle.' },
+  'general-contractors': { w:'sub&middot;mit&middot;tal', pos:'n.', old:'A binder that shows up late.', re:'Drawings, product data, finishes, and lead times in one complete package.' },
+  'architects-designers': { w:'spec&middot;i&middot;fi&middot;ca&middot;tion', pos:'n.', old:'A product number copied from the last project.', re:'Storage specified for how the space will actually be used.' },
+};
+const SR = (e, dark, extra) => e ? `<div class="sr${dark?' dark':''}${extra?' '+extra:''}"><span class="sr-w">${e.w}</span> <i class="sr-pos">(${e.pos})</i><span class="sr-old">${e.old}</span><span class="sr-new"><b class="sr-lab">Redefined:</b> ${e.re}</span></div>` : '';
+// process steps and the contact call: the word is the title and the existing description reads as the definition
+const SRT = (w, pos) => `${w} <i class="sr-pos">(${pos})</i>`;
+
 /* ---------------- shared CSS ---------------- */
 const CSS = `
 :root{
@@ -252,6 +285,7 @@ nav.menu>div:hover .mega,nav.menu>div:focus-within .mega{display:grid}
 .mega a.pl{padding:6px 10px;border-radius:8px;font-size:.85rem;font-weight:600;color:var(--ink);line-height:1.3}
 .mega a.pl:hover{background:var(--mist);color:var(--teal)}
 .mega.ind{grid-template-columns:repeat(3,248px);gap:6px 18px}
+.mega.proj{grid-template-columns:repeat(2,248px);gap:6px 18px}
 .mega a{display:block;padding:12px 14px;border-radius:10px}
 .mega a:hover{background:var(--mist)}
 .mega .t{font-weight:700;font-size:.9rem;color:var(--ink);line-height:1.35;display:block}
@@ -293,6 +327,22 @@ nav.menu>div:hover a.top.nav-3d,nav.menu a.top.nav-3d:focus-visible{background:v
 .page-hero::before{content:"";position:absolute;inset:0;background:var(--hero-img) center/cover no-repeat;opacity:.30}
 .page-hero .wrap{position:relative;z-index:2;padding-top:72px;padding-bottom:72px}
 .page-hero .eyebrow{color:var(--teal-soft)}
+/* Storage Redefined entries */
+.sr{max-width:60ch;margin:0 0 1.1rem;line-height:1.4}
+.sr-w{font-weight:800;font-size:1.3rem;color:var(--teal-ink)}
+.sr-pos{font-style:italic;font-weight:400;font-size:.92rem;color:var(--muted)}
+.sr-old{display:block;margin-top:3px;font-size:.92rem;color:#8a9798;text-decoration:line-through}
+.sr-new{display:block;font-size:.97rem;color:var(--ink)}
+.sr-lab{color:var(--teal);font-weight:700}
+.sr.dark .sr-w{color:#fff}.sr.dark .sr-pos{color:#d3e4e4}.sr.dark .sr-old{color:#aebfbf}.sr.dark .sr-new{color:#f1f7f7}.sr.dark .sr-lab{color:var(--teal-soft)}
+.page-hero .sr{margin:1rem 0 0}.hero .sr{margin:1.1rem 0 0;max-width:52ch}.page-hero .sr+p{margin-top:.9rem}.hero .sr+p{margin-top:.9rem}
+.sr.big{max-width:none;margin:0 0 .8rem}.sr.big .sr-w{font-size:clamp(1.7rem,3.2vw,2.4rem);line-height:1.1}.sr.big .sr-old{font-size:1rem}.sr.big .sr-new{font-size:1.05rem;max-width:60ch}
+.card .sr{margin:.55rem 0 0;font-size:.9rem}.card .sr-w{font-size:1rem}.card .sr-old{font-size:.82rem}.card .sr-new{font-size:.84rem;color:var(--muted)}
+.sr-t{font-size:inherit}.step h3 .sr-pos{font-weight:400}
+.cta .sr-cta{display:block;margin:0 auto .5rem;color:#e2f0f0;font-size:1rem}.cta .sr-cta .sr-w{color:#fff;font-size:1.2rem}.cta .sr-cta .sr-pos{color:#cfe9ea}
+.stats .grid.three{grid-template-columns:repeat(3,1fr)}
+@media (max-width:900px){.stats .grid.three{grid-template-columns:1fr 1fr}}
+@media (max-width:600px){.stats .grid.three{grid-template-columns:1fr}}
 .page-hero h1{font-size:clamp(1.9rem,4vw,3rem);max-width:20ch}
 .page-hero p{max-width:60ch;margin-top:1rem;font-size:1.05rem;color:#dcecec}
 .crumbs{position:relative;z-index:2;font-size:.8rem;color:#9fc9ca;padding-top:22px}
@@ -505,6 +555,10 @@ footer .cols{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:36px;paddi
 footer h4{color:#fff;font-size:.95rem;margin-bottom:14px}
 footer a{display:block;color:#9fbcbd;padding:3px 0}
 footer a:hover{color:var(--teal-soft)}
+footer .social{display:flex;gap:10px;margin-top:12px}
+footer .social a{display:grid;place-items:center;width:38px;height:38px;padding:0;border-radius:50%;background:rgba(255,255,255,.1);color:#fff}
+footer .social a:hover{background:var(--teal)}
+footer .social svg{width:20px;height:20px;fill:currentColor}
 footer .legal{border-top:1px solid rgba(255,255,255,.12);padding:18px 0;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
 footer .legal a{display:inline;padding:0 10px}
 .float-cta{position:fixed;right:22px;bottom:22px;z-index:60;background:var(--teal);color:#fff;border-radius:999px;padding:.9rem 1.5rem;font-weight:700;box-shadow:0 10px 26px rgba(2,60,63,.4);font-size:.9rem}
@@ -534,32 +588,32 @@ footer .legal a{display:inline;padding:0 10px}
 
 /* ---------------- site data ---------------- */
 const SOLUTIONS = [
-  { slug:'high-density-mobile-storage', name:'High-Density Mobile Storage', short:'Compact aisles, double your capacity in the same footprint', img:IMGS.hdLibrary, banner:IMGS.banMobile },
-  { slug:'lifts-carousels', name:'Lifts & Carousels (VLM)', short:'Automated vertical storage and retrieval, goods to person', img:IMGS.liftsCard, banner:IMGS.banLifts },
-  { slug:'lockers', name:'Lockers', short:'Smart, evidence, athletic and personal storage lockers', img:IMGS.lockersCard, banner:IMGS.banLockers },
-  { slug:'static-shelving', name:'Static Shelving', short:'4-post, pallet rack, cantilever and industrial shelving', img:IMGS.shelvCard, banner:IMGS.banShelving },
-  { slug:'cabinets', name:'Cabinets', short:'Lateral, rotary and museum-grade cabinet storage', img:IMGS.cabMuseum, banner:IMGS.banCabinets },
+  { slug:'high-density-mobile-storage', name:'High-Density Mobile Storage', short:'Shelving on carriages that share one moving aisle, for up to twice the storage in the same space', img:IMGS.hdLibrary, banner:IMGS.banMobile },
+  { slug:'lifts-carousels', name:'Vertical Lift Modules & Carousels', short:'Automated storage that brings the right tray or bin to your team', img:IMGS.liftsCard, banner:IMGS.banLifts },
+  { slug:'lockers', name:'Lockers', short:'Smart, evidence, athletic, and personal lockers', img:IMGS.lockersCard, banner:IMGS.banLockers },
+  { slug:'static-shelving', name:'Static Shelving', short:'4-post and case-style shelving, pallet rack, cantilever, and industrial steel shelving', img:IMGS.shelvCard, banner:IMGS.banShelving },
+  { slug:'cabinets', name:'Cabinets', short:'Lateral, rotary, and museum-grade cabinet storage', img:IMGS.cabMuseum, banner:IMGS.banCabinets },
   { slug:'modular-casework', name:'Modular Casework', short:'Reconfigurable laminate and steel casework and lab furniture', img:IMGS.cwLam, banner:IMGS.banCasework },
 ];
 
 /* specific product pages, grouped under the six families above */
 const PRODUCTS = [
-  { slug:'four-post-shelving', name:'4-Post Shelving', short:'The workhorse: open steel shelving that adjusts, grows, and can go mobile later', img:IMGS.p4post, banner:IMGS.banShelving, group:'Shelving' },
-  { slug:'wire-shelving', name:'Wire Shelving', short:'Open-wire shelving and carts for healthcare, food service, and cleanrooms', img:IMGS.wireRack, banner:IMGS.banShelving, group:'Shelving' },
-  { slug:'cantilever-shelving', name:'Cantilever & Library Shelving', short:'Post-free faces for books, media, and long or awkward loads', img:IMGS.lancaster3, banner:IMGS.banShelving, group:'Shelving' },
-  { slug:'bin-storage', name:'Bin & Parts Storage', short:'Totes, bins, and small-parts organization that keeps picking fast', img:IMGS.evidence, banner:IMGS.banShelving, group:'Shelving' },
-  { slug:'pallet-rack', name:'Pallet Rack', short:'Selective, cantilever, and specialty racking, even rack on mobile carriages', img:IMGS.mhwCard, banner:IMGS.banWarehouse, group:'Industrial & Warehouse' },
-  { slug:'mezzanines', name:'Mezzanines & Platforms', short:'Structural steel work platforms that add a floor without building one', img:IMGS.shelvCard, banner:IMGS.banWarehouse, group:'Industrial & Warehouse' },
-  { slug:'wire-partitions', name:'Wire Partitions & Cages', short:'Tool cribs, DEA cages, and secure enclosures inside your existing walls', img:IMGS.wcCage, banner:IMGS.banWarehouse, group:'Industrial & Warehouse' },
-  { slug:'evidence-lockers', name:'Evidence Lockers', short:'Pass-through chain-of-custody deposit lockers and refrigerated evidence', img:IMGS.lockerEvidence, banner:IMGS.banLockers, group:'Lockers & Security' },
-  { slug:'weapons-storage', name:'Weapons & Gun Storage', short:'Armory racks and cabinets for law enforcement and military', img:IMGS.weapons1, banner:IMGS.banLockers, group:'Lockers & Security' },
-  { slug:'athletic-storage', name:'Athletic Equipment Storage', short:'Team gear rooms on mobile carriages: helmets, pads, and sticks in half the space', img:IMGS.montelWisconsin, banner:IMGS.montelFAU, group:'Lockers & Security' },
-  { slug:'rotary-cabinets', name:'Rotary Cabinets', short:'Two cabinets in one footprint: spin the core, lock it flush at night', img:IMGS.cabRotary, banner:IMGS.banCabinets, group:'Cabinets & Filing' },
-  { slug:'fireproof-cabinets', name:'Fireproof & Safety Cabinets', short:'Fire-rated record protection and code-compliant safety storage', img:IMGS.lateralTh, banner:IMGS.banCabinets, group:'Cabinets & Filing' },
+  { slug:'four-post-shelving', name:'4-Post Shelving', short:'Versatile, adjustable steel shelving that can often be converted to high-density mobile storage later', img:IMGS.p4post, banner:IMGS.banShelving, group:'Shelving' },
+  { slug:'wire-shelving', name:'Wire Shelving', short:'Open wire shelving and carts for healthcare, food service, labs, and more', img:IMGS.wireRack, banner:IMGS.banShelving, group:'Shelving' },
+  { slug:'cantilever-shelving', name:'Library & Cantilever Shelving', short:'Cantilever library shelving for books and media, plus cantilever rack for long items like lumber and pipe', img:IMGS.lancaster3, banner:IMGS.banShelving, group:'Shelving' },
+  { slug:'bin-storage', name:'Bin & Parts Storage', short:'Bin shelving, totes, and modular drawers that keep small parts organized and easy to find', img:IMGS.evidence, banner:IMGS.banShelving, group:'Shelving' },
+  { slug:'pallet-rack', name:'Pallet Rack', short:'Selective, drive-in, push-back, cantilever, and specialty rack, designed around your forklifts, loads, and building', img:IMGS.mhwCard, banner:IMGS.banWarehouse, group:'Industrial & Warehouse' },
+  { slug:'mezzanines', name:'Mezzanines & Platforms', short:'Structural steel platforms that add a second working level inside your existing building', img:IMGS.shelvCard, banner:IMGS.banWarehouse, group:'Industrial & Warehouse' },
+  { slug:'wire-partitions', name:'Wire Partitions & Cages', short:'Tool cribs, controlled-substance cages, and secure see-through enclosures inside your building', img:IMGS.wcCage, banner:IMGS.banWarehouse, group:'Industrial & Warehouse' },
+  { slug:'evidence-lockers', name:'Evidence Lockers', short:'Pass-through evidence lockers and refrigerated compartments that support chain of custody', img:IMGS.lockerEvidence, banner:IMGS.banLockers, group:'Lockers & Security' },
+  { slug:'weapons-storage', name:'Weapons & Gun Storage', short:'Armory racks and cabinets for law enforcement and the military', img:IMGS.weapons1, banner:IMGS.banLockers, group:'Lockers & Security' },
+  { slug:'athletic-storage', name:'Athletic Equipment Storage', short:'Team gear rooms on high-density mobile storage, with helmets, pads, and sticks in up to half the space', img:IMGS.montelWisconsin, banner:IMGS.montelFAU, group:'Lockers & Security' },
+  { slug:'rotary-cabinets', name:'Rotary Cabinets', short:'Two cabinets in one footprint: turn the core to lock it flush after hours', img:IMGS.cabRotary, banner:IMGS.banCabinets, group:'Cabinets & Filing' },
+  { slug:'fire-rated-cabinets', name:'Fire-Rated & Safety Cabinets', short:'Fire-rated record protection and safety cabinets for hazardous materials', img:IMGS.lateralTh, banner:IMGS.banCabinets, group:'Cabinets & Filing' },
   { slug:'wardrobe-cabinets', name:'Wardrobe & Uniform Cabinets', short:'Garment, uniform, and gear cabinets for staff and crew spaces', img:IMGS.tennscoWardrobe, banner:IMGS.banCabinets, group:'Cabinets & Filing' },
-  { slug:'museum-cabinets', name:'Museum Cabinets', short:'Sealed, conservation-grade cabinets for collections and specimens', img:IMGS.museumCabs, banner:IMGS.banMuseum, group:'Museum & Archival' },
-  { slug:'art-screens', name:'Art Screens & Racks', short:'Mobile, pull-out, and wall-mounted screens for framed works', img:IMGS.hdmsArtScreen, banner:IMGS.banMuseum, group:'Museum & Archival' },
-  { slug:'mail-sorters', name:'Mail Sorters & Mailroom', short:'Sort modules and mail center casework matched to your daily volume', img:IMGS.hamMailroom, banner:IMGS.banCasework, group:'Casework & Mailroom' },
+  { slug:'museum-cabinets', name:'Museum Cabinets', short:'Conservation-grade cabinets with gasketed doors for collections and specimens', img:IMGS.museumCabs, banner:IMGS.banMuseum, group:'Museum & Archival' },
+  { slug:'art-screens', name:'Art Screens & Racks', short:'Pull-out, lateral, and wall-mounted art storage racks for framed works and hanging textiles', img:IMGS.hdmsArtScreen, banner:IMGS.banMuseum, group:'Museum & Archival' },
+  { slug:'mail-sorters', name:'Mail Sorters & Mailroom', short:'Sort modules and mailroom casework matched to your daily volume', img:IMGS.hamMailroom, banner:IMGS.banCasework, group:'Casework & Mailroom' },
 ];
 
 /* menu / hub grouping: category hubs first, then their product pages */
@@ -574,19 +628,24 @@ const SOL_GROUPS = [
 ];
 
 const INDUSTRIES = [
-  { slug:'museums', name:'Museums', short:'Collections, art racks and conservation', img:IMGS.musApp, banner:IMGS.banMuseum },
-  { slug:'libraries', name:'Libraries', short:'Collection shelving and study space recovery', img:IMGS.libraryCard, banner:IMGS.libHD },
-  { slug:'education', name:'Education', short:'Classrooms, athletics and supply storage', img:IMGS.eduCabs, banner:IMGS.banEducation },
-  { slug:'athletics', name:'Athletics', short:'Team rooms, equipment and gear storage', img:IMGS.summitLockers, banner:IMGS.summitLockers },
-  { slug:'government-public-safety', name:'Government & Public Safety', short:'Evidence, records and gear storage', img:IMGS.gpsCard, banner:IMGS.gpsCard },
-  { slug:'military', name:'Military', short:'Readiness gear and base operations storage', img:IMGS.weapons1, banner:IMGS.weapons2 },
-  { slug:'pharmaceutical-healthcare', name:'Healthcare & Pharmaceutical', short:'Supply, sterile core and lab storage', img:IMGS.wireRack, banner:IMGS.banPharma },
-  { slug:'corporate-legal', name:'Corporate & Legal', short:'Records, files and workplace storage', img:IMGS.corpCard, banner:IMGS.banCorporate },
+  { slug:'museums', name:'Museums', short:'Collections storage, art racks, and conservation cabinets', img:IMGS.musApp, banner:IMGS.banMuseum },
+  { slug:'libraries', name:'Libraries', short:'Library shelving and high-density mobile storage that free up space for readers', img:IMGS.libraryCard, banner:IMGS.libHD },
+  { slug:'education', name:'Education', short:'Classroom, library, athletics, and supply storage', img:IMGS.eduCabs, banner:IMGS.banEducation },
+  { slug:'athletics', name:'Athletics', short:'Team rooms, equipment rooms, and gear storage', img:IMGS.summitLockers, banner:IMGS.summitLockers },
+  { slug:'government-public-safety', name:'Government & Public Safety', short:'Evidence, records, and gear storage', img:IMGS.gpsCard, banner:IMGS.gpsCard },
+  { slug:'military', name:'Military', short:'Gear, armory, and base operations storage', img:IMGS.weapons1, banner:IMGS.weapons2 },
+  { slug:'pharmaceutical-healthcare', name:'Healthcare & Pharmaceutical', short:'Supply, sterile core, pharmacy, and lab storage', img:IMGS.wireRack, banner:IMGS.banPharma },
+  { slug:'corporate-legal', name:'Corporate & Legal', short:'Records, files, and workplace storage', img:IMGS.corpCard, banner:IMGS.banCorporate },
   { slug:'retail', name:'Retail', short:'Back-of-house and stockroom storage', img:IMGS.retailCard, banner:IMGS.banRetail },
-  { slug:'automotive', name:'Automotive', short:'Parts, tires and dealership storage', img:IMGS.autoCard, banner:IMGS.banAuto },
-  { slug:'material-handling-warehouse', name:'Material Handling & Warehouse', short:'Racking, AS/RS and mezzanines', img:IMGS.mhwCard, banner:IMGS.banWarehouse },
+  { slug:'automotive', name:'Automotive', short:'Parts, tire, and dealership storage', img:IMGS.autoCard, banner:IMGS.banAuto },
+  { slug:'material-handling-warehouse', name:'Material Handling & Warehouse', short:'Pallet rack, mezzanines, and automated storage', img:IMGS.mhwCard, banner:IMGS.banWarehouse },
   { slug:'vertical-farming', name:'Vertical Farming', short:'Mobile grow systems and grow racks', img:IMGS.vfCard, banner:IMGS.banVF },
-  { slug:'general-contractors', name:'GCs, Architects & Owners', short:'Division 10 storage scope, submittals through punch list', img:IMGS.installer, banner:IMGS.gcProject },
+];
+
+/* GCs and architects get their own section, outside Industries (Jess, #278-279) */
+const TEAM = [
+  { slug:'general-contractors', name:'General Contractors', short:'Division 10 storage scope, submittals through punch list', img:IMGS.installer, banner:IMGS.gcProject },
+  { slug:'architects-designers', name:'Architects & Designers', short:'Storage planning, spec language, CAD and Revit support', img:IMGS.gcNewSpace, banner:IMGS.gcProject },
 ];
 
 /* ---------------- partials ---------------- */
@@ -625,10 +684,16 @@ const HEADER = `
         </div>
       </div>
       <div><a class="top" href="services.html">Services</a></div>
-      <div><a class="top" href="design-specify.html">Specify</a></div>
+      <div>
+        <a class="top" href="general-contractors.html">GCs &amp; Architects &#9662;</a>
+        <div class="mega proj">
+          ${TEAM.map(i=>`<a href="${i.slug}.html"><span class="t">${i.name}</span><span class="d">${i.short}</span></a>`).join('\n          ')}
+        </div>
+      </div>
       <div><a class="top" href="resources.html">Resources</a></div>
       <div><a class="top" href="blog.html">Blog</a></div>
       <div><a class="top" href="about.html">About</a></div>
+      <div><a class="top" href="where-we-work.html">Where We Work</a></div>
       <div><a class="top nav-3d" href="showroom.html">3D Showroom <span class="new">New</span></a></div>
     </nav>
     <div class="head-cta">
@@ -644,11 +709,13 @@ const HEADER = `
       ${SOLUTIONS.map(s=>`<a class="sub" href="${s.slug}.html">${s.name}</a>`).join('\n      ')}
       <a href="industries.html">Industries</a>
       <a href="services.html">Services</a>
-      <a href="design-specify.html">Design &amp; Specify</a>
+      <a href="general-contractors.html">General Contractors</a>
+      <a href="architects-designers.html">Architects &amp; Designers</a>
       <a href="service.html">Request Service</a>
       <a href="resources.html">Resources</a>
       <a href="blog.html">Blog</a>
       <a href="about.html">About</a>
+      <a href="where-we-work.html">Where We Work</a>
       <div class="mnav-cta"><a class="btn btn-solid" href="contact.html">Free Assessment</a><a class="head-phone" href="tel:6108253405">610.825.3405</a></div>
     </div>
   </nav>
@@ -657,7 +724,7 @@ const HEADER = `
 const CTA = `
 <div class="cta" id="contact">
   <div class="wrap">
-    <span class="eyebrow" style="color:var(--teal-soft)">Get In Touch</span>
+    <span class="sr-cta"><span class="sr-w">as&middot;sess&middot;ment</span> <i class="sr-pos">(n.)</i> Free, on site, no obligation.</span>
     <h2>See how much space you're sitting on</h2>
     <p>Schedule a free on-site assessment. We'll measure, plan, and show you the options. No obligation, no generic quotes.</p>
     <a class="btn btn-white" href="contact.html">Schedule My Free Assessment</a>
@@ -673,9 +740,15 @@ const FOOTER = `
     <div class="cols">
       <div>
         <h4>O'Brien Systems</h4>
-        <p>Custom storage solutions since 1979: headquartered in Conshohocken, PA, serving the greater Philadelphia region and traveling with our customers when their projects do.</p>
+        <p>Custom storage solutions, headquartered in Conshohocken, PA. Installing across Pennsylvania, New Jersey, Delaware, Maryland, Washington DC, New York, and New England since 1979, and serving customers all across the country.</p>
         <p style="margin-top:10px;font-size:.8rem">PA Small Business (SB) Certified</p>
-        <p style="margin-top:12px"><a href="tel:6108253405">610.825.3405</a><a href="mailto:sales@obriensys.com">sales@obriensys.com</a><a href="https://www.facebook.com/OBrienSystems/">Facebook</a></p>
+        <h4 style="margin-top:18px">Where We Work</h4>
+        ${W.footerLinks()}<a href="where-we-work.html">All regions &rarr;</a>
+        <p style="margin-top:12px"><a href="tel:6108253405">610.825.3405</a><a href="mailto:sales@obriensys.com">sales@obriensys.com</a></p>
+        <div class="social">
+          <a href="https://www.facebook.com/OBrienSystems/" target="_blank" rel="noopener" aria-label="O'Brien Systems on Facebook"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12a10 10 0 1 0-11.56 9.88v-6.99H7.9V12h2.54V9.8c0-2.5 1.49-3.89 3.78-3.89 1.09 0 2.24.2 2.24.2v2.47h-1.26c-1.24 0-1.63.77-1.63 1.56V12h2.78l-.44 2.89h-2.34v6.99A10 10 0 0 0 22 12z"/></svg></a>
+          <a href="https://www.linkedin.com/company/o-brien-systems" target="_blank" rel="noopener" aria-label="O'Brien Systems on LinkedIn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.45 20.45h-3.56v-5.57c0-1.33-.03-3.04-1.85-3.04-1.86 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.12 2.06 2.06 0 0 1 0 4.12zM7.12 20.45H3.56V9h3.56v11.45z"/></svg></a>
+        </div>
       </div>
       <div>
         <h4>Solutions</h4>
@@ -684,15 +757,17 @@ const FOOTER = `
       <div>
         <h4>Industries</h4>
         ${INDUSTRIES.map(i=>`<a href="${i.slug}.html">${i.name}</a>`).join('')}
+        <h4 style="margin-top:18px">For GCs &amp; Architects</h4>
+        ${TEAM.map(i=>`<a href="${i.slug}.html">${i.name}</a>`).join('')}
       </div>
       <div>
         <h4>Company</h4>
-        <a href="about.html">About Us</a><a href="services.html">Services</a><a href="showroom.html">3D Showroom</a><a href="design-specify.html">Design &amp; Specify</a><a href="service.html">Request Service</a><a href="resources.html">Resources &amp; Brochures</a><a href="blog.html">Blog</a><a href="contact.html">Contact</a>
+        <a href="about.html">About Us</a><a href="where-we-work.html">Where We Work</a><a href="services.html">Services</a><a href="showroom.html">3D Showroom</a><a href="service.html">Request Service</a><a href="resources.html">Resources &amp; Brochures</a><a href="guides/">Industry Guides</a><a href="blog.html">Blog</a><a href="contact.html">Contact</a>
       </div>
     </div>
     <div class="legal">
       <span>&copy; 2026 O'Brien Systems.</span>
-      <span><a href="#">Privacy Policy</a> | <a href="#">Accessibility Statement</a> | <a href="sitemap.xml">Sitemap</a></span>
+      <span><a href="#">Privacy Policy</a> | <a href="#">Accessibility Statement</a> | <a href="sitemap.xml">Sitemap</a> | <a href="storage-questions.html">Storage questions</a></span>
     </div>
   </div>
 </footer>
@@ -732,6 +807,7 @@ function subpage(p) {
   <div class="wrap">
     <span class="eyebrow">${p.eyebrow}</span>
     <h1>${p.h1}</h1>
+    ${SR(SRDATA[p.slug], true)}
     <p>${p.lead}</p>
   </div>
 </div>
@@ -758,17 +834,17 @@ function subpage(p) {
 /* ---------------- page content ---------------- */
 const relInd = (...slugs) => INDUSTRIES.filter(i=>slugs.includes(i.slug));
 const relSol = (...slugs) => SOLUTIONS.filter(s=>slugs.includes(s.slug));
-const relAny = (...slugs) => [...SOLUTIONS, ...PRODUCTS, ...INDUSTRIES].filter(x=>slugs.includes(x.slug));
+const relAny = (...slugs) => [...SOLUTIONS, ...PRODUCTS, ...INDUSTRIES, ...TEAM].filter(x=>slugs.includes(x.slug));
 
 const SOLUTION_PAGES = {
   'high-density-mobile-storage': {
     eyebrow:'Solutions', h1:'High-Density Mobile Storage',
-    lead:'Shelving on rails compacts together and opens an aisle only where you need one. The same floor holds up to twice the storage, or the same storage in half the space.',
+    lead:'High-density mobile storage puts your shelving on carriages that glide along floor rails. Rows close together and open an aisle only where you need it, so the same floor holds up to twice the storage, or the same storage fits in half the space.',
     sideImg: IMGS.hdArchive,
     paras:[
-      `Fixed shelving wastes floor. Every row needs its own aisle, so in most storage rooms more than half the square footage is air. High-density mobile systems mount your shelving on carriages and rails, letting rows compact together and share a single moving aisle.`,
-      `We plan, supply, and install mechanical-assist, powered electrical, and manual systems from several leading manufacturers. Drive choice depends on load, duty cycle, and who uses the space. Powered systems add safety sweeps and access control where the application calls for it.`,
-      `Almost any 4-post shelving can ride on carriages, which means you can often reuse shelving you already own. We review rail layout and levelness during a free site assessment, provide complete equipment loading data for your structural engineer, and our own factory-trained crews handle the installation.`,
+      `With fixed shelving, every row needs its own aisle. High-density mobile storage (also called compact shelving or mobile shelving) mounts your shelving on carriages that ride on floor rails, so rows close together and share a single moving aisle.`,
+      `We design, supply, and install mechanical-assist, powered, and manual systems from several leading manufacturers. The right drive depends on load, how often the space is used, and who uses it. Where the application calls for them, powered systems add safety sweeps and access control.`,
+      `Many 4-post shelving systems can be mounted on carriages, so you can often reuse the shelving you already own. During a free site assessment, we review rail layout and floor levelness. We also provide complete equipment loading data for your structural engineer, and our own factory-trained crews handle installation throughout the Philadelphia region and beyond.`,
     ],
     features:[
       ['Mechanical-assist', 'Ergonomic handle drive for daily-access rooms of any size'],
@@ -778,7 +854,7 @@ const SOLUTION_PAGES = {
     ],
     gallery:[IMGS.hdNemoursAisle, IMGS.hdNemoursWide, IMGS.hdGearRoom],
     faqs:[
-      ['Can my existing shelving be converted to mobile?', 'Often, yes. Many 4-post shelving systems can be mounted on new carriages, which lets you buy shelving now and compact it when space runs out. Compatibility depends on the shelving line and condition, which we confirm during an assessment.'],
+      ['Can my existing shelving be converted to mobile?', 'Often, yes. Many 4-post shelving systems can be mounted on new carriages, which lets you buy shelving now and convert it to high-density mobile storage when space runs out. Compatibility depends on the shelving line and condition, which we confirm during an assessment.'],
       ['Will my floor support a mobile system?', 'Mobile systems concentrate weight, so floor capacity matters. We provide complete equipment loading data and assist your facilities team and structural engineer in evaluating it. The structural determination always rests with your engineer of record.'],
       ['Mechanical-assist or powered: which do I need?', 'Mechanical-assist handles most rooms with an ergonomic handle drive and no wiring. Powered systems make sense for very long or heavy carriages, high-frequency access, and rooms that need programmed safety and access control.'],
     ],
@@ -790,34 +866,35 @@ const SOLUTION_PAGES = {
     lead:'Automated storage and retrieval that brings the part to the picker. Recover floor space, speed up picking, and control access to every tray.',
     sideImg: IMGS.modula1,
     paras:[
-      `A vertical lift module stores trays in a sealed tower and delivers them to an ergonomic access opening on demand. Instead of walking aisles and climbing ladders, your team keys a part number and the system brings the tray to them.`,
-      `As an authorized dealer we handle the full project: throughput analysis, tray layout, controls and software integration, delivery, and commissioning. The lines we install cover standard lifts, slim units for tight footprints, and pallet handling.`,
-      `VLMs shine where parts inventories outgrow their rooms: maintenance cribs, electronics, pharmacy and lab storage, and any operation where picking time and floor space both cost real money.`,
+      `A vertical lift module (VLM) stores trays inside an enclosed tower and delivers them to an ergonomic access opening on demand. Instead of walking aisles and climbing ladders, your team enters a part number, and the system brings the right tray to them.`,
+      `A horizontal carousel rotates bins around an oval track and brings the right bin to the operator at a comfortable working height. Horizontal carousels suit high-volume order picking and rooms with lower ceilings, while VLMs make the most of tall ceilings and mixed item sizes.`,
+      `We handle the full project throughout the Philadelphia region and beyond: throughput analysis, tray layout, controls and software integration, delivery, installation, and commissioning. We offer standard lifts, slim units for tight footprints, and models that handle pallets.`,
+      `VLMs and horizontal carousels are a strong fit wherever parts inventory has outgrown its space, including maintenance cribs, electronics, pharmacy, and lab storage, and any operation where picking time and floor space both matter.`,
     ],
     features:[
       ['Goods to person', 'Trays delivered to an ergonomic opening, no ladders or aisle walking'],
-      ['Small footprint', 'A tower uses the ceiling height your shelving ignores'],
+      ['Small footprint', 'A tower reaches heights standard shelving can\'t, turning unused ceiling space into storage'],
       ['Inventory control', 'Software tracks every tray, item, and operator'],
       ['Full-service install', 'Site prep, power, commissioning, and operator training'],
     ],
     gallery:[IMGS.lifts2, IMGS.liftSide, IMGS.modulaLift],
-    chipsTitle:'Where VLMs pay off fastest',
+    chipsTitle:'Where VLMs and carousels deliver the most value',
     related: relInd('material-handling-warehouse','automotive','pharmaceutical-healthcare','retail'),
   },
   'lockers': {
     eyebrow:'Solutions', h1:'Lockers',
-    lead:'Smart lockers for hybrid workplaces, evidence lockers with chain-of-custody, athletic gear storage, and personal lockers built for daily abuse.',
+    lead:'Lockers for every use, from smart lockers for hybrid workplaces and pass-through evidence lockers to athletic lockers and personal lockers built to stand up to daily use.',
     sideImg: IMGS.agile1,
     paras:[
-      `Lockers are no longer just a bank of steel doors. Smart locker systems assign, release, and audit compartments electronically, which is how modern workplaces handle day-use storage, parcel delivery, and shared equipment.`,
-      `Evidence lockers enforce chain-of-custody with pass-through designs: an officer deposits on one side, only the evidence custodian opens the other. Athletic lockers ventilate gear and survive team rooms. Personal and gear lockers cover everything from staff rooms to ready rooms.`,
-      `We carry several locker lines, so the recommendation fits the use case rather than a single catalog. Layout, power and network rough-in coordination, and installation are all handled by our crews.`,
+      `Today's lockers are more than a row of steel doors. Smart locker systems assign, unlock, and track compartments electronically, making it easy to manage day-use storage, package delivery, and shared equipment.`,
+      `Pass-through evidence lockers support chain-of-custody procedures: an officer deposits evidence on one side, and only the evidence custodian can open the other. Ventilated athletic lockers let gear air out and stand up to the team room. Personal and gear lockers work everywhere from staff rooms to ready rooms.`,
+      `Working with several manufacturers, we recommend the lockers that fit how you'll use them, not a single catalog. We handle the layout, coordinate power and network connections, and our own crews install lockers throughout the Philadelphia region and beyond.`,
     ],
     features:[
-      ['Smart lockers', 'Electronic assignment, audit trails, and parcel workflows'],
-      ['Evidence lockers', 'Pass-through chain-of-custody deposit and retrieval'],
-      ['Athletic lockers', 'Ventilated gear storage that survives the team room'],
-      ['Personal and gear', 'Staff rooms, ready rooms, and industrial changing areas'],
+      ['Smart lockers', 'Electronic assignment, audit trails, and package delivery'],
+      ['Evidence lockers', 'Pass-through design for chain-of-custody deposit and retrieval'],
+      ['Athletic lockers', 'Ventilated gear storage built for the team room'],
+      ['Personal and gear lockers', 'Staff rooms, ready rooms, and industrial locker rooms'],
     ],
     gallery:[IMGS.lockerEvidence, IMGS.agile2, IMGS.parcelLockers],
     chipsTitle:'Dig deeper into locker systems',
@@ -825,25 +902,25 @@ const SOLUTION_PAGES = {
   },
   'static-shelving': {
     eyebrow:'Solutions', h1:'Static Shelving',
-    lead:'4-post and case-style shelving, pallet rack, cantilever, and industrial metal shelving. The simplest, most economical way to organize a storage area.',
+    lead:'Static shelving keeps storage simple and affordable, with 4-post and case-style shelving, pallet rack, cantilever library shelving and rack, and industrial steel shelving to organize any space.',
     sideImg: IMGS.boxedge,
     paras:[
-      `Static shelving is fixed-position shelving used to organize everything from files and archives to palletized and oversized loads. It stands on the floor without rails or carriages, which makes it the fastest storage win in most facilities.`,
-      `4-post and case-style shelving is completely customizable with dividers, drawers, and doors for files, records, and general storage. Pallet rack handles exceptionally large and heavy loads. Cantilever suits libraries, education, and corporate settings. Industrial metal shelving holds up to 600 pounds per shelf for parts and supplies.`,
-      `Most projects combine more than one type, and many 4-post systems can move onto mobile carriages later when space runs out. We plan for that upgrade path from the start.`,
+      `Static shelving stays in one place and organizes everything from files and archives to pallets and oversized items. It sits right on the floor with no rails or carriages, so it's one of the quickest and easiest storage upgrades for most facilities.`,
+      `4-post and case-style shelving can be customized with dividers, drawers, and doors for files, records, and general storage. Pallet rack handles bulky, heavy loads. Cantilever library shelving is a popular choice for libraries, schools, and offices, while cantilever rack stores long items like lumber, pipe, and tubing. Industrial steel shelving is built for heavy-duty parts and supplies.`,
+      `Most projects combine more than one type. Many 4-post systems can also be mounted on carriages later and converted to high-density mobile storage when you need more space, so we design with that upgrade in mind from the start.`,
     ],
     features:[
       ['4-post and case-style', 'Customizable with dividers, drawers, and doors'],
       ['Pallet rack', 'Engineered for large and heavy palletized loads'],
-      ['Cantilever', 'Library, education, and corporate collections'],
-      ['Industrial shelving', 'Solid metal shelves rated up to 600 lbs each'],
+      ['Cantilever shelving & rack', 'Library shelving for books and collections, plus rack for long items like lumber and pipe'],
+      ['Industrial shelving', 'A variety of heavy-duty shelves for bulky parts, equipment, and supplies'],
     ],
     gallery:[IMGS.palletRack, IMGS.palletRack2, IMGS.maximize],
     faqs:[
       ["What types of static shelving does O'Brien Systems offer?", 'We offer 4-post and case-style shelving for files, records, and general storage; pallet rack for exceptionally large and heavy palletized loads; cantilever shelving suited to education and corporate settings; and industrial metal shelving for parts and supplies. Most projects combine more than one type, and the right mix is determined during a free site assessment.'],
       ['How much weight can static shelving hold?', 'Capacity depends on the shelving type, shelf size, and configuration. Industrial metal shelving on this line holds up to 600 pounds per shelf, while pallet rack is engineered for much heavier palletized loads. We size shelf gauge, spans, and uprights to what you actually store and confirm loads during the site assessment.'],
       ['Can static shelving be reconfigured or moved later?', 'Yes. 4-post and case-style systems are designed to be disassembled and reassembled, so shelving can move with a department or be reconfigured as needs change. We perform teardown, relocation, and reinstallation as a service, including for shelving we did not originally supply.'],
-      ['Can static shelving be converted to high-density mobile storage later?', 'Often, yes. Many 4-post shelving systems can be mounted on mobile carriages down the road, which lets you buy shelving now and compact it when space runs out. Planning for that upgrade path at initial purchase keeps the option open.'],
+      ['Can static shelving be converted to high-density mobile storage later?', 'Often, yes. Many 4-post shelving systems can be mounted on mobile carriages down the road, which lets you buy shelving now and convert it to high-density mobile storage when space runs out. Planning for that upgrade path at initial purchase keeps the option open.'],
       ['What determines the cost of a shelving project?', 'The main factors are shelving type and gauge, the number of sections, height and shelf count, accessories such as dividers and doors, and installation conditions. Because static shelving is modular, projects can be phased, starting with the highest-need areas and adding sections later.'],
     ],
     chipsTitle:'Dig deeper into shelving and racking',
@@ -851,40 +928,40 @@ const SOLUTION_PAGES = {
   },
   'cabinets': {
     eyebrow:'Solutions', h1:'Cabinets',
-    lead:'Lateral and rotary file cabinets through museum-grade conservation cabinets. Secure, organized storage for the things that matter most.',
+    lead:'From lateral and rotary file cabinets to museum-grade conservation cabinets, we offer secure, organized storage for the things that matter most.',
     sideImg: IMGS.museumCabs,
     paras:[
-      `Cabinet storage covers a wide spectrum. On one end, lateral and rotary file cabinets organize active records in offices and file rooms. On the other, museum-grade cabinets protect textiles, specimens, and works on paper with sealed gaskets and conservation-safe finishes.`,
-      `Flat file cabinets store maps, drawings, and oversized documents. Drawer and door cabinets organize parts and supplies in industrial settings. Visual storage cabinets put collections behind glass without giving up protection.`,
-      `Cabinets also combine naturally with our other systems: cabinets ride on high-density carriages, sit under mezzanines, and mix with shelving in the same room plan.`,
+      `Cabinet storage covers a wide range of needs. Lateral and rotary file cabinets organize active records in offices and file rooms, while museum storage cabinets protect textiles, specimens, and works on paper with gasketed doors and collection-safe finishes.`,
+      `Flat file cabinets store maps, drawings, and oversized documents. Drawer and door cabinets organize parts and supplies in industrial settings. Visual storage cabinets display collections behind glass while keeping them protected.`,
+      `Cabinets also work well with our other systems. They can be mounted on carriages as part of high-density mobile storage, fit under mezzanines, or be combined with shelving in the same room. Working with several manufacturers, we design cabinet storage for every setting, and our own crews install it throughout the Philadelphia region and beyond.`,
     ],
     features:[
-      ['Museum-grade', 'Sealed, conservation-safe cabinets for collections'],
-      ['Lateral and rotary files', 'Active records storage for office environments'],
-      ['Flat files', 'Maps, drawings, and oversized document storage'],
+      ['Museum-grade', 'Collection-safe cabinets with gasketed doors'],
+      ['Lateral and rotary files', 'Active records storage for offices'],
+      ['Flat files', 'Storage for maps, drawings, and oversized documents'],
       ['Industrial cabinets', 'Drawer and door cabinets for parts and supplies'],
     ],
     gallery:[IMGS.flatFiles, IMGS.corpCabs, IMGS.cabMedia],
     chipsTitle:'Dig deeper into cabinet storage',
-    related: relAny('rotary-cabinets','fireproof-cabinets','wardrobe-cabinets','museum-cabinets','art-screens','corporate-legal','museums'),
+    related: relAny('rotary-cabinets','fire-rated-cabinets','wardrobe-cabinets','museum-cabinets','art-screens','corporate-legal','museums'),
   },
   'modular-casework': {
     eyebrow:'Solutions', h1:'Modular Casework',
-    lead:'Laminate and steel casework and lab furniture that installs fast, moves with your departments, and gets reconfigured instead of demolished.',
+    lead:'Laminate and steel casework and lab furniture that can be moved and reconfigured as your needs change, instead of torn out and rebuilt.',
     sideImg: IMGS.cw3,
     paras:[
-      `Traditional millwork is built in place and dies in place. Modular casework is factory-built, installs in days instead of weeks, and unbolts to move or reconfigure when the room's mission changes.`,
-      `Laminate casework fits offices, classrooms, mailrooms, and breakrooms. Steel casework stands up to labs, clinics, and industrial spaces. Lab furniture adds chemical-resistant surfaces and service chases where the work demands them.`,
-      `Because it's furniture rather than construction, modular casework can often be depreciated faster than millwork, and it doesn't require tearing up the room to change later. We handle design, specification, delivery, and installation.`,
+      `Traditional millwork is built on site and stays where it's built. Modular casework is made in a factory, installs with less disruption, and can be unbolted to move or reconfigure when the way you use a room changes.`,
+      `Laminate casework fits offices, classrooms, mailrooms, and breakrooms. Steel casework stands up to labs, clinics, and industrial spaces. Lab furniture adds chemical-resistant work surfaces and service chases for utilities where the work requires them.`,
+      `Because it can be reconfigured, modular casework adapts as your space changes without tearing up the room. Working with several manufacturers, we handle design, specification, and delivery, and our own crews install modular casework throughout the Philadelphia region and beyond.`,
     ],
     features:[
       ['Laminate casework', 'Offices, classrooms, mailrooms, and workrooms'],
-      ['Steel casework', 'Labs, clinics, and hard-use environments'],
-      ['Lab furniture', 'Chemical-resistant tops and service-ready benches'],
-      ['Reconfigurable', 'Unbolts and moves instead of getting demolished'],
+      ['Steel casework', 'Labs, clinics, and heavy-use environments'],
+      ['Lab furniture', 'Chemical-resistant tops and benches ready for utilities'],
+      ['Reconfigurable', 'Unbolts and moves instead of being torn out'],
     ],
     gallery:[IMGS.cw2, IMGS.cw1, IMGS.nemours5],
-    chipsTitle:'Casework-driven applications',
+    chipsTitle:'Related systems',
     related: relAny('mail-sorters','pharmaceutical-healthcare','education','corporate-legal','government-public-safety'),
   },
 };
@@ -892,21 +969,21 @@ const SOLUTION_PAGES = {
 const PRODUCT_PAGES = {
   'four-post-shelving': {
     eyebrow:'Solutions / Shelving', h1:'4-Post Shelving',
-    lead:'The most versatile shelving made: four posts, adjustable steel shelves, and a catalog of dividers, drawers, doors, and bins that adapts it to almost anything you store.',
+    lead:'The most versatile shelving made: four posts, adjustable steel shelves, and a catalog of dividers, drawers, doors, and bins that adapts to almost anything you store.',
     sideImg: IMGS.boxedge,
     paras:[
-      `4-post shelving is the backbone of most storage rooms we build. Shelves adjust on 1-inch centers, accessories turn open shelving into bin fronts, file storage, garment rods, or secured cabinets, and the same uprights carry everything from archive boxes to parts totes.`,
-      `We carry several 4-post lines, in widths, depths, and gauges matched to the load instead of a one-size catalog. Open, closed, and slotted styles cover office, industrial, and records applications.`,
-      `The quiet advantage: quality 4-post shelving can be mounted on mobile carriages later. Buy shelving that fits today, and when the room fills up, compact it instead of replacing it.`,
+      `4-post shelving is the backbone of most storage rooms we design. Shelves adjust in small increments, and accessories let you add bin fronts, file storage, garment rods, or lockable doors. The same uprights can hold everything from archive boxes to parts totes.`,
+      `Working with several manufacturers, we offer 4-post shelving in a range of widths, depths, and steel gauges, matched to what you're storing. Open, closed, and slotted styles cover office, industrial, and records storage.`,
+      `The hidden advantage: many 4-post systems can be mounted on mobile carriages later. Buy the shelving that fits today, and when the room fills up, convert it to a mobile system instead of replacing it.`,
     ],
     features:[
-      ['Adjustable everything', 'Shelves on 1-inch centers, plus dividers, bins, drawers, and doors'],
-      ['Matched to the load', 'Widths, depths, and steel gauges specified per shelf load'],
-      ['Mobile-ready', 'Can be mounted on carriages later for double the capacity'],
-      ['Multiple lines carried', 'The right manufacturer specified per project'],
+      ['Adjustable everything', 'Shelves that adjust in small increments, plus dividers, bins, drawers, and doors'],
+      ['Matched to the load', 'Widths, depths, and steel gauges chosen for what you\'re storing'],
+      ['Mobile-ready', 'Many systems can be mounted on carriages later for up to twice the capacity'],
+      ['Several manufacturers', 'The right shelving chosen for each project'],
     ],
     gallery:[IMGS.p4post, IMGS.boxedge2, IMGS.openShelv],
-    chipsTitle:'Related storage systems',
+    chipsTitle:'Related systems',
     related: relAny('high-density-mobile-storage','static-shelving','bin-storage','wire-shelving'),
   },
   'wire-shelving': {
@@ -914,27 +991,27 @@ const PRODUCT_PAGES = {
     lead:'Open-wire shelving lets air circulate, light pass through, and dust fall instead of collect. It is the standard for healthcare, food service, and cleanroom storage for a reason.',
     sideImg: IMGS.wireBlack,
     paras:[
-      `Wire shelving earns its place anywhere hygiene, visibility, or airflow matter: pharmacies, sterile processing, kitchens, labs, and IT rooms. Open construction meets sanitation codes that solid shelving cannot, and contents stay visible from every angle.`,
-      `As an authorized wire shelving dealer we spec the full range: chrome, epoxy-coated for wet or corrosive environments, antimicrobial finishes for clinical spaces, and polymer shelving that goes through the cart wash. Casters turn any unit into a transport cart.`,
-      `Wire also rides on track: high-density wire shelving puts sterile supply or pharmacy storage on mobile carriages, keeping the airflow benefits while cutting the footprint.`,
+      `Wire shelving is a smart choice anywhere hygiene, visibility, or airflow matters, including pharmacies, sterile processing, kitchens, labs, and IT rooms. The open design helps facilities meet sanitation requirements and keeps contents visible from every angle.`,
+      `We offer a full range of wire shelving: chrome, epoxy-coated for wet or corrosive environments, antimicrobial finishes for clinical spaces, and polymer shelving that can go through a cart washer. Add casters, and any unit becomes a transport cart.`,
+      `Wire shelving can also become high-density mobile storage when it's mounted on carriages that glide along floor rails. It's a great way to store sterile supplies or pharmacy inventory in less floor space while keeping the airflow benefits.`,
     ],
     features:[
       ['Code-friendly', 'Open wire meets health-department and sterile-storage requirements'],
       ['Finish per environment', 'Chrome, epoxy, antimicrobial, and washable polymer'],
-      ['Mobile options', 'Casters for carts, or carriages for high-density wire'],
+      ['Mobile options', 'Casters for carts, or carriages to make it higher-density'],
       ['Quick-adjust', 'Shelves reposition without tools as needs change'],
     ],
     chipsTitle:'Where wire shelving works hardest',
     related: relAny('pharmaceutical-healthcare','material-handling-warehouse','bin-storage','four-post-shelving'),
   },
   'cantilever-shelving': {
-    eyebrow:'Solutions / Shelving', h1:'Cantilever & Library Shelving',
+    eyebrow:'Solutions / Shelving', h1:'Library & Cantilever Shelving',
     lead:'Shelves that hang from a central column instead of sitting between posts, leaving the whole face open. The standard for libraries, and the answer for long or awkward loads.',
     sideImg: IMGS.libShelves,
     paras:[
-      `Library cantilever shelving presents books with nothing in the way: no front posts, easy re-shelving, and end panels and canopy tops that make storage furniture-grade. We install cantilever lines from our manufacturer partners in public, academic, and special libraries across the region.`,
-      `The same principle scales up. Industrial cantilever rack stores pipe, lumber, trim, and anything else too long for pallet rack, on arms that adjust to the load.`,
-      `Both versions can compact: cantilever shelving rides on mobile carriages, which is how a library adds a children's wing without adding a single square foot of stacks.`,
+      `Cantilever library shelving keeps books front and center, with no front posts in the way. Re-shelving is easy, and finished end panels and canopy tops give the stacks a furniture-quality look. Working with several manufacturers, we install library shelving in public, academic, and special libraries across the Philadelphia region.`,
+      `The same idea works on a bigger scale. Cantilever rack stores pipe, lumber, trim, and anything else too long for pallet rack, on arms that adjust to fit the load.`,
+      `Both cantilever library shelving and cantilever rack can also become high-density mobile storage when mounted on carriages that glide along floor rails. Libraries use it to free up floor space for a new children's area, study space, or programs without building an addition, and warehouses use it to fit more long-item storage into less space.`,
     ],
     features:[
       ['Open-face access', 'No front posts between the user and the collection'],
@@ -948,18 +1025,18 @@ const PRODUCT_PAGES = {
   },
   'bin-storage': {
     eyebrow:'Solutions / Shelving', h1:'Bin & Parts Storage',
-    lead:'Small parts lose more labor than big ones. Bin shelving, totes, and modular drawers keep thousands of SKUs findable in seconds instead of minutes.',
+    lead:'Small parts, found fast: bin shelving, totes, and modular drawers that keep thousands of SKUs organized and easy to grab.',
     sideImg: IMGS.quikLok,
     paras:[
-      `Bin storage is organization at the SKU level: shelving with bin fronts, hanging totes, modular drawer cabinets with dividers, and carton-flow lanes for fast movers. The right mix depends on part size, pick frequency, and who is doing the picking.`,
-      `We plan bin systems for parts rooms, evidence storage, pharmacies, and maintenance cribs, using bin shelving, modular drawer inserts, and industry-standard totes that match your existing containers.`,
-      `Density multiplies when bins go vertical or mobile: drawer cabinets hold three times what open shelves do in the same footprint, and bin shelving on carriages or in a vertical lift module cuts the walk time on top of the space.`,
+      `Bin storage keeps every part in its place. Options include shelving with bin fronts, hanging totes, modular drawer cabinets with dividers, and carton flow racks for your most-picked items. The right mix depends on part size, how often items are picked, and who's doing the picking.`,
+      `We design bin systems for parts rooms, evidence storage, pharmacies, and maintenance cribs, using bin shelving, modular drawer inserts, and industry-standard totes that work with the containers you already have.`,
+      `You can fit even more by going vertical or mobile. Modular drawer cabinets hold far more than open shelving in the same footprint. Bin shelving can also become high-density mobile storage on carriages, or go into a vertical lift module (VLM), saving both floor space and walking time.`,
     ],
     features:[
       ['SKU-level organization', 'Bins, dividers, and labels sized to the part, not the shelf'],
       ['Modular drawers', 'Up to 3x the density of open shelving for small parts'],
       ['Standard totes', 'Systems planned around the containers you already use'],
-      ['Compounds with mobile', 'Bin shelving rides on carriages or inside VLMs'],
+      ['Goes mobile or vertical', 'Bin storage rides side to side on carriages or vertically inside VLMs'],
     ],
     gallery:[IMGS.evidence, IMGS.storBox, IMGS.gpsCard],
     chipsTitle:'Related systems',
@@ -967,18 +1044,18 @@ const PRODUCT_PAGES = {
   },
   'pallet-rack': {
     eyebrow:'Solutions / Industrial', h1:'Pallet Rack',
-    lead:'Selective rack, cantilever rack, and specialty configurations, planned around your forklifts, your loads, and your building, and installed by our own crews.',
+    lead:'Pallet rack built for your operation: selective, cantilever, and specialty configurations designed around your forklifts, loads, and building.',
     sideImg: IMGS.palletNGA,
     paras:[
-      `Pallet rack looks like a commodity until it is specified wrong. Beam capacity, upright gauge, row spacing, forklift aisle requirements, and anchoring all have to line up with how your operation actually runs, which is why we start every rack project with a walkthrough instead of a price list.`,
-      `As an authorized rack dealer we quote selective rack, drive-in, push-back, and cantilever configurations, plus guarding and column protection. For unusual loads we have put pallet rack on mobile carriages, compacting bulk storage the same way file rooms compact.`,
-      `Rack is regulated infrastructure: we prepare layout drawings, provide load and anchoring data for your permit set, and support your engineer of record on any structural questions. Capacity plaques and correct anchoring come standard with our installs.`,
+      `Pallet rack can look like a simple purchase until it's specified wrong. Beam capacity, upright gauge, row spacing, forklift aisle width, and anchoring all need to match how your operation actually runs. That's why we start every pallet rack project with a walkthrough instead of a price list.`,
+      `Working with several manufacturers, we offer selective, drive-in, push-back, and cantilever rack, plus rack guarding and column protection. For unusual loads, we've also mounted pallet rack on carriages that glide along floor rails, turning bulk storage into high-density mobile storage.`,
+      `Pallet rack is subject to building codes and safety standards, so we prepare layout drawings, provide load and anchoring data for your permit drawings, and support your engineer of record with any structural questions. Proper anchoring comes standard on every installation, handled by our own crews throughout the Philadelphia region and beyond.`,
     ],
     features:[
-      ['Authorized rack dealer', 'Selective, drive-in, push-back, and cantilever rack'],
-      ['Spec-first process', 'Beam, upright, and aisle sizing from a real walkthrough'],
-      ['Permit-ready docs', 'Layout drawings and loading data for your permit set and engineer'],
-      ['Rack on mobile', 'Bulk storage compacts on heavy-duty carriages'],
+      ['Full range of rack', 'Selective, drive-in, push-back, and cantilever rack'],
+      ['Walkthrough first', 'Beam, upright, and aisle sizing based on your space'],
+      ['Permit support', 'Layout drawings and load data for permits and your engineer'],
+      ['Mobile option', 'Pallet rack on heavy-duty carriages for more storage in less space'],
     ],
     gallery:[IMGS.palletMobile, IMGS.palletRack, IMGS.mhwCard],
     faqs:[
@@ -990,58 +1067,57 @@ const PRODUCT_PAGES = {
   },
   'mezzanines': {
     eyebrow:'Solutions / Industrial', h1:'Mezzanines & Platforms',
-    lead:'A structural steel mezzanine adds a working floor inside the building you already own. It is the cheapest square footage you will ever buy.',
+    lead:'A structural steel mezzanine adds a second working level inside the building you already have, often for far less than the cost of an addition.',
     sideImg: IMGS.mezzanine,
     paras:[
-      `When the floor is full and the ceiling is not, a mezzanine turns cubic feet into square feet: storage above, operations below, no addition, no new roof. Work platforms, catwalks, and shelving-supported mezzanines all follow the same logic.`,
-      `We represent a mezzanine manufacturer whose structural steel platforms arrive with stamped engineering from the manufacturer's licensed engineers. Our role is everything around that: measuring the space, planning what lives above and below, coordinating egress, rails, gates, and lighting, and installing the system.`,
-      `Foundation and floor-slab evaluation belongs to your structural engineer of record. We supply complete point-load data from the manufacturer and work alongside your engineer so the decision is made with real numbers.`,
+      `When your floor is full but your ceiling isn't, a mezzanine turns unused overhead space into usable floor space: storage up top, operations below, with no addition and no new roof. Work platforms, catwalks, and shelving-supported mezzanines all work the same way.`,
+      `Working with leading mezzanine manufacturers, we offer structural steel platforms that arrive with stamped engineering drawings from the manufacturer's licensed engineers. We handle everything around that: measuring your space, planning what goes above and below, coordinating stairs, exits, gates, railings, and lighting, and installing the system with our own crews throughout the Philadelphia region and beyond.`,
+      `Your structural engineer of record evaluates the foundation and floor slab. We provide complete point-load data from the manufacturer and work alongside your engineer, so decisions are based on real numbers.`,
     ],
     features:[
-      ['Manufacturer-engineered steel', 'Platforms delivered with stamped drawings'],
-      ['Full coordination', 'Egress, gates, rails, decking, and lighting planned together'],
-      ['Point-load data provided', 'Real numbers for your structural engineer of record'],
-      ['Storage above and below', 'Often paired with shelving, rack, or lockers on both levels'],
+      ['Manufacturer-engineered steel', 'Platforms delivered with stamped engineering drawings'],
+      ['Full coordination', 'Stairs, exits, gates, railings, decking, and lighting planned together'],
+      ['Point-load data', 'Real numbers for your structural engineer of record'],
+      ['Storage above and below', 'Often paired with shelving, pallet rack, or lockers on both levels'],
     ],
     gallery:[IMGS.shelvCard, IMGS.mezz2, IMGS.midproject2],
     faqs:[
-      ['Will my slab support a mezzanine?', 'That determination belongs to your structural engineer of record. We provide complete point-load and layout data from the manufacturer and assist with the evaluation, which is usually resolved early in design.'],
-      ['Do mezzanines need a permit?', 'Almost always, yes. Manufacturer-stamped engineering plus our layout drawings typically cover what the permit set needs. We have been through the process with townships across the region.'],
+      ['Will my slab support a mezzanine?', 'Your structural engineer of record makes that call. We provide complete point-load and layout data from the manufacturer and help with the evaluation, which is usually settled early in design.'],
+      ['Do mezzanines need a permit?', 'Almost always. The manufacturer\'s stamped engineering drawings and our layout drawings cover much of what a permit application requires, and we\'ve worked through the permit process with townships across the Philadelphia region.'],
     ],
     chipsTitle:'Related systems',
     related: relAny('material-handling-warehouse','pallet-rack','general-contractors','wire-partitions'),
   },
   'wire-partitions': {
-    eyebrow:'Solutions / Industrial', h1:'Wire Partitions & Security Cages',
-    lead:'Woven and welded wire enclosures put a locked, inspectable room anywhere inside your building: tool cribs, DEA cages, server enclosures, and evidence areas.',
+    eyebrow:'Solutions / Industrial', h1:'Wire Partitions & Cages',
+    lead:'Woven and welded wire partitions create a secure, see-through enclosure anywhere inside your building, from tool cribs and controlled-substance cages to server enclosures and evidence storage.',
     paras:[
-      `A wire partition is security you can see through: sight lines for supervisors, airflow for sprinklers and HVAC, and a lockable perimeter that goes up in days on your existing slab. That combination is why cages remain the standard for tool cribs, controlled-substance storage, data floors, and landlord storage areas.`,
-      `Regulated applications drive most of what we build. DEA-compliant cages for pharmaceutical distributors, evidence enclosures for public safety, and access-controlled server cages each carry their own mesh, ceiling, and locking requirements, and we spec to the regulation rather than the catalog page.`,
-      `Panels are modular: partitions relocate, expand, and reconfigure as the operation changes, which no block wall will ever do.`,
+      `Wire partitions give you security you can see through. Supervisors keep clear sight lines, air and light move freely, and sprinkler coverage reaches the space, all inside a lockable perimeter installed right on your existing floor. That's why wire cages are a common choice for tool cribs, controlled-substance storage, server rooms, and tenant storage areas.`,
+      `Many of the wire partition projects we design are for regulated spaces. DEA-regulated storage for pharmaceutical distributors, evidence enclosures for public safety agencies, and access-controlled server cages each have their own mesh, ceiling, and locking requirements, and we design around those requirements rather than a standard catalog layout.`,
+      `Wire partitions are also modular. Panels can be relocated, expanded, or reconfigured as your needs change, something a permanent wall can't do. Our own crews install wire partitions throughout the Philadelphia region and beyond.`,
     ],
     features:[
-      ['Regulation-driven specs', 'DEA cages, evidence enclosures, and secure IT floors'],
-      ['See-through security', 'Sight lines, sprinklers, and airflow stay intact'],
-      ['Fast, clean install', 'Days on an existing slab, no trades, no dust walls'],
-      ['Modular for life', 'Relocate and reconfigure panels as needs change'],
+      ['Built for regulated spaces', 'DEA-regulated storage, evidence enclosures, and secure server rooms'],
+      ['See-through security', 'Clear sight lines, airflow, and sprinkler coverage'],
+      ['Fast, clean install', 'Goes up quickly on your existing floor with minimal disruption'],
+      ['Modular for life', 'Relocate and reconfigure panels as your needs change'],
     ],
-    extra:`<p class="note" style="margin-top:18px">Representative product photo courtesy of WireCrafters. Ask us for install references specific to your application.</p>`,
     chipsTitle:'Related systems',
     related: relAny('pallet-rack','mezzanines','government-public-safety','material-handling-warehouse'),
   },
   'evidence-lockers': {
     eyebrow:'Solutions / Public Safety', h1:'Evidence Lockers',
-    lead:'Chain of custody starts at the deposit door. Pass-through evidence lockers make the transfer from officer to custodian physically incorruptible.',
+    lead:'Chain of custody starts at the deposit door. Pass-through evidence lockers create a secure, one-way transfer from officer to evidence custodian.',
     sideImg: IMGS.evidRoom,
     paras:[
-      `A pass-through evidence locker has two faces: officers deposit through the front and the door locks behind the item; only the evidence custodian opens the rear. No shared keys, no gaps in the record, and with electronic control, a timestamped audit trail of every touch.`,
-      `We plan evidence intake as a system: locker sizes mixed for phones, firearms, and bulk items, refrigerated compartments for biological evidence, and the high-density shelving and bin storage behind the wall where evidence lives long-term.`,
-      `Departments across the region run intake rooms we designed. The same chain-of-custody logic serves crime labs, internal affairs, and any operation where possession has to be provable.`,
+      `A pass-through evidence locker has two sides. Officers deposit evidence through the front, and the door locks behind them. Only the evidence custodian can open the compartment from the rear. With electronic locks, every deposit and retrieval is logged with a timestamp, creating a complete audit trail.`,
+      `We design evidence intake as a complete system: a mix of locker sizes for phones, firearms, and bulky items, refrigerated compartments for biological evidence, and the high-density mobile storage and bin storage where evidence is kept long-term.`,
+      `Police departments across the Philadelphia region use evidence intake rooms we've designed, and our own crews handle installation. The same chain-of-custody approach works for crime labs, internal affairs, and any operation that needs to document who handled what, and when.`,
     ],
     features:[
-      ['Pass-through design', 'Deposit locks behind the officer, opens only for the custodian'],
+      ['Pass-through design', 'Officers deposit from the front; only the custodian opens the rear'],
       ['Audit trails', 'Electronic locks log every deposit and retrieval'],
-      ['Refrigerated options', 'Compliant cold storage for biological evidence'],
+      ['Refrigerated options', 'Cold storage compartments for biological evidence'],
       ['Whole-room planning', 'Intake lockers plus the long-term storage behind them'],
     ],
     gallery:[IMGS.gun2, IMGS.gpsCard, IMGS.evidRoom],
@@ -1050,18 +1126,18 @@ const PRODUCT_PAGES = {
   },
   'weapons-storage': {
     eyebrow:'Solutions / Public Safety', h1:'Weapons & Gun Storage',
-    lead:'Armory storage for law enforcement and military: racks and cabinets that secure long guns and duty weapons while keeping issue and return fast and accountable.',
+    lead:'Secure weapons storage for law enforcement and military armories, with racks and cabinets that keep long guns and duty weapons locked down while making issue and return fast and accountable.',
     sideImg: IMGS.gun3,
     paras:[
-      `An armory has two jobs that pull against each other: keep weapons locked down, and get them issued fast at shift change. Purpose-built weapon racks solve both, with configurable cradles for long guns, drawers for sidearms and optics, and locking that ranges from key control to electronic audit.`,
-      `We design armories for police departments, sheriff's offices, correctional facilities, and military units, drawing on several manufacturer lines. Racks mount in cabinets, on walls, or on mobile carriages when the weapons inventory outgrows the room.`,
-      `Every layout is planned around your issue process and your accreditation requirements, and installed by our own background-checked crews, who are accustomed to working inside secure facilities.`,
+      `Every armory has two competing jobs: keep weapons secure, and issue them quickly at shift change. Purpose-built weapon racks handle both, with adjustable cradles for long guns, drawers for sidearms and optics, and locking options that range from key control to electronic access with full audit trails.`,
+      `Working with several manufacturers, we design armories for police departments, sheriff's offices, correctional facilities, and military units. Weapon racks can be mounted in cabinets, on walls, or as high-density mobile storage on carriages that glide along floor rails when your inventory outgrows the room.`,
+      `Every layout is designed around your issue process and accreditation requirements. Our own crews complete background checks and any other clearances each job requires, and they're experienced working inside secure facilities throughout the Philadelphia region and beyond.`,
     ],
     features:[
-      ['Configurable cradles', 'Long guns, sidearms, optics, and less-lethal in one system'],
-      ['Issue-speed layouts', 'Shift change moves fast without losing accountability'],
-      ['Lock options', 'Key control through fully audited electronic access'],
-      ['Secure-facility crews', 'Background-checked installers, comfortable in controlled areas'],
+      ['Configurable cradles', 'Long guns, sidearms, optics, and less-lethal equipment in one system'],
+      ['Fast issue and return', 'Layouts that keep shift change quick without losing accountability'],
+      ['Lock options', 'From key control to fully audited electronic access'],
+      ['Secure-facility crews', 'Installers cleared for each job\'s background check and security requirements'],
     ],
     gallery:[IMGS.weapons2, IMGS.gun1, IMGS.weapons1],
     chipsTitle:'Related systems',
@@ -1069,18 +1145,18 @@ const PRODUCT_PAGES = {
   },
   'athletic-storage': {
     eyebrow:'Solutions / Athletics', h1:'Athletic Equipment Storage',
-    lead:'Helmets, pads, sticks, and travel gear for a full roster, stored on mobile carriages in half the room, and looking like a program that recruits.',
+    lead:'Store helmets, pads, sticks, and travel gear for your full roster in up to half the space with high-density mobile storage, in a room that shows recruits your program means business.',
     sideImg: IMGS.montelKnights,
     paras:[
-      `Equipment rooms fail the same way everywhere: gear piled by season, no airflow, and a manager who is the only person who can find anything. Purpose-built athletic storage fixes all three, with ventilated compartments per player, custom cradles for helmets and sticks, and mobile carriages that compact the whole room.`,
-      `As an authorized dealer we bring the same systems used by professional and college programs, including branded end panels that turn the equipment room into a recruiting stop.`,
-      `For schools, the play is usually simpler: team room lockers, ventilated gear storage, and a compacted equipment room that gives the athletic department a floor back.`,
+      `Many equipment rooms run into the same problems: gear piled by season, poor airflow, and only one person who knows where everything is. Purpose-built athletic storage solves these with ventilated compartments for each player, custom cradles for helmets and sticks, and high-density mobile storage that fits the whole room onto carriages that glide along floor rails.`,
+      `Working with several manufacturers, we offer the same types of systems used by professional and college programs, including branded end panels that turn your equipment room into a stop on the recruiting tour.`,
+      `For schools, the solution is often simpler: team room lockers, ventilated gear storage, and high-density mobile storage that frees up floor space for the athletic department. Our own crews install athletic storage throughout the Philadelphia region and beyond.`,
     ],
     features:[
       ['Per-player organization', 'Ventilated compartments sized to the sport'],
-      ['Custom cradles', 'Helmets, sticks, bats, and pads each get a home'],
-      ['Mobile compaction', 'The whole gear room on carriages, half the footprint'],
-      ['Recruiting-grade finish', 'Branded end panels and team colors available'],
+      ['Custom cradles', 'A place for every helmet, stick, bat, and pad'],
+      ['High-density mobile storage', 'The whole gear room on carriages, in up to half the footprint'],
+      ['Recruiting-ready finishes', 'Branded end panels and team colors available'],
     ],
     gallery:[IMGS.montelSharks, IMGS.montelFAU, IMGS.montelWisconsin],
     chipsTitle:'Related systems',
@@ -1088,34 +1164,34 @@ const PRODUCT_PAGES = {
   },
   'rotary-cabinets': {
     eyebrow:'Solutions / Cabinets', h1:'Rotary Cabinets',
-    lead:'A rotary cabinet is two cabinets in one footprint: shelving on both sides of a core that spins, and locks flush into its shell at night.',
+    lead:'A rotary cabinet fits two cabinets into one footprint, with shelving on both sides of a rotating core that turns to lock flush inside its steel shell after hours.',
     sideImg: IMGS.rotary2,
     paras:[
-      `The rotary cabinet is the most underrated piece of office storage made. A rotating core doubles the capacity of the floor space, both faces adjust independently for files, binders, or media, and a quarter turn closes the whole thing into a locked, flush steel shell.`,
-      `That closing move is why records managers love them: end-tab filing, HR records, and medical charts stay open-shelf convenient all day and become a locked cabinet after hours, with no doors swinging into the aisle.`,
-      `We configure rotaries as standalone units, in banks, and as add-on tiers that stack as records grow. Letter, legal, and media layouts mix freely within one cabinet.`,
+      `Rotary cabinets are one of the most space-efficient options for office storage. The rotating core provides up to twice the storage in the same floor space, each side adjusts independently for files, binders, or media, and a quarter turn closes the unit into a locked steel cabinet.`,
+      `That's why rotary cabinets are popular with records managers. End-tab files, HR records, and medical charts stay as easy to reach as open shelving during the day and are locked away after hours, with no doors swinging into the aisle.`,
+      `We design rotary cabinets as standalone units, in banks, or with add-on tiers that stack as your records grow, and letter, legal, and media layouts can be mixed in a single cabinet. Our own crews install rotary cabinets throughout the Philadelphia region and beyond.`,
     ],
     features:[
-      ['Double-sided core', 'Twice the filing capacity in the same floor space'],
+      ['Double-sided core', 'Up to twice the filing capacity in the same floor space'],
       ['Locks flush', 'A quarter turn secures everything behind steel'],
       ['Mixed media', 'Files, binders, media, and drawers in one unit'],
       ['Stackable tiers', 'Add capacity vertically as records grow'],
     ],
     chipsTitle:'Related systems',
-    related: relAny('cabinets','corporate-legal','fireproof-cabinets','high-density-mobile-storage'),
+    related: relAny('cabinets','corporate-legal','fire-rated-cabinets','high-density-mobile-storage'),
   },
-  'fireproof-cabinets': {
-    eyebrow:'Solutions / Cabinets', h1:'Fireproof & Safety Cabinets',
-    lead:'Some contents cannot be replaced and some cannot be allowed to burn. Fire-rated record cabinets and code-compliant safety cabinets cover both.',
+  'fire-rated-cabinets': {
+    eyebrow:'Solutions / Cabinets', h1:'Fire-Rated & Safety Cabinets',
+    lead:'Some records can\'t be replaced, and some materials can\'t be allowed to burn. Fire-rated record cabinets and safety cabinets for hazardous materials handle both.',
     paras:[
-      `Fire-rated cabinets protect what insurance cannot restore: original contracts, medical records, deeds, wills, and media. UL-rated construction holds interior temperature below the point where paper chars or media fails for the rated duration, and models range from vertical files to large lateral and media safes.`,
-      `Safety cabinets solve the opposite problem: contents that are themselves the hazard. Flammable liquid cabinets, corrosives cabinets, and aerosol storage in code-mandated colors and construction keep shops, labs, and maintenance areas compliant with fire code and insurer requirements.`,
-      `We help you size both correctly: what genuinely needs fire protection versus what needs ordinary secure storage, because a fire-rated cabinet costs several times a standard one and should hold only what earns the premium.`,
+      `Fire-rated cabinets protect what insurance can't replace: original contracts, medical records, deeds, wills, and media. UL-rated cabinets are tested to keep interior temperatures low enough to protect paper or media for their rated duration, and options range from vertical files to large lateral files and media safes.`,
+      `Safety cabinets solve the opposite problem: storing contents that are hazards themselves. Flammable liquid, corrosive, and aerosol storage cabinets, built in industry-standard colors and construction, help shops, labs, and maintenance areas meet fire code and insurance requirements.`,
+      `We help customers throughout the Philadelphia region and beyond choose the right protection, separating what truly needs fire protection from what only needs secure storage. Fire-rated cabinets cost significantly more than standard cabinets, so they should be saved for the records that need them.`,
     ],
     features:[
-      ['UL fire ratings', 'Rated protection for paper and media originals'],
-      ['Code-compliant safety', 'Flammable, corrosive, and aerosol storage cabinets'],
-      ['Right-sized advice', 'Fire-rate only what actually justifies the cost'],
+      ['UL fire ratings', 'Rated protection for original paper records and media'],
+      ['Hazardous materials storage', 'Flammable, corrosive, and aerosol safety cabinets'],
+      ['Right-sized advice', 'Fire protection only where it\'s truly needed'],
       ['Formats for every record', 'Vertical, lateral, media, and data safes'],
     ],
     chipsTitle:'Related systems',
@@ -1123,16 +1199,16 @@ const PRODUCT_PAGES = {
   },
   'wardrobe-cabinets': {
     eyebrow:'Solutions / Cabinets', h1:'Wardrobe & Uniform Cabinets',
-    lead:'Coats, uniforms, PPE, and personal gear need hanging space and a door that locks. Wardrobe cabinets do the job lockers are too small for.',
+    lead:'Coats, uniforms, PPE, and personal gear need hanging space and a door that locks. Wardrobe cabinets handle what lockers are too small for.',
     paras:[
-      `A wardrobe cabinet is the step between a locker and a closet: full-height hanging on one side, shelves on the other, and steel construction that survives a crew room. Standard uses run from staff coat storage in offices to uniform and turnout gear storage in stations and plants.`,
-      `We spec wardrobe and storage cabinets in widths from single-user to shared bank configurations, with options for ventilation, sloped tops, bench bases, and electronic locks.`,
-      `Combination units earn their keep in tight staff rooms: hanging bar, personal shelf, and lockable compartment in one cabinet footprint per person.`,
+      `A wardrobe cabinet sits between a locker and a closet, with full-height hanging space on one side, shelves on the other, and durable steel construction built for daily use. Common uses range from staff coat storage in offices to uniform and turnout gear storage in fire stations and plants.`,
+      `Working with several manufacturers, we offer wardrobe and storage cabinets in sizes from single-user units to shared banks, with options for ventilation, sloped tops, bench bases, and electronic locks.`,
+      `Combination units are a smart fit for tight staff rooms, giving each person a hanging bar, a personal shelf, and a lockable compartment in one cabinet. Our own crews install wardrobe cabinets throughout the Philadelphia region and beyond.`,
     ],
     features:[
-      ['Full-height hanging', 'Coats, uniforms, and gear bags actually fit'],
-      ['Combination layouts', 'Hanging, shelf, and locked storage per person'],
-      ['Crew-proof steel', 'Welded construction, ventilation, sloped tops'],
+      ['Full-height hanging', 'Room for coats, uniforms, and gear bags'],
+      ['Combination layouts', 'Hanging, shelf, and locked storage for each person'],
+      ['Heavy-duty steel', 'Durable construction with ventilation and sloped-top options'],
       ['Lock options', 'Keyed, padlock hasp, or electronic'],
     ],
     chipsTitle:'Related systems',
@@ -1140,18 +1216,18 @@ const PRODUCT_PAGES = {
   },
   'museum-cabinets': {
     eyebrow:'Solutions / Museum', h1:'Museum Cabinets',
-    lead:'Conservation-grade cabinets seal collections away from dust, pests, light, and swings in humidity, while keeping every specimen a drawer-pull away from research.',
+    lead:'Conservation-grade museum storage cabinets protect collections from dust, pests, light, and humidity swings, while keeping every object within easy reach for research.',
     sideImg: IMGS.museumDrawers,
     paras:[
-      `Museum cabinets are built to a different standard than office steel: powder coatings that off-gas nothing onto the collection, gasketed doors that hold a microclimate, and interiors configured with trays, drawers, and hanging systems per object type.`,
-      `Drawing on several museum-grade cabinet lines, we outfit natural history, fine art, textile, and archival collections. Configurations cover entomology drawers, herbarium cases, textile rolling, framed storage, and oversized flat files.`,
-      `Cabinets compound with compaction: conservation cabinets on mobile carriages are how collections double without new construction, a combination we have installed for museums and university collections across the region.`,
+      `Museum storage cabinets are built to a higher standard than typical steel cabinets: collection-safe powder-coat finishes that won't off-gas onto collections, gasketed doors that maintain a stable microclimate, and interiors outfitted with trays, drawers, and hanging systems tailored to each object type.`,
+      `Working with several museum-grade cabinet manufacturers, we outfit natural history, fine art, textile, and archival collections. Configurations include entomology drawers, herbarium cases, rolled textile storage, framed art storage, and oversized flat files.`,
+      `Pairing conservation cabinets with high-density mobile storage can double a collection's storage capacity without new construction. We've installed this combination for museums and university collections across the Philadelphia region.`,
     ],
     features:[
-      ['Conservation-grade', 'Inert finishes and gasketed microclimate seals'],
-      ['Per-collection interiors', 'Trays, drawers, racks, and rolls per object type'],
+      ['Conservation-grade', 'Collection-safe finishes and gasketed doors that maintain a stable microclimate'],
+      ['Custom interiors', 'Trays, drawers, racks, and textile rolls configured for each object type'],
       ['Museum-grade lines', 'Conservation cabinets from multiple manufacturers'],
-      ['Compaction-ready', 'Cabinets ride carriages for double density'],
+      ['Mobile-ready', 'Cabinets mount on carriages that glide along floor rails, for up to twice the storage in the same space'],
     ],
     gallery:[IMGS.cabMuseum, IMGS.musSlots, IMGS.musVisual2],
     chipsTitle:'Related systems',
@@ -1159,18 +1235,18 @@ const PRODUCT_PAGES = {
   },
   'art-screens': {
     eyebrow:'Solutions / Museum', h1:'Art Screens & Racks',
-    lead:'Framed works hang on wire screens that pull out, roll, or mount to the wall, so the whole collection stays visible, ventilated, and one glide away.',
+    lead:'Art storage racks hang framed works on wire mesh screens that pull out, roll side to side on a track, or mount to the wall, keeping the whole collection visible, ventilated, and easy to reach.',
     sideImg: IMGS.artScreen,
     paras:[
-      `Art screens store paintings the way conservators want them stored: hanging, spaced, and untouched. Each screen presents both faces of the collection to a curator in seconds, without lifting a single frame off a stack.`,
-      `We install all three formats. Pull-out screens glide on overhead or floor tracks for the highest density; mobile screen carriages compact an entire vault; and stationary wall-mounted screens turn unused wall into storage in studies and prep rooms.`,
-      `The lines we install cover everything from a ten-screen study room to a full museum vault, and screens integrate directly with high-density mobile systems we install.`,
+      `Art screens store framed works and hanging textiles the way conservators prefer: hanging, spaced apart, and handled as little as possible. Both sides of each screen hold artwork, so a curator can review dozens of works in seconds without lifting a frame off a stack.`,
+      `We design and install three types of art storage racks. Pull-out screens glide on overhead or floor tracks and make the most of a room's depth. Lateral racks roll side to side on a track, so an entire storage room can share a single access aisle. Wall-mounted screens turn unused wall space into storage in study and prep rooms.`,
+      `We offer systems for everything from a ten-screen study room to a full museum vault, throughout the Philadelphia region and beyond. Art screens can also integrate with high-density mobile storage for even greater capacity.`,
     ],
     features:[
-      ['Pull-out, mobile, or wall-mounted', 'All three formats, matched to the vault'],
-      ['Both faces accessible', 'A collection review without touching a frame'],
-      ['Conservation hardware', 'Coated mesh and hangers that protect frames'],
-      ['Vault-scale density', 'Hundreds of works per running foot of track'],
+      ['Pull-out, lateral, or wall-mounted', 'All three types, matched to your space and collection'],
+      ['Double-sided screens', 'Artwork hangs securely on both sides of each mesh screen, doubling capacity while keeping every piece protected'],
+      ['Conservation hardware', 'Powder-coated mesh and hooks that protect framed pieces'],
+      ['High-capacity storage', 'Each screen holds many framed works, from small pieces to large canvases'],
     ],
     gallery:[IMGS.artScreens2, IMGS.artHD, IMGS.hdmsArtScreen],
     chipsTitle:'Related systems',
@@ -1178,18 +1254,18 @@ const PRODUCT_PAGES = {
   },
   'mail-sorters': {
     eyebrow:'Solutions / Casework', h1:'Mail Sorters & Mailroom',
-    lead:'Sort modules, consoles, and mail center casework sized to your actual daily volume, from a corporate mail stop to a university package operation.',
+    lead:'Sort modules, consoles, and mailroom casework sized to your daily volume, from a corporate mail stop to a university package center.',
     sideImg: IMGS.hamMailGlass,
     paras:[
-      `Mailrooms are workflow rooms: mail comes in, gets sorted, and leaves, and the casework either speeds that up or gets in the way. Purpose-built sort modules put adjustable pockets at working height over counters deep enough to stage a full delivery run.`,
-      `We design mail centers with sort modules, consoles, and adjustable shelving, configured to your route structure and volume. Pockets re-label and re-size as departments change, which spreadsheets of cubbyholes never do.`,
-      `The package boom changed the room: where parcel volume outruns the sorter wall, we pair mail casework with smart parcel lockers, so recipients collect on their own schedule and the mailroom stops playing warehouse.`,
+      `A mailroom is all about workflow: mail comes in, gets sorted, and goes out, and the right casework keeps it moving. Purpose-built sort modules place adjustable pockets at a comfortable working height above counters deep enough to stage a full delivery run.`,
+      `Working with several manufacturers, we design mail centers with sort modules, consoles, and adjustable shelving, configured around your delivery routes and volume. Pockets can be relabeled and resized as departments change, unlike fixed cubbies.`,
+      `Package volume has changed the mailroom. When parcels outgrow the sorting area, we pair mail casework with smart parcel lockers, so recipients can pick up packages on their own schedule and staff can focus on mail. Our own crews install mailroom systems throughout the Philadelphia region and beyond.`,
     ],
     features:[
-      ['Adjustable pockets', 'Sort positions re-size and re-label as routes change'],
-      ['Working-height design', 'Counters and modules laid out for the sort flow'],
-      ['One casework line', 'Sort modules, consoles, and shelving that match'],
-      ['Parcel integration', 'Smart lockers absorb the package overflow'],
+      ['Adjustable pockets', 'Sort positions resize and relabel as routes change'],
+      ['Working-height design', 'Counters and modules laid out around your sorting workflow'],
+      ['Matching components', 'Sort modules, consoles, and shelving designed to work together'],
+      ['Parcel integration', 'Smart lockers handle package overflow'],
     ],
     chipsTitle:'Related systems',
     related: relAny('modular-casework','lockers','corporate-legal','education'),
@@ -1199,151 +1275,152 @@ const PRODUCT_PAGES = {
 const INDUSTRY_PAGES = {
   'museums': {
     h1:'Museum Storage',
-    lead:'Collections storage that protects, organizes, and makes room for growth: art racks, conservation cabinets, and high-density systems for objects of every size.',
+    lead:'Collections storage that protects, organizes, and makes room for growth, with art racks, conservation cabinets, and high-density mobile storage for objects of every size.',
     sideImg: IMGS.artScreen,
     paras:[
-      `Most museums display a fraction of what they hold. The rest lives in storage, and that storage determines how well the collection survives. We design collection storage around the objects themselves: paintings on pull-out art racks, textiles rolled on racks, specimens and works on paper in sealed conservation cabinets, and framed and boxed objects on high-density mobile shelving.`,
-      `Our manufacturer partners are the names collection managers already know, covering museum-grade cabinets, mobile systems, art racks, and art screens and display systems.`,
-      `Every project starts with a collection walkthrough. We measure what you hold, plan for acquisition growth, and stage installations around exhibition calendars so the collection never sits exposed.`,
+      `Most museums display only a fraction of their collections. The rest is in storage, and that storage plays a big role in how well the collection is preserved. We design collections storage around the objects themselves: framed works and hanging textiles on art racks and screens, rolled textiles on textile racks, specimens and works on paper in conservation cabinets with gasketed doors, and high-density mobile storage that can hold any part of a collection.`,
+      `We work with the museum-grade manufacturers collection managers already know, covering conservation cabinets, high-density mobile storage, art racks and screens, and display systems.`,
+      `Every project starts with a collection walkthrough. We measure what you have, plan for future acquisitions, and schedule installation around your exhibition calendar to minimize disruption to the collection. Our own crews install collections storage for museums throughout the Philadelphia region and beyond.`,
     ],
     features:[
-      ['Art racks and screens', 'Pull-out, wall-mounted, and mobile painting storage'],
-      ['Conservation cabinets', 'Sealed, gasketed, conservation-safe finishes'],
-      ['High-density mobile', 'Compact storage for boxed and framed collections'],
-      ['Exhibition-aware installs', 'Staged around your calendar, not ours'],
+      ['Art racks and screens', 'Pull-out, lateral, and wall-mounted storage for framed works and hanging textiles'],
+      ['Conservation cabinets', 'Collection-safe finishes and gasketed doors'],
+      ['High-density mobile storage', 'Up to twice the storage for any part of your collection'],
+      ['Exhibition-aware installs', 'Scheduled around your exhibition calendar'],
     ],
     gallery:[IMGS.musCompact, IMGS.musVisual2, IMGS.textile],
     chipsTitle:'Solutions museums use most',
-    related: relSol('high-density-mobile-storage','cabinets','static-shelving'),
+    related: relAny('high-density-mobile-storage','museum-cabinets','art-screens'),
   },
   'libraries': {
     h1:'Library Storage',
-    lead:'Cantilever and high-density shelving that keeps collections accessible while giving the floor back to readers, study space, and programming.',
+    lead:'Library shelving and high-density mobile storage that keep collections accessible while freeing up floor space for readers, study areas, and educational programs.',
     sideImg: IMGS.lib1,
     paras:[
-      `Libraries are under pressure to be community spaces, but the collection still needs a home. High-density mobile shelving compresses stacks into a fraction of the floor, and cantilever library shelving keeps open stacks browsable and adaptable.`,
-      `We have compacted entire collections onto a single floor, freeing levels for seating, makerspaces, and programming without deaccessioning. Mobile systems work in public stacks, closed stacks, and archives alike.`,
-      `Load matters in library projects. Book stacks are heavy, and mobile systems concentrate that weight. We supply complete loading data and work with your facilities team and structural engineer before anything is ordered.`,
+      `Libraries are being asked to do more as community spaces, but the collection still needs a home. High-density mobile storage can fit up to twice the collection in the same footprint, and cantilever library shelving keeps open stacks easy to browse and adapt.`,
+      `High-density mobile storage can consolidate a collection into less space, freeing up room for seating, makerspaces, and educational programs without deaccessioning materials. Mobile systems work in public stacks, closed stacks, and archives alike.`,
+      `Weight matters in library projects. Book stacks are heavy, and mobile systems concentrate that load on the floor. We provide complete loading data and work with your facilities team and structural engineer before anything is ordered. Our own crews install library storage throughout the Philadelphia region and beyond.`,
     ],
     features:[
-      ['Cantilever shelving', 'Classic browsable stacks, easy to re-shelve and reconfigure'],
-      ['High-density mobile', 'The whole collection in a fraction of the floor'],
+      ['Cantilever library shelving', 'Classic browsable stacks that are easy to re-shelve and reconfigure'],
+      ['High-density mobile storage', 'Up to twice the collection in the same space'],
       ['Archives and special collections', 'Closed-stack and conservation-grade options'],
-      ['Engineer coordination', 'Loading data supplied to your structural engineer before ordering'],
+      ['Engineer coordination', 'Loading data provided to your structural engineer before ordering'],
     ],
     gallery:[IMGS.libShelves, IMGS.libHD, IMGS.libraryCard],
     chipsTitle:'Solutions libraries use most',
-    related: relSol('static-shelving','high-density-mobile-storage','cabinets'),
+    related: relAny('high-density-mobile-storage','cantilever-shelving','cabinets'),
   },
   'education': {
     h1:'Education Storage',
-    lead:'From textbook rooms and science prep to athletics and facilities, schools run on storage that has to survive students and budgets alike.',
+    lead:'From textbook rooms, libraries, and science prep to athletics and facilities, schools need storage that stands up to daily use and fits the budget.',
     sideImg: IMGS.education,
     paras:[
-      `Schools store everything: curriculum materials, lab supplies, uniforms, instruments, records, and the equipment that keeps buildings running. We plan storage building by building, room by room, with systems that survive daily student use.`,
-      `4-post shelving organizes textbook and supply rooms. Modular casework outfits classrooms and prep rooms. Athletic lockers and gear storage handle team rooms. High-density mobile shelving gives registrars and district offices records capacity without new construction.`,
-      `Summer is install season. We stage deliveries and crews around the academic calendar so rooms are ready before students return.`,
+      `Schools store a little of everything: curriculum materials, lab supplies, uniforms, instruments, records, and the equipment that keeps buildings running. We design storage building by building and room by room, with systems built to stand up to daily student use.`,
+      `4-post shelving organizes textbook and supply rooms. Cantilever library shelving gives school libraries open, browsable stacks that are easy to reconfigure as collections and spaces change. Modular casework outfits classrooms and prep rooms. Athletic lockers and gear storage handle team rooms. High-density mobile storage gives registrars and district offices more room for records without new construction.`,
+      `Summer is install season. We schedule deliveries and our own crews around the academic calendar so rooms are ready before students return. We work with schools, colleges, and universities throughout the Philadelphia region and beyond.`,
     ],
     features:[
-      ['Textbook and supply rooms', 'Adjustable 4-post shelving that reconfigures each year'],
+      ['Textbook and supply rooms', 'Adjustable 4-post shelving that\'s easy to reconfigure each year'],
       ['Classroom casework', 'Modular units that move when programs change'],
       ['Athletics storage', 'Ventilated lockers and equipment storage'],
-      ['Records compaction', 'High-density systems for registrar and district offices'],
+      ['Records storage', 'High-density mobile storage for registrar and district offices'],
+      ['School libraries', 'Cantilever library shelving for open, flexible stacks'],
     ],
     gallery:[IMGS.education, IMGS.eduCard, IMGS.eduModular],
     chipsTitle:'Solutions schools use most',
-    related: relSol('static-shelving','lockers','modular-casework','high-density-mobile-storage'),
+    related: relAny('high-density-mobile-storage','lockers','static-shelving','modular-casework','cantilever-shelving'),
   },
   'athletics': {
     h1:'Athletics Storage',
-    lead:'Team rooms, equipment cages, and gear storage built for the pace and abuse of athletic programs at every level.',
+    lead:'Team rooms, equipment rooms, and gear storage built to handle the daily demands of athletic programs at every level.',
     sideImg: IMGS.lockersCard,
     paras:[
-      `Athletic storage takes a beating: wet gear, heavy pads, constant turnover, and zero patience for jammed doors. We outfit team rooms with ventilated athletic lockers, equipment rooms with heavy-duty shelving, and uniform storage with systems that keep inventory countable.`,
-      `The locker lines we carry cover open-front team lockers, ventilated gear lockers, and secure personal storage. Wire and industrial shelving organizes balls, pads, and training equipment in cages and closets.`,
-      `For programs with more gear than room, mobile shelving compacts equipment storage the same way it compacts archives, often doubling what an equipment room can hold.`,
+      `Athletic storage works hard: wet gear, heavy pads, constant turnover, and doors that need to open every time. We outfit team rooms with ventilated athletic lockers, equipment rooms with heavy-duty shelving, and uniform rooms with storage that keeps inventory easy to track.`,
+      `Working with several manufacturers, we offer open-front team lockers, ventilated gear lockers, and secure personal storage. Wire and industrial shelving keeps balls, pads, and training equipment organized in equipment cages and closets.`,
+      `For programs with more gear than space, high-density mobile storage can provide up to twice the storage in the same equipment room. Our own crews install athletic storage for schools, colleges, and teams throughout the Philadelphia region and beyond.`,
     ],
     features:[
       ['Team-room lockers', 'Open-front and ventilated designs for daily gear'],
-      ['Equipment cages', 'Heavy-duty shelving that survives the season'],
-      ['Uniform storage', 'Organized, countable, and ready for game day'],
-      ['Compact gear rooms', 'Mobile systems that double equipment capacity'],
+      ['Equipment cages', 'Heavy-duty shelving built for a full season of use'],
+      ['Uniform storage', 'Organized, easy to count, and ready for game day'],
+      ['High-density mobile storage', 'Up to twice the equipment storage in the same room'],
     ],
     gallery:[IMGS.hamiltonLocker, IMGS.eduLockers, IMGS.agile1],
     chipsTitle:'Solutions athletic programs use most',
-    related: relSol('lockers','static-shelving','high-density-mobile-storage'),
+    related: relAny('high-density-mobile-storage','athletic-storage','lockers'),
   },
   'government-public-safety': {
     h1:'Government & Public Safety Storage',
-    lead:'Evidence rooms, records centers, and gear storage where accountability is the whole point.',
+    lead:'Evidence rooms, records centers, and gear storage built for accountability.',
     sideImg: IMGS.evidence,
     paras:[
-      `In public safety storage, organization is chain of custody. Evidence rooms need pass-through lockers, secure shelving, and layouts that make every item findable and auditable. We plan evidence storage around your intake volume, retention schedules, and accreditation requirements.`,
-      `Beyond evidence, agencies store records, gear, weapons, and fleet equipment. High-density mobile shelving compresses records rooms. Gear lockers keep officer equipment staged and accounted for. Weapons storage secures armories with the documentation trail agencies require.`,
-      `O'Brien Systems is a Commonwealth of Pennsylvania Small Business (SB) certified vendor, and our crews are accustomed to working in secure facilities.`,
+      `In public safety storage, organization is part of chain of custody. Evidence rooms need pass-through lockers, secure shelving, and layouts that make every item easy to find and audit. We design evidence storage around your intake volume, retention schedules, and accreditation requirements.`,
+      `Beyond evidence, agencies store records, gear, weapons, and fleet equipment. High-density mobile storage makes the most of records rooms. Gear lockers keep officer equipment ready and accounted for. Weapons storage secures armories and helps agencies maintain the documentation they need. Many of the manufacturers we work with hold GSA contracts, so we can offer purchasing through their GSA schedules where it applies.`,
+      `O'Brien Systems is a Commonwealth of Pennsylvania Small Business (SB) certified vendor. Our own crews complete background checks and any other clearances each job requires, and they're experienced working inside secure facilities throughout the Philadelphia region and beyond.`,
     ],
     features:[
-      ['Evidence storage', 'Pass-through lockers and secure, auditable shelving'],
-      ['Records compaction', 'High-density systems sized to retention schedules'],
-      ['Gear and armory', 'Officer equipment staged, secured, and documented'],
+      ['Evidence storage', 'Pass-through lockers and secure shelving that\'s easy to audit'],
+      ['Records storage', 'High-density mobile storage sized to your retention schedules'],
+      ['Gear and armory', 'Officer equipment ready, secured, and documented'],
       ['PA SB certified', 'Commonwealth of Pennsylvania Small Business certified vendor'],
     ],
     gallery:[IMGS.gun1, IMGS.lockerEvidence, IMGS.gpsCard],
     chipsTitle:'Solutions agencies use most',
-    related: relSol('lockers','high-density-mobile-storage','static-shelving','cabinets'),
+    related: relAny('high-density-mobile-storage','evidence-lockers','weapons-storage','lockers'),
   },
   'military': {
     h1:'Military Storage',
-    lead:'Readiness depends on gear you can find, count, and issue fast. We build storage for armories, supply rooms, and base operations.',
+    lead:'Readiness depends on gear you can find, count, and issue quickly. We design and install storage for armories, supply rooms, and base operations.',
     sideImg: IMGS.weapons2,
     paras:[
-      `Military and defense storage is inventory discipline made physical. Gear issue moves faster when every item has an assigned, labeled home. We outfit supply rooms and ready rooms with gear lockers, high-density shelving, and weapons storage designed around issue and turn-in workflows.`,
-      `The manufacturers we represent build military-specification lockers and shelving for exactly these environments, from TA-50 gear storage to armory racking.`,
-      `Our crews handle access-controlled sites and coordinate installations around operational schedules. Projects run through applicable procurement vehicles where required, and O'Brien Systems holds Commonwealth of Pennsylvania Small Business (SB) certification.`,
+      `In military storage, organization is part of readiness. Gear issue moves faster when every item has an assigned, labeled place. We outfit supply rooms and ready rooms with gear lockers, high-density mobile storage, and weapons storage designed around your issue and turn-in process.`,
+      `Working with several manufacturers, we offer lockers, shelving, and weapon racks built for military environments, from TA-50 gear storage to armory racks. Many of these manufacturers hold GSA contracts, so we can offer purchasing through their GSA schedules where it applies.`,
+      `Our own crews complete background checks and any other clearances each job requires, and we coordinate installation around operational schedules. O'Brien Systems is a Commonwealth of Pennsylvania Small Business (SB) certified vendor, serving facilities throughout the Philadelphia region and beyond.`,
     ],
     features:[
       ['Gear lockers', 'Assigned, labeled storage for issued equipment'],
-      ['Armory storage', 'Weapons racking with documentation-friendly layouts'],
-      ['Supply room compaction', 'High-density systems for issue and turn-in'],
-      ['Controlled-site installs', 'Crews accustomed to access requirements'],
+      ['Armory storage', 'Weapon racks with layouts that make documentation easier'],
+      ['Supply room storage', 'High-density mobile storage for issue and turn-in'],
+      ['Controlled-site installs', 'Crews cleared for each site\'s access requirements'],
     ],
     gallery:[IMGS.gun2, IMGS.gun3, IMGS.weapons1],
     chipsTitle:'Solutions defense facilities use most',
-    related: relSol('lockers','high-density-mobile-storage','static-shelving'),
+    related: relAny('high-density-mobile-storage','lockers','weapons-storage','wardrobe-cabinets'),
   },
   'pharmaceutical-healthcare': {
     h1:'Healthcare & Pharmaceutical Storage',
-    lead:'Supply chains inside the building: sterile core, pharmacy, lab, and materials storage that keeps clinical space clinical.',
+    lead:'Supply, sterile core, pharmacy, and lab storage that keeps everything organized and frees up more space for patient care.',
     sideImg: IMGS.clinic,
     paras:[
-      `Every square foot given to storage in a hospital is a square foot not treating patients. We compress supply storage with high-density systems, organize sterile core and pharmacy with wire and cabinet systems designed for sanitation, and outfit labs with steel casework built for the work.`,
-      `Wire shelving is the healthcare standard for cleanable, configurable supply storage. Modular casework adapts clinical support spaces without construction. VLMs secure and track high-value pharmacy and supply inventory.`,
-      `Our teams have worked in operating healthcare environments including children's health systems, coordinating around infection control requirements and live clinical schedules.`,
+      `In a hospital, every square foot used for storage is space that can't be used for patient care. We make the most of supply storage with high-density mobile storage, organize sterile core and pharmacy areas with wire shelving and cabinets designed for easy cleaning, and outfit labs with steel casework built for the work.`,
+      `Wire shelving is a common choice in healthcare for supply storage that's easy to clean and reconfigure. Modular casework adapts clinical support spaces without construction. Vertical lift modules (VLMs) help secure and track high-value pharmacy and supply inventory.`,
+      `Our own crews have worked in active healthcare and pharmaceutical facilities, including many health systems, children's hospitals, and major pharmaceutical companies. We coordinate every installation around infection control requirements and clinical schedules throughout the Philadelphia region and beyond.`,
     ],
     features:[
-      ['Sterile core and supply', 'Cleanable wire and cabinet systems'],
-      ['Pharmacy storage', 'Secure, trackable, compact inventory systems'],
+      ['Sterile core and supply', 'Wire shelving and cabinets that are easy to clean'],
+      ['Pharmacy storage', 'Secure, trackable, space-saving inventory systems'],
       ['Lab casework', 'Steel casework and chemical-resistant surfaces'],
-      ['Live-facility installs', 'Infection-control aware crews and scheduling'],
+      ['Live-facility installs', 'Crews and schedules planned around infection control'],
     ],
     gallery:[IMGS.pharmaBottles, IMGS.nemours5, IMGS.pharmaCard],
     chipsTitle:'Solutions healthcare facilities use most',
-    related: relSol('modular-casework','high-density-mobile-storage','cabinets','lifts-carousels'),
+    related: relAny('high-density-mobile-storage','lifts-carousels','wire-shelving','modular-casework'),
   },
   'corporate-legal': {
     h1:'Corporate & Legal Storage',
-    lead:'Records rooms, file systems, and workplace storage that keep information findable and offices working.',
+    lead:'Records rooms, file systems, and workplace storage that keep information easy to find and offices running smoothly.',
     sideImg: IMGS.corpCard,
     paras:[
-      `A well-organized storage system allows for faster allocation and retrieval of important files and materials. Legal and corporate offices still run on paper where it counts: case files, contracts, HR records, and archives with real retention requirements.`,
-      `High-density mobile shelving turns a records room into half a records room. Lateral and rotary cabinets organize active files where people work. Smart lockers handle day-use storage, parcel delivery, and shared equipment in hybrid workplaces.`,
-      `When offices move or consolidate, our relocation crews move the records too, maintaining file order from old space to new.`,
+      `A well-organized storage system makes it faster to file and find important documents. Legal and corporate offices still rely on paper where it matters most: case files, contracts, HR records, and archives with strict retention requirements.`,
+      `High-density mobile storage can fit a records room into up to half the space. Lateral and rotary cabinets keep active files organized right where people work. Smart lockers handle day-use storage, package delivery, and shared equipment in hybrid workplaces.`,
+      `When offices move or consolidate, our own crews move the records too, keeping files in order from the old space to the new one. We work with corporate and legal offices throughout the Philadelphia region and beyond.`,
     ],
     features:[
-      ['Records compaction', 'High-density mobile systems for archives'],
-      ['Active file systems', 'Lateral and rotary cabinets at the point of work'],
-      ['Workplace lockers', 'Smart day-use and parcel storage for hybrid offices'],
-      ['Office relocations', 'File-order-preserving moves and reinstalls'],
+      ['Records storage', 'High-density mobile storage for archives'],
+      ['Active file systems', 'Lateral and rotary cabinets right where people work'],
+      ['Workplace lockers', 'Smart day-use and package storage for hybrid offices'],
+      ['Office relocations', 'Moves and reinstalls that keep your files in order'],
     ],
     gallery:[IMGS.corpHD, IMGS.corpArchival, IMGS.corpCabs],
     chipsTitle:'Solutions offices use most',
@@ -1351,18 +1428,18 @@ const INDUSTRY_PAGES = {
   },
   'retail': {
     h1:'Retail Storage',
-    lead:'Back-of-house storage that shrinks the stockroom instead of the stock, keeping more floor selling and more inventory in reach.',
+    lead:'Back-of-house storage that shrinks the stockroom instead of the stock, freeing up more floor space for selling and keeping more inventory within reach.',
     sideImg: IMGS.retailMobile,
     paras:[
-      `Stockroom optimization is key to maintaining an efficient flow of goods and keeping selling floor selling. Mobile shelving compacts back-of-house storage so the same room holds more SKUs, or the stockroom shrinks and the sales floor grows.`,
-      `We plan retail storage around replenishment workflow: what turns fast stays at reach height in open shelving, what turns slow compacts into mobile systems, and seasonal inventory gets a home that isn't the receiving corridor.`,
-      `Multi-site rollouts are a specialty. We have outfitted store networks with standardized shelving and locker packages, coordinated store by store around trading hours.`,
+      `An organized stockroom keeps goods moving and the sales floor stocked. High-density mobile storage lets the same stockroom hold more inventory, or lets the stockroom shrink so the sales floor can grow.`,
+      `We design retail storage around how you restock: fast-moving items stay within easy reach on open shelving, slower-moving items go on high-density mobile storage, and seasonal inventory gets a home outside the receiving area.`,
+      `Multi-site rollouts are a specialty. We've outfitted store networks with standardized shelving packages, coordinating each store around business hours, and we work with national retailers on locations across the country.`,
     ],
     features:[
-      ['Stockroom compaction', 'Mobile systems that grow capacity, not footprint'],
-      ['Workflow-first layout', 'Fast movers in reach, slow movers compacted'],
-      ['BOPIS and parcel', 'Smart lockers for pickup and staff storage'],
-      ['Multi-site rollouts', 'Standardized packages installed store by store'],
+      ['Stockroom storage', 'High-density mobile storage that adds capacity, not footprint'],
+      ['Workflow-first layout', 'Fast movers within reach, slow movers on mobile storage'],
+      ['Online order pickup', 'Smart lockers for customer pickup and staff storage'],
+      ['Multi-site rollouts', 'Standardized shelving packages installed store by store'],
     ],
     gallery:[IMGS.retail1, IMGS.retail2, IMGS.retail3],
     chipsTitle:'Solutions retailers use most',
@@ -1370,121 +1447,78 @@ const INDUSTRY_PAGES = {
   },
   'automotive': {
     h1:'Automotive Storage',
-    lead:'Parts departments, tire storage, and service operations organized so the part is where the system says it is.',
+    lead:'Parts departments, tire storage, and service areas organized so every part is right where your system says it is.',
     sideImg: IMGS.autoCard,
     paras:[
-      `Automotive parts storage is a fight between SKU count and square footage. High-density shelving, specialized tire racking, and vertical lift modules each attack it differently, and most dealerships end up with a mix.`,
-      `VLMs shine in parts departments: small parts secured and tracked in a footprint a fraction of the shelving they replace, delivered to the counter at the push of a button. Tire racks organize the bulky inventory that eats conventional shelving.`,
-      `We plan around your DMS bin locations so the physical layout matches the system of record, which is where retrieval time actually gets won.`,
+      `Automotive parts storage is a constant balance between growing inventory and limited floor space. High-density mobile storage, specialized tire racks, and vertical lift modules each solve that problem in a different way, and most dealerships use a combination.`,
+      `Vertical lift modules (VLMs) are a strong fit for parts departments. They secure and track small parts in a much smaller footprint than the shelving they replace, and deliver them to the counter at the push of a button. Tire racks organize bulky tire inventory that takes up too much room on standard shelving.`,
+      `We design your layout around the bin locations in your dealer management system (DMS), so the physical storage matches your inventory records and parts are faster to find. Our own crews install automotive storage throughout the Philadelphia region and beyond, and we work with national automotive retailers on locations across the country.`,
     ],
     features:[
-      ['Parts shelving', 'High-density and drawer systems for small parts'],
-      ['Tire storage', 'Purpose-built racking for the bulkiest SKU'],
-      ['VLMs at the counter', 'Secured, tracked parts delivered to the picker'],
-      ['Bin-location planning', 'Layouts that match your DMS'],
+      ['Parts shelving', 'High-density mobile storage and modular drawers for small parts'],
+      ['Tire storage', 'Purpose-built racks for bulky tire inventory'],
+      ['VLMs at the counter', 'Secure, tracked parts delivered right to your team'],
+      ['Bin-location planning', 'Layouts that match your dealer management system'],
     ],
     gallery:[IMGS.auto1, IMGS.auto2, IMGS.auto3],
     chipsTitle:'Solutions parts operations use most',
-    related: relSol('lifts-carousels','static-shelving','high-density-mobile-storage','cabinets'),
+    related: relAny('high-density-mobile-storage','lifts-carousels','static-shelving','bin-storage'),
   },
   'material-handling-warehouse': {
     h1:'Material Handling & Warehouse',
-    lead:'Racking, mezzanines, and automation for operations that measure storage in throughput, not just square feet.',
+    lead:'Pallet rack, mezzanines, and automated storage for operations that measure storage by throughput, not just square footage.',
     sideImg: IMGS.mhwLC,
     paras:[
-      `Organizations interested in reducing cost and increasing productivity rely on high-capacity storage solutions and material handling equipment. We supply and install pallet rack and cantilever, structural mezzanines and platforms, and industrial shelving from the manufacturers we represent.`,
-      `Mezzanines create a second floor inside the building you already own, often the cheapest square footage an operation can buy. VLMs and automation compress parts storage and speed picking where labor is the constraint.`,
-      `Every project gets proper engineering support: manufacturer-rated rack capacities, complete equipment load data for the structural engineer of record, and permits handled properly rather than hopefully.`,
+      `Operations focused on lowering costs and increasing productivity rely on high-capacity storage and material handling equipment. Working with several manufacturers, we supply and install pallet rack and cantilever rack, structural mezzanines and platforms, and industrial shelving.`,
+      `Mezzanines add a second working level inside the building you already have, often for far less than the cost of an addition. Vertical lift modules (VLMs) and other automated systems save space in parts storage and speed up picking where labor is limited.`,
+      `Every project gets full engineering support, including manufacturer-rated rack capacities, complete equipment load data for your structural engineer of record, and layout drawings to support your permit application. Our own crews install material handling systems throughout the Philadelphia region and beyond.`,
     ],
     features:[
-      ['Pallet rack and cantilever', 'Racking engineered to your loads'],
-      ['Mezzanines', 'Structural platforms that add a floor'],
-      ['Industrial shelving', 'Systems rated for daily abuse'],
-      ['Automation', 'VLMs where picking speed pays'],
+      ['Pallet rack and cantilever rack', 'Rack designed around your loads'],
+      ['Mezzanines', 'Structural platforms that add a second working level'],
+      ['Industrial shelving', 'Heavy-duty shelving built for daily use'],
+      ['Automation', 'VLMs that speed up picking and save floor space'],
     ],
     gallery:[IMGS.mhw1, IMGS.palletRack3, IMGS.warehouse],
     chipsTitle:'Solutions warehouses use most',
-    related: relSol('static-shelving','lifts-carousels','high-density-mobile-storage'),
+    related: relAny('pallet-rack','mezzanines','lifts-carousels','static-shelving'),
   },
   'vertical-farming': {
     h1:'Vertical Farming Storage',
-    lead:'Growing vertically can save space and raise crop yield per square foot. Mobile grow systems make the room itself part of the yield.',
+    lead:'Growing vertically can save space and increase crop yield per square foot. Mobile grow systems take it further by putting more of the room to work.',
     sideImg: IMGS.vfCard,
     paras:[
-      `Vertical farming applies the same math as high-density storage: eliminate aisles, multiply capacity. Mobile grow systems mount multi-tier grow racks on carriages, so a grow room needs one working aisle instead of one per row.`,
-      `The same principles cover trays, decking, drying racks, and the carts that move product through the operation. Integration with lighting, ventilation, and irrigation gets planned with your cultivation team, not around them.`,
-      `We handle layout, delivery, and installation, provide loading data for your structural engineer, and service and reconfigure systems as operations scale.`,
+      `Vertical farming works on the same idea as high-density mobile storage: fewer aisles, more capacity. Mobile grow systems mount multi-tier grow racks on carriages that glide along floor rails, so the rows share a single working aisle instead of needing one aisle per row.`,
+      `The same approach works for trays, decking, drying racks, and the carts that move product through your operation. We design around your lighting, ventilation, and irrigation in coordination with your cultivation team.`,
+      `We handle layout, delivery, and installation with our own crews, provide loading data for your structural engineer, and service and reconfigure systems as your operation grows, throughout the Philadelphia region and beyond.`,
     ],
     features:[
-      ['Mobile grow systems', 'Carriage-mounted multi-tier growing'],
-      ['Grow racks and trays', 'Static racks, wire decking, and drying storage'],
-      ['Utility coordination', 'Layouts planned around lighting and irrigation'],
-      ['Scale-up service', 'Reconfiguration as the operation grows'],
+      ['Mobile grow systems', 'Multi-tier grow racks on carriages'],
+      ['Grow racks and trays', 'Static racks, wire decking, and drying racks'],
+      ['Utility coordination', 'Layouts designed around lighting and irrigation'],
+      ['Scale-up service', 'Reconfiguration as your operation grows'],
     ],
     gallery:[IMGS.vf2, IMGS.vfTables, IMGS.vf3],
-    chipsTitle:'Related solutions',
+    chipsTitle:'Solutions vertical farms use most',
     related: relSol('high-density-mobile-storage','static-shelving'),
-  },
-  'general-contractors': {
-    h1:'For GCs, Architects & Owners',
-    lead:'A storage subcontractor that shows up with complete submittals, hits the schedule, and handles Division 10 storage scope end to end.',
-    sideImg: IMGS.gcNewSpace,
-    paras:[
-      `GCs, architects, and owners bring us in when a project includes storage scope: evidence rooms in a public safety building, library stacks, lab casework, lockers, or high-density systems in a records center. We take the package from specification through punch list.`,
-      `The paperwork works the way construction expects it to. Submittal packages include shop drawings and CAD layouts, product data, finish selections, and lead-time schedules. Progress billing runs in AIA format (G702/G703) with standard retainage, and deliveries are sequenced to the construction schedule with factory-trained crews who work clean on active sites.`,
-      `On floor loads: high-density and rail-mounted systems concentrate weight, so we provide complete equipment loading data and work alongside the project's structural engineer during design. Structural determinations always rest with the engineer of record; our job is to make that engineer's job easy.`,
-      `Because we carry 14 manufacturer lines, we can meet a spec as written or propose equals that protect the budget without weakening the design intent. For public work, O'Brien Systems is a Commonwealth of Pennsylvania Small Business (SB) certified vendor, which can help prime contractors meet small business participation goals.`,
-    ],
-    features:[
-      ['Submittals, shop drawings & CAD', 'Complete packages: drawings, product data, finishes, lead times'],
-      ['AIA-format billing', 'G702/G703 progress billing and retainage, handled without drama'],
-      ['Engineer-of-record support', 'Equipment loading data and design assistance for your structural engineer'],
-      ['Spec-or-equal flexibility', '14 lines to meet spec as written or protect the budget'],
-      ['Clean site discipline', 'Crews that work active construction sites properly'],
-      ['PA SB certified', 'Counts toward small business participation goals'],
-    ],
-    extra:`
-    <span class="eyebrow" style="margin-top:52px;display:inline-block">Who We Answer To</span>
-    <h2 style="font-size:1.5rem">Everyone reads the same drawing differently</h2>
-    <p class="lead">A storage package has three customers, and they want different things. We run projects so all three get theirs.</p>
-    <div class="cards" style="margin-top:30px">
-      <div class="card"><div class="bd">
-        <div class="meta">The GC wants certainty</div>
-        <h3>Schedule &amp; scope</h3>
-        <p>Submittals on time, one sub covering the whole storage scope, deliveries that match the construction sequence, AIA pay apps that process cleanly, and a punch list with nothing on it.</p>
-      </div></div>
-      <div class="card"><div class="bd">
-        <div class="meta">The architect wants intent protected</div>
-        <h3>Design &amp; documentation</h3>
-        <p>Basis-of-design support during spec writing, CAD details and finish selections that hold up, and honest guidance when an equal is proposed so the design intent survives value engineering.</p>
-      </div></div>
-      <div class="card"><div class="bd">
-        <div class="meta">The owner wants it to work</div>
-        <h3>Capacity &amp; life cycle</h3>
-        <p>Storage that matches the program's real volumes, budget options across 14 manufacturer lines, and a local service partner who still answers the phone years after turnover.</p>
-      </div></div>
-    </div>
-    <span class="eyebrow" style="margin-top:52px;display:inline-block">Code &amp; Site Coordination</span>
-    <h2 style="font-size:1.5rem">The things that get storage packages red-lined</h2>
-    <p class="lead">Storage equipment lives inside someone else's code envelope. These are the coordination items we design around from the first layout, so they never surface at inspection.</p>
-    <div class="feat">
-      <div><b>ADA clearances</b><span>Accessible aisle widths, reach ranges, and clear-floor space at lockers, shelving, and service points, worked into the layout, not patched after review</span></div>
-      <div><b>Fire sprinklers</b><span>Top-shelf and canopy heights planned to sprinkler-deflector clearance requirements, with layouts the fire protection engineer can sign off on</span></div>
-      <div><b>Egress &amp; fire exits</b><span>Aisle widths, travel distances, and exit paths preserved, including when mobile carriages are parked; powered systems programmed to hold open safe aisles</span></div>
-      <div><b>Electrical &amp; data rough-in</b><span>Powered mobile systems, VLMs, and smart lockers need power and network in the right place. We hand the electrician exact locations at rough-in, not at delivery</span></div>
-      <div><b>Floor loads</b><span>Complete equipment loading data for the structural engineer of record, early enough to matter. The determination is always the engineer's; the data package is always ours</span></div>
-      <div><b>Aisles sized to the equipment</b><span>Forklift turning aisles, cart and pallet-jack clearances, or person-only access, sized to how the room will actually run, use case by use case</span></div>
-    </div>`,
-    gallery:[IMGS.mezzanine, IMGS.maximize, IMGS.svc3],
-    chipsTitle:'Scopes we take',
-    related: relSol('high-density-mobile-storage','lockers','modular-casework','static-shelving'),
   },
 };
 
+/* industry pages link to their guide */
+const GUIDE_FOR = { museums:'museum-collections', libraries:'libraries', education:'education', athletics:'athletics', 'government-public-safety':'government-public-safety', military:'military', 'pharmaceutical-healthcare':'healthcare-pharmaceutical', 'corporate-legal':'corporate-legal', automotive:'automotive' };
+const guideCallout = (slug, name) => {
+  const g = GUIDE_FOR[slug] && GD.GUIDES.find(x => x.slug === GUIDE_FOR[slug]);
+  return g ? `
+    <div class="spec" style="margin-top:44px">
+      <div class="spec-l"><span class="eyebrow">Industry guide</span><h2>${g.title}</h2><p style="margin:0">${g.sr.redefined}</p></div>
+      <div class="spec-r"><a class="btn btn-solid" href="guides/${g.slug}/">Read the guide &rarr;</a><a class="btn btn-ghost" href="guides/">All industry guides</a></div>
+    </div>` : '';
+};
+
 /* ---------------- hub + static pages ---------------- */
-const cardGrid = (items) => `<div class="cards">` + items.map(x=>`
+const cardGrid = (items, sr) => `<div class="cards">` + items.map(x=>`
   <a class="card" href="${x.slug}.html"><div class="ph" style="background-image:url('${x.img}')"></div>
-    <div class="bd"><h3>${x.name}</h3><p>${x.short}.</p><span class="go">Explore &rarr;</span></div></a>`).join('') + `</div>`;
+    <div class="bd"><h3>${x.name}</h3>${sr ? SR(SRDATA[x.slug]) : ''}<p>${x.short}.</p><span class="go">Explore &rarr;</span></div></a>`).join('') + `</div>`;
 
 const solutionsHub = shell(`Storage Solutions | O'Brien Systems`, IMGS.compact, `
 <div class="page-hero">
@@ -1492,7 +1526,7 @@ const solutionsHub = shell(`Storage Solutions | O'Brien Systems`, IMGS.compact, 
   <div class="wrap">
     <span class="eyebrow">Solutions</span>
     <h1>What do you need to store?</h1>
-    <p>Twenty-plus storage systems across fourteen manufacturer lines, and one local team that plans, installs, and services all of it. Start with a family, or jump straight to the system you already know you need.</p>
+    <p>More than 20 storage systems from several leading manufacturers, with one local team that designs, installs, and services all of it. Start with a family, or jump straight to the system you already know you need.</p>
   </div>
 </div>
 ${SOL_GROUPS.map(g=>`
@@ -1510,11 +1544,15 @@ const industriesHub = shell(`Industries We Serve | O'Brien Systems`, IMGS.banHom
   <div class="wrap">
     <span class="eyebrow">Industries</span>
     <h1>Storage, planned around your work</h1>
-    <p>Every industry stores something different. These are the ones we know inside out, from evidence rooms to grow rooms.</p>
+    <p>Every industry stores something different. Here are the industries we serve most, from evidence rooms to grow rooms.</p>
   </div>
 </div>
 <section class="block"><div class="wrap">
 ${cardGrid(INDUSTRIES)}
+<div class="spec" style="margin-top:52px">
+  <div class="spec-l"><span class="eyebrow">For project teams</span><h2>Working on a construction project?</h2><p style="margin:0">See how we support general contractors and architects, from specification through punch list.</p></div>
+  <div class="spec-r"><a class="btn btn-solid" href="general-contractors.html">General Contractors &rarr;</a><a class="btn btn-ghost" href="architects-designers.html">Architects &amp; Designers &rarr;</a></div>
+</div>
 </div></section>`);
 
 const servicesPage = shell(`Services | O'Brien Systems`, IMGS.banServices, `
@@ -1534,19 +1572,20 @@ const servicesPage = shell(`Services | O'Brien Systems`, IMGS.banServices, `
   <span class="eyebrow">How Projects Run</span>
   <h2>Four steps, <em>one team</em></h2>
   <div class="steps">
-    <div class="step"><span class="n">01 &middot; ASSESS</span><h3>Free Space Assessment</h3><p>We walk your space, measure what you store, and find the capacity you didn't know you had. No cost, no obligation.</p></div>
-    <div class="step"><span class="n">02 &middot; DESIGN</span><h3>Layout &amp; Specification</h3><p>Drawings, equipment load data, and an itemized quote, matched to the right manufacturer line for the job.</p></div>
-    <div class="step"><span class="n">03 &middot; INSTALL</span><h3>Factory-Trained Installation</h3><p>Our own crews deliver, anchor, and level, coordinated around your operating hours and site rules.</p></div>
-    <div class="step"><span class="n">04 &middot; SUPPORT</span><h3>Service &amp; Relocation</h3><p>Maintenance, reconfiguration, teardown and moves, even for systems we didn't originally supply.</p></div>
+    <div class="step"><span class="n">01 &middot; ASSESS</span><h3>${SRT('as&middot;sess','v.')}</h3><p>We walk your space, measure what you store, and find a solution to provide as much capacity as possible. No cost, no obligation.</p></div>
+    <div class="step"><span class="n">02 &middot; DESIGN</span><h3>${SRT('de&middot;sign','v.')}</h3><p>Drawings, equipment load data, and an itemized quote, from the right manufacturer for the job.</p></div>
+    <div class="step"><span class="n">03 &middot; INSTALL</span><h3>${SRT('in&middot;stall','v.')}</h3><p>Our own crews deliver and install all equipment, coordinated around your operating hours and site rules.</p></div>
+    <div class="step"><span class="n">04 &middot; SUPPORT</span><h3>${SRT('sup&middot;port','v.')}</h3><p>Maintenance, reconfiguration, teardown and moves, even for systems we didn't originally supply.</p></div>
   </div>
 </div></section>
 <section class="block projects-bg" style="padding-top:56px;padding-bottom:56px"><div class="wrap">
   <span class="eyebrow">What We Do After the Sale</span>
   <h2>Service is the <em>product</em></h2>
+  <p class="lead">Our own service crews support customers throughout the Philadelphia region and beyond, whether we installed the system or not.</p>
   <div class="feat" style="margin-top:34px">
-    <div><b>Maintenance &amp; repair, any brand</b><span>We maintain and repair storage systems we didn't sell, including legacy installed bases from manufacturers no longer in business.</span></div>
+    <div><b>Maintenance &amp; repair, most brands</b><span>We maintain and repair most storage systems, including ones we didn't install and many from manufacturers no longer in business.</span></div>
     <div><b>Relocation &amp; reinstallation</b><span>4-post and case-style systems disassemble and move with your department, file order intact. Offices, records rooms, whole facilities.</span></div>
-    <div><b>Reconfiguration</b><span>Add sections, change shelf heights, convert static shelving to mobile carriages as your needs grow.</span></div>
+    <div><b>Reconfiguration</b><span>Add sections, change shelf heights, or convert static shelving to high-density mobile storage as your needs grow.</span></div>
     <div><b>Engineer collaboration</b><span>We supply equipment loading data and assist your structural engineer; structural determinations stay with the engineer of record.</span></div>
     <div><b>Preventive service visits</b><span>Carriage alignment, drive and safety-system checks that keep mobile systems gliding instead of grinding.</span></div>
     <div><b>Phased projects</b><span>Modular systems mean you can start with the highest-need areas and add sections later, on your budget cycle.</span></div>
@@ -1563,7 +1602,7 @@ const servicesPage = shell(`Services | O'Brien Systems`, IMGS.banServices, `
   <div class="svc-cta">
     <a href="contact.html?topic=service" style="--panel-img:url('${IMGS.svc2}')">
       <h3>Schedule service</h3>
-      <p>A system that needs maintenance, repair, relocation, or reconfiguration. Tell us the brand and the symptom; we service every line we carry and most we don't.</p>
+      <p>A system that needs maintenance, repair, relocation, or reconfiguration. Tell us the brand and the issue, and we'll let you know how we can help. We service most major brands, including many we didn't install.</p>
       <span class="go">Schedule service &rarr;</span>
     </a>
     <a href="contact.html?topic=quote" style="--panel-img:url('${IMGS.contracts}')">
@@ -1580,24 +1619,24 @@ const aboutPage = shell(`About Us | O'Brien Systems`, IMGS.bg3, `
   <div class="wrap">
     <span class="eyebrow">About O'Brien Systems</span>
     <h1>Storage redefined, since 1979</h1>
-    <p>A family-owned storage systems dealer serving the greater Philadelphia region from Conshohocken, Pennsylvania.</p>
+    <p>A third-generation, family-owned storage company serving the greater Philadelphia region and beyond from Conshohocken, Pennsylvania.</p>
   </div>
 </div>
 <section class="block"><div class="wrap twocol">
   <div class="body">
     <span class="eyebrow">Our Story</span>
-    <h2 style="margin-bottom:14px">A family owned and operated business</h2>
+    <h2 style="margin-bottom:14px">A family-owned and -operated business</h2>
     <p>O'Brien Systems was founded in 1979 by Charles O'Brien, Charlie O or Chaz to those who knew and loved him. Shortly after starting the business, Charles was in a major car accident that left him hospitalized for three months and unable to return to his office in Suburban Station for over a year. Although the odds were stacked against him, he was determined to succeed, and the original work-from-home business was born: proposals typed on his trusted Royal typewriter, hand delivered by his son Kevin after classes at Villanova.</p>
-    <p>Kevin joined the business full time in 1981 with a Villanova degree in finance. Charles' youngest son Mike followed in 1985, and years later oldest son Dennis left banking to join his brothers. A phenomenal group of decade-long employees, who have turned into family, play a major role in the success of the business, and most recently Charlie's granddaughter Jess joined the team.</p>
-    <p>At its core, O'Brien Systems is a strong combination of family values, determination and a great deal of long, hard hours in the office and in the field. Through four decades the objective has never changed: provide our clients with the highest quality of service and products to help their business succeed.</p>
+    <p>Kevin joined the business full time in 1981 with a Villanova degree in finance. Charles' youngest son Mike followed in 1985, and years later oldest son Dennis left banking to join his brothers. A phenomenal group of decade-long employees, who have turned into family, play a major role in the success of the business, and most recently, Charlie's grandchildren Jess and Patrick joined the team.</p>
+    <p>At its core, O'Brien Systems is a strong combination of family values, determination and a great deal of long, hard hours in the office and in the field. Through more than four decades, the objective has never changed: provide our clients with the highest quality of service and products to help their business succeed.</p>
   </div>
   <div class="side-img"><img src="${IMGS.hamiltonTall}" alt="O'Brien Systems storage installation" loading="lazy"></div>
 </div>
 <div class="wrap">
   <div class="feat">
-    <div><b>Family-owned since 1979</b><span>Four decades of storage projects, local and national.</span></div>
+    <div><b>Family-owned since 1979</b><span>More than four decades of storage projects, local and national.</span></div>
     <div><b>Philadelphia HQ</b><span>Based in Conshohocken, PA. When our customers grow beyond the region, we go with them.</span></div>
-    <div><b>14 manufacturer lines</b><span>Authorized dealer for the industry's leading brands.</span></div>
+    <div><b>Several leading manufacturers</b><span>Neutral recommendations, matched to each project.</span></div>
     <div><b>PA Small Business Certified</b><span>Commonwealth of Pennsylvania SB certification, valid 06/10/2026 through 06/10/2028.</span></div>
   </div>
   <span class="eyebrow" style="margin-top:56px;display:inline-block">Meet Our Team</span>
@@ -1610,8 +1649,8 @@ const aboutPage = shell(`About Us | O'Brien Systems`, IMGS.bg3, `
     <div class="tm"><div class="avatar">DM</div><b>Drew Murray</b><span>Regional Sales Manager</span><p style="font-size:.8rem;color:var(--muted);margin-top:8px">25+ years in the design, supply and installation of high-density storage and casework. Dickinson BA, Temple MBA.</p></div>
     <div class="tm"><div class="avatar">SS</div><b>Sharon Spitko</b><span>Office &amp; Operations Manager</span><p style="font-size:.8rem;color:var(--muted);margin-top:8px">20+ years running accounts, project management and the office itself. Notary public and NNA member.</p></div>
     <div class="tm"><div class="avatar">JC</div><b>Jim Curcio</b><span>Service Manager</span><p style="font-size:.8rem;color:var(--muted);margin-top:8px">20+ years in the service department, specializing in preventative maintenance and post-installation support.</p></div>
-    <div class="tm"><div class="avatar">JV</div><b>Jess Viola</b><span>Marketing Specialist &amp; Project Manager</span><p style="font-size:.8rem;color:var(--muted);margin-top:8px">Website, social media and project management, with a background in HR and healthcare marketing.</p></div>
-    <div class="tm"><div class="avatar">PO</div><b>Patrick O'Brien</b><span>Sales &amp; Technology</span><p style="font-size:.8rem;color:var(--muted);margin-top:8px">The next generation: sales, systems and the technology that keeps a 45-year-old company moving fast.</p></div>
+    <div class="tm"><div class="avatar">JV</div><b>Jess Viola</b><span>Business Development &amp; Marketing Manager</span><p style="font-size:.8rem;color:var(--muted);margin-top:8px">Business development, marketing, and project management, from first assessment through installation and support, with a background in HR and healthcare marketing.</p></div>
+    <div class="tm"><div class="avatar">PO</div><b>Patrick O'Brien</b><span>Sales &amp; Technology</span><p style="font-size:.8rem;color:var(--muted);margin-top:8px">The next generation: sales, systems, and the technology that keeps a company founded in 1979 moving fast.</p></div>
   </div>
 </div></section>`);
 
@@ -1628,7 +1667,7 @@ const contactPage = shell(`Contact Us | O'Brien Systems`, IMGS.mobileSol, `
   <div class="contact-cards">
     <div class="ccard"><span class="ic">&#128222;</span><b>Call or email</b><p>Monday through Friday, straight to a person who knows storage.</p><a class="big" href="tel:6108253405">610.825.3405</a><a class="big" href="mailto:sales@obriensys.com" style="font-size:.92rem">sales@obriensys.com</a></div>
     <div class="ccard"><span class="ic">&#128205;</span><b>Visit us</b><p>739 E. Elm Street<br>Conshohocken, PA 19428</p><a class="big" href="https://www.google.com/maps?q=739+E+Elm+Street+Conshohocken+PA+19428" target="_blank" rel="noopener">Get directions</a></div>
-    <div class="ccard"><span class="ic">&#128737;</span><b>Public procurement</b><p>PA Small Business (SB) Certified.</p><a class="big" href="government-public-safety.html">Government storage &rarr;</a></div>
+    <div class="ccard"><span class="ic">&#128737;</span><b>Public procurement</b><p>PA Small Business (SB) Certified. Many of the manufacturers we work with hold GSA contracts.</p><a class="big" href="government-public-safety.html">Government storage &rarr;</a></div>
   </div>
   <div class="twocol">
     <div class="form">
@@ -1647,6 +1686,7 @@ const contactPage = shell(`Contact Us | O'Brien Systems`, IMGS.mobileSol, `
         <option value="assessment">Schedule a free space assessment</option>
         <option value="service">Schedule service on an existing system</option>
         <option value="quote">Request a quote or proposal</option>
+        <option value="lunch">Request an AIA-certified lunch and learn</option>
         <option value="talk">Just want to talk it through</option>
       </select>
       <label for="f-msg">Message</label>
@@ -1722,7 +1762,10 @@ const resourcesPage = shell(`Resources & Brochures | O'Brien Systems`, IMGS.hami
   <div class="dl-grid">
     ${BROCHURES.map(b=>`<a class="dlc" href="${b[1]}" target="_blank" rel="noopener"><div class="cover" style="background-image:url('${COVERS[b[2]]}')"></div><div class="bd"><b>${b[0]}</b><span class="tag">PDF</span></div></a>`).join('\n    ')}
   </div>
-  <div class="chips" style="margin-top:36px"><a href="design-specify.html">Design &amp; Specify: CSI sections, CAD and Revit</a><a href="service.html">Request service</a></div>
+  <h2 style="font-size:1.45rem;margin:52px 0 6px">Industry guides</h2>
+  <p class="lead" style="margin-top:0">Storage options, 3D models, and applications for each industry, in one page.</p>
+  <div class="chips">${GD.GUIDES.map(g=>`<a href="guides/${g.slug}/">${g.name}</a>`).join('')}<a href="guides/">All industry guides &rarr;</a></div>
+  <div class="chips" style="margin-top:36px"><a href="storage-questions.html">Storage questions answered</a><a href="architects-designers.html">Architects &amp; Designers: CSI sections, CAD and Revit</a><a href="service.html">Request service</a></div>
   <p class="lead" style="margin-top:28px">Need drawings, specifications, or manufacturer literature for a specific product line? <a href="contact.html">Ask us</a> and we'll pull the current documents from the manufacturer.</p>
 </div></section>`);
 
@@ -1751,8 +1794,9 @@ const SVG_MOBILE_BA = SVG_MOBILE.replace(/<text[\s\S]*?<\/text>/g, '');
 const homeBody = `
 <div class="hero">
   <div class="wrap">
-    <h1><em>Storage solved.</em> Space reclaimed.</h1>
-    <p>For 45+ years, O'Brien Systems has planned, supplied, and installed custom storage from our Philadelphia-area headquarters, at home in the region and wherever our customers need us.</p>
+    <h1>Storage, <em>redefined.</em></h1>
+    ${SR(SRDATA.home, true)}
+    <p>Since 1979, O'Brien Systems has designed, supplied, and installed custom storage solutions for customers across the Philadelphia region and wherever their projects take them.</p>
     <div class="ctas">
       <a class="btn btn-white" href="contact.html">Schedule a Free Space Assessment</a>
       <a class="btn btn-ghost" href="solutions.html">Explore Solutions</a>
@@ -1768,15 +1812,14 @@ const homeBody = `
     <a href="government-public-safety.html"><span class="ic">&#128737;&#65039;</span>Public Safety</a>
     <a href="pharmaceutical-healthcare.html"><span class="ic">&#9877;&#65039;</span>Healthcare</a>
     <a href="material-handling-warehouse.html"><span class="ic">&#127981;</span>Warehouse</a>
-    <a href="industries.html"><span class="ic">&#8594;</span>All 13 Industries</a>
+    <a href="industries.html"><span class="ic">&#8594;</span>All 12 Industries</a>
   </div>
 </div>
 
 <div class="stats wrap">
-  <div class="grid">
+  <div class="grid three">
     <div><b>1979</b><span>family-owned since</span></div>
     <div><b class="loc">Conshohocken,&nbsp;PA</b><span>serving the region, traveling with our customers</span></div>
-    <div><b>14</b><span>manufacturer lines carried</span></div>
     <div><b>Free</b><span>on-site space assessments</span></div>
   </div>
 </div>
@@ -1799,16 +1842,16 @@ const homeBody = `
       </div>
       <a class="btn btn-solid" href="contact.html">Talk to a Planner</a>
     </div>
-    ${cardGrid(SOLUTIONS)}
+    ${cardGrid(SOLUTIONS, true)}
     <p style="text-align:center;margin-top:28px"><a class="btn btn-solid" href="solutions.html">Browse the full catalog: ${SOLUTIONS.length + PRODUCTS.length} storage systems &rarr;</a></p>
   </div>
 </section>
 
 <section class="block compare">
   <div class="wrap">
-    <span class="eyebrow">The Case for Compact Storage</span>
-    <h2>We make <em>every inch</em> count</h2>
-    <p class="lead">Fixed aisles waste up to half your floor. Putting the same shelving on mobile carriages removes the empty aisles. Same footprint, twice the storage, or the same storage in half the space.</p>
+    <span class="eyebrow">The Case for High-Density Mobile Storage</span>
+    ${SR(SRDATA.sqft, true, 'big')}
+    <p class="lead">With fixed shelving, every row needs its own aisle. Mounting the same shelving on mobile carriages lets the rows share a single moving aisle, so the same footprint holds up to twice the storage, or the same storage fits in half the space.</p>
     <div class="duo">
       <div class="panel">
         <h3>Conventional fixed shelving</h3>
@@ -1841,7 +1884,7 @@ const homeBody = `
       <div>
         <span class="eyebrow">Industries</span>
         <h2>Built around <em>your work</em></h2>
-        <p class="lead">Thirteen industries, each with its own storage problems. Pick yours and see how we solve them.</p>
+        <p class="lead">Twelve industries. Twelve definitions of storage. Pick yours and see how we solve them.</p>
       </div>
       <a class="btn btn-solid" href="industries.html">All Industries</a>
     </div>
@@ -1864,10 +1907,10 @@ const homeBody = `
     <h2>From walkthrough to <em>working storage</em></h2>
     <p class="lead">Buying storage isn't buying steel. It's buying a plan. Here's how we run every project, whether it's one evidence room or a whole facility.</p>
     <div class="steps">
-      <div class="step"><span class="n">01 &middot; ASSESS</span><h3>Free Space Assessment</h3><p>We walk your space, measure what you store, and find the capacity you didn't know you had.</p></div>
-      <div class="step"><span class="n">02 &middot; DESIGN</span><h3>Layout &amp; Specification</h3><p>Drawings, equipment load data, and an itemized quote, matched to the right manufacturer line.</p></div>
-      <div class="step"><span class="n">03 &middot; INSTALL</span><h3>Factory-Trained Installation</h3><p>Our own crews deliver, anchor, and level, coordinated around your operating hours.</p></div>
-      <div class="step"><span class="n">04 &middot; SUPPORT</span><h3>Service &amp; Relocation</h3><p>Maintenance, reconfiguration, teardown and moves, even for systems we didn't originally supply.</p></div>
+      <div class="step"><span class="n">01 &middot; FREE ASSESSMENT</span><h3>${SRT('as&middot;sess','v.')}</h3><p>We walk your space, measure what you store, and find a solution to provide as much capacity as possible.</p></div>
+      <div class="step"><span class="n">02 &middot; DESIGN</span><h3>${SRT('de&middot;sign','v.')}</h3><p>Drawings, equipment load data, and an itemized quote, matched to the right manufacturer line.</p></div>
+      <div class="step"><span class="n">03 &middot; INSTALL</span><h3>${SRT('in&middot;stall','v.')}</h3><p>Our own crews deliver and install all equipment, coordinated around your operating hours.</p></div>
+      <div class="step"><span class="n">04 &middot; SUPPORT</span><h3>${SRT('sup&middot;port','v.')}</h3><p>Maintenance, reconfiguration, teardown and moves, even for systems we didn't originally supply.</p></div>
     </div>
   </div>
 </section>
@@ -2029,13 +2072,12 @@ const SITE_JS = `document.documentElement.classList.add('js');
 })();
 `;
 fs.mkdirSync(path.join(OUT,'assets'), {recursive:true});
-fs.writeFileSync(path.join(OUT,'assets','style.css'), CSS + X.CSS + X.CSS3D);
+fs.writeFileSync(path.join(OUT,'assets','style.css'), CSS + X.CSS + X.CSS3D + G.CSS + W.CSS);
 fs.writeFileSync(path.join(OUT,'assets','site.js'), SITE_JS);
 
 const pages = {
   'index.html': shell(`O'Brien Systems | Custom Storage Solutions | Design Concept`, IMGS.heroHome, homeBody + X.home3d()),
   'showroom.html': X.showroomPage(shell, IMGS.banMobile),
-  'design-specify.html': X.designSpecifyPage(shell, IMGS.gcProject),
   'service.html': X.servicePage(shell, IMGS.banServices),
   '404.html': X.notFound(shell, IMGS.heroHome),
   'solutions.html': solutionsHub,
@@ -2049,17 +2091,21 @@ const pages = {
 
 for (const s of SOLUTIONS) {
   const d = SOLUTION_PAGES[s.slug];
-  pages[`${s.slug}.html`] = subpage({ ...d, slug:s.slug, name:s.name, img:s.img, banner:s.banner, hub:'solutions', hubName:'Solutions' });
+  pages[`${s.slug}.html`] = subpage({ ...d, extra:(d.extra||'') + G.extra(s.slug, s.name, 'solution'), faqs:[...(d.faqs||[]), ...G.faqs(s.slug)], slug:s.slug, name:s.name, img:s.img, banner:s.banner, hub:'solutions', hubName:'Solutions' });
 }
 for (const p of PRODUCTS) {
   const d = PRODUCT_PAGES[p.slug];
-  pages[`${p.slug}.html`] = subpage({ ...d, slug:p.slug, name:p.name, img:p.img, banner:p.banner, hub:'solutions', hubName:'Solutions' });
+  pages[`${p.slug}.html`] = subpage({ ...d, extra:(d.extra||'') + G.extra(p.slug, p.name, 'product'), faqs:[...(d.faqs||[]), ...G.faqs(p.slug)], slug:p.slug, name:p.name, img:p.img, banner:p.banner, hub:'solutions', hubName:'Solutions' });
 }
 for (const i of INDUSTRIES) {
   const d = INDUSTRY_PAGES[i.slug];
-  pages[`${i.slug}.html`] = subpage({ ...d, slug:i.slug, eyebrow:'Industries', name:i.name, img:i.img, banner:i.banner, hub:'industries', hubName:'Industries' });
+  pages[`${i.slug}.html`] = subpage({ ...d, extra:(d.extra||'') + guideCallout(i.slug, i.name) + G.extra(i.slug, i.name, 'industry'), faqs:[...(d.faqs||[]), ...G.faqs(i.slug)], slug:i.slug, eyebrow:'Industries', name:i.name, img:i.img, banner:i.banner, hub:'industries', hubName:'Industries' });
 }
 BLOG.forEach((p, idx) => { pages[`post-${p.slug}.html`] = postPage(p, idx); });
+pages['storage-questions.html'] = G.answersPage(shell, IMGS.heroHome);
+Object.assign(pages, W.pages(shell, IMGS.heroHome));
+Object.assign(pages, require('./team')({ shell, IMGS, SR, SRDATA, X }));
+pages['about.html'] = pages['about.html'].replace('<div class="cta" id="contact">', G.aboutMap().replace('</figure>', '</figure>\n  <p class="gx-more"><a href="where-we-work.html">See every region we work in</a></p>') + '<div class="cta" id="contact">');
 
 let n = 0;
 for (const [file, html] of Object.entries(pages)) {
@@ -2069,11 +2115,23 @@ for (const [file, html] of Object.entries(pages)) {
   fs.writeFileSync(path.join(OUT, file), X.lazyMedia(X.enrich(file, X.with3d(X.photos(file, html), VER))));
   n++;
 }
+// industry guides: guides/<slug>/index.html plus the hub (guides.js)
+fs.appendFileSync(path.join(OUT, 'assets', 'style.css'), GD.guideCss);
+for (const p of GD.allPages(shell, { X, VER })) { fs.mkdirSync(path.join(OUT, path.dirname(p.path)), { recursive: true }); fs.writeFileSync(path.join(OUT, p.path), p.html); pages[p.path] = p.html; n++; }
 // customer presentations: unlisted, never in the sitemap
 { const names = Object.fromEntries([...SOLUTIONS, ...PRODUCTS, ...INDUSTRIES].map(p => [p.slug, p.name]));
   for (const [file, html] of Object.entries(X.presentPages(VER, IMGS.logo, names))) fs.writeFileSync(path.join(OUT, file), html); }
 // pages retired from the site: clear any stale copies so nothing links or serves them
 for (const f of ['projects.html', 'partners.html']) fs.rmSync(path.join(OUT, f), { force: true });
+// renamed or merged pages keep their old address working (Cloudflare also gets _redirects at deploy)
+const MOVED = { 'design-specify.html': 'architects-designers.html', 'fireproof-cabinets.html': 'fire-rated-cabinets.html' };
+for (const [from, to] of Object.entries(MOVED)) {
+  fs.writeFileSync(path.join(OUT, from), `<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="robots" content="noindex, nofollow"><title>Moved | O'Brien Systems</title>
+<link rel="canonical" href="${to}"><meta http-equiv="refresh" content="0; url=${to}"></head>
+<body><p>This page moved to <a href="${to}">${to}</a>.</p></body></html>
+`);
+}
 fs.writeFileSync(path.join(OUT, 'sitemap.xml'), X.sitemap(Object.keys(pages)));
 fs.writeFileSync(path.join(OUT, 'robots.txt'), X.ROBOTS);
 { // chat-config.js: obriensys.com path <-> redesign page, so answers link here and prompts fit each page
@@ -2082,8 +2140,8 @@ fs.writeFileSync(path.join(OUT, 'robots.txt'), X.ROBOTS);
   const toLocal = {}; // obriensys slug -> redesign file
   for (const f of files) { const slug = f.replace(/\.html$/, '').replace(/^post-/, ''); if (slug !== 'index') toLocal[slug] = f; }
   Object.assign(toLocal, ALIAS);
-  const PRODUCT = ["four-post-shelving","wire-shelving","cantilever-shelving","bin-storage","pallet-rack","mezzanines","wire-partitions","evidence-lockers","weapons-storage","athletic-storage","rotary-cabinets","fireproof-cabinets","wardrobe-cabinets","museum-cabinets","art-screens","mail-sorters","high-density-mobile-storage","lifts-carousels","lockers","static-shelving","cabinets","modular-casework","solutions"];
-  const INDUSTRY = ["museums","libraries","education","athletics","government-public-safety","military","pharmaceutical-healthcare","corporate-legal","retail","automotive","material-handling-warehouse","vertical-farming","general-contractors","industries"];
+  const PRODUCT = ["four-post-shelving","wire-shelving","cantilever-shelving","bin-storage","pallet-rack","mezzanines","wire-partitions","evidence-lockers","weapons-storage","athletic-storage","rotary-cabinets","fire-rated-cabinets","wardrobe-cabinets","museum-cabinets","art-screens","mail-sorters","high-density-mobile-storage","lifts-carousels","lockers","static-shelving","cabinets","modular-casework","solutions"];
+  const INDUSTRY = ["museums","libraries","education","athletics","government-public-safety","military","pharmaceutical-healthcare","corporate-legal","retail","automotive","material-handling-warehouse","vertical-farming","general-contractors","architects-designers","industries"];
   const cfg = `// generated by build.js: connects this site to the O'Brien website assistant
 (function () {
   var toLocal = ${JSON.stringify(toLocal)};
