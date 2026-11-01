@@ -1,0 +1,21 @@
+# Render.com blueprint for deploying the Fantasy Advisor straight from this branch.
+# If the app moves to its own repo, use the render.yaml inside espn-lineup-bot/ instead.
+services:
+  - type: web
+    name: fantasy-advisor
+    runtime: python
+    branch: espn-lineup-bot
+    rootDir: espn-lineup-bot
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn -w 2 -t 120 app:app
+    envVars:
+      - key: APP_PASSWORD
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ESPN_S2
+        sync: false
+      - key: SWID
+        sync: false
+      - key: PYTHON_VERSION
+        value: "3.12.7"
