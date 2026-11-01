@@ -6,10 +6,10 @@
 {% set any = bundles|map(attribute='report.lineup_items')|map('length')|sum %}
 {% for b in bundles %}
 <div class="card">
-  <h2 style="margin-top:0">{{ b.name }} <span class="muted">week {{ b.week }}</span></h2>
+  <h2 class="top">{{ b.name }} <span class="muted">week {{ b.week }}</span></h2>
   {% if b.report.lineup_items %}
-  <ul class="plain">{% for it in b.report.lineup_items %}<li>{{ it.name }}: <span class="muted">{{ it.from }}</span> &rarr; <strong>{{ it.to }}</strong></li>{% endfor %}</ul>
-  <p class="muted">Projected: {{ b.report.current_lineup_proj|pts }} &rarr; {{ b.report.recommended_lineup_proj|pts }}</p>
+  <ul class="plain">{% for it in b.report.lineup_items %}<li><strong>{{ it.name }}</strong>: <span class="muted">{{ it.from }}</span> &rarr; <strong>{{ it.to }}</strong></li>{% endfor %}</ul>
+  <p class="stamp">Projected: {{ b.report.current_lineup_proj|pts }} &rarr; <strong>{{ b.report.recommended_lineup_proj|pts }}</strong></p>
   {% else %}<p class="good">Already set. No changes.</p>{% endif %}
 </div>
 {% endfor %}
@@ -25,7 +25,7 @@
 <h1>Done</h1>
 {% for x in results %}
 <div class="card">
-  <h2 style="margin-top:0">{{ x.name }}</h2>
+  <h2 class="top">{{ x.name }}</h2>
   <p class="{{ 'good' if x.result.ok else 'bad' }}">{{ x.result.message }}</p>
   {% if x.items and not x.result.ok %}<p class="muted">Tried: {% for it in x.items %}{{ it.name }} {{ it.from }}&rarr;{{ it.to }}{{ ', ' if not loop.last }}{% endfor %}</p>
   <p class="muted">Make these on ESPN by hand, then come back. If this keeps failing with 401, update the cookies under Settings.</p>{% endif %}

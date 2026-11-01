@@ -1,14 +1,14 @@
 <div class="tablewrap"><table>
-<tr><th>Slot</th><th>Player</th><th>Pos</th><th>Team</th><th>Opp</th><th class="num">OppRk</th><th class="num">Proj</th><th class="num">L3</th><th>Notes</th></tr>
+<tr><th>Slot</th><th>Player</th><th>Pos</th><th>Team</th><th>Opp</th><th class="num">Opp rank</th><th class="num">Proj</th><th class="num">Last 3</th><th>Notes</th></tr>
 {% for slot in r.slot_order %}
   {% for p in lineup[slot] %}
-  <tr><td>{{ slot }}</td><td>{{ p.name }}</td><td>{{ p.pos }}</td><td>{{ p.team }}</td><td>{{ p.opp }}</td>
-      <td class="num">{% if p.opp_rank %}#{{ p.opp_rank }}{% endif %}</td><td class="num">{{ p.proj|pts }}</td>
+  <tr><td class="slot"><span>{{ slot }}</span></td><td class="player">{{ p.name }}</td><td>{{ p.pos }}</td><td>{{ p.team }}</td><td>{{ p.opp }}</td>
+      <td class="num">{% if p.opp_rank %}#{{ p.opp_rank }}{% endif %}</td><td class="num proj">{{ p.proj|pts }}</td>
       <td class="num">{% if p.recent_avg is not none %}{{ p.recent_avg|pts }}{% endif %}</td>
       <td>{% if p.notes %}<span class="tag {{ 'bad' if p.bye or p.status in ['OUT','INJURY_RESERVE','SUSPENSION'] else 'warn' }}">{{ p.notes }}</span>{% endif %}</td></tr>
   {% endfor %}
   {% for _ in range(r.slot_counts[slot] - lineup[slot]|length) %}
-  <tr><td>{{ slot }}</td><td class="bad">EMPTY</td><td></td><td></td><td></td><td></td><td class="num">0.0</td><td></td><td><span class="tag bad">nobody eligible</span></td></tr>
+  <tr><td class="slot"><span>{{ slot }}</span></td><td class="player bad">EMPTY</td><td></td><td></td><td></td><td></td><td class="num proj">0.0</td><td></td><td><span class="tag bad">nobody eligible</span></td></tr>
   {% endfor %}
 {% endfor %}
 </table></div>

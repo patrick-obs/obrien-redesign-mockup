@@ -115,6 +115,17 @@ ESPN_S2=... SWID=... npm run smoke   # Worker code against your real leagues, fr
 pip install pytest && pytest tests   # Python CLI and Flask app (21 tests)
 ```
 
+## Look and feel
+
+- All CSS lives in one place per version: the `CSS` constant in `worker/html.js` (Worker) and the
+  `<style>` block in `templates/base.html` (Flask). They are identical; change both.
+- Headings use Fraunces from Google Fonts; body text is the system font. Colors are the theme
+  variables at the top of the stylesheet, with a dark set under `prefers-color-scheme: dark`.
+- The mascot, favicon and home-screen icon are in `public/` (served by Cloudflare as static assets,
+  see `assets` in `wrangler.jsonc`) and duplicated in `static/` for Flask. They were made from the
+  original black-and-white drawing: background knocked out, ink tinted theme pink, so one file
+  works on both light and dark.
+
 ## Known limits
 
 - ESPN's API is unofficial. Reads have been stable for years; the lineup write uses the same

@@ -5,6 +5,8 @@
   "main": "worker/index.js",
   "compatibility_date": "2026-10-01",
   "observability": { "enabled": true },
+  // Logo, favicon and touch icon. Served straight from the edge; everything else reaches the Durable Object.
+  "assets": { "directory": "./public" },
   "durable_objects": {
     "bindings": [{ "name": "ADVISOR", "class_name": "Advisor" }]
   },

@@ -4,34 +4,34 @@
 {% for e in errors %}<div class="flash">{{ e }}</div>{% endfor %}
 {% set live = bundles|selectattr('started')|list %}
 {% if live %}
-<div class="card">
+<div class="card hero">
   {% if total_moves %}
   <p><strong>{{ total_moves }}</strong> lineup change{{ 's' if total_moves != 1 }} recommended across your leagues.</p>
   <a class="btn big" href="{{ url_for('lineups') }}">Set all lineups</a>
   {% else %}
-  <p class="good">All lineups already match the projections. Nothing to change right now.</p>
-  <a class="btn ghost" href="{{ url_for('lineups') }}">Review anyway</a>
+  <p>Every lineup already matches the projections. Nothing to change right now.</p>
+  <a class="btn ghost big" href="{{ url_for('lineups') }}">Review anyway</a>
   {% endif %}
-  <p class="muted" style="margin-bottom:0">Data as of {{ now.strftime('%a %b %-d, %-I:%M %p') }}. <a href="{{ url_for('index', refresh=1) }}">Refresh from ESPN</a></p>
+  <p class="stamp">Data as of {{ now.strftime('%a %b %-d, %-I:%M %p') }}. <a href="{{ url_for('index', refresh=1) }}">Refresh from ESPN</a></p>
 </div>
 {% endif %}
 <div class="grid">
 {% for b in bundles %}
   <div class="card">
-    <h2 style="margin-top:0"><a href="{{ url_for('league_page', league_id=b.league_id) }}">{{ b.name }}</a></h2>
+    <h2 class="top"><a href="{{ url_for('league_page', league_id=b.league_id) }}">{{ b.name }}</a></h2>
     {% if b.started %}{% set r = b.report %}
     <div class="kv"><span>{{ r.team }}</span><strong>{{ r.record }}</strong></div>
     <div class="kv"><span>Week {{ r.week }} vs {{ r.opponent }}</span><span class="muted">{{ r.opponent_record }}</span></div>
     <div class="kv"><span>ESPN projection</span><span>{{ r.espn_projection.me|pts }} <span class="muted">vs {{ r.espn_projection.opponent|pts }}</span></span></div>
     <div class="kv"><span>Lineup as set / best</span><span>{{ r.current_lineup_proj|pts }} / <strong>{{ r.recommended_lineup_proj|pts }}</strong>
       {% set d = r.recommended_lineup_proj - r.current_lineup_proj %}{% if d > 0 %}<span class="good">(+{{ d|pts }})</span>{% endif %}</span></div>
-    <p>
+    <div class="tags">
       {% if r.lineup_items %}<span class="tag warn">{{ r.lineup_items|length }} change{{ 's' if r.lineup_items|length != 1 }}</span>{% else %}<span class="tag good">lineup set</span>{% endif %}
       {% if b.problem_count %}<span class="tag bad">{{ b.problem_count }} problem{{ 's' if b.problem_count != 1 }}</span>{% endif %}
       {% if b.trades %}<span class="tag">{{ b.trades|length }} trade idea{{ 's' if b.trades|length != 1 }}</span>{% endif %}
-    </p>
-    {% for m in r.moves %}<div class="move">{{ m }}</div>{% endfor %}
-    {% for w in r.warnings %}<div class="warn">! {{ w }}</div>{% endfor %}
+    </div>
+    {% for m in r.moves %}<div class="move {{ 'start' if m.startswith('START') else ('sit' if m.startswith('SIT') else '') }}">{{ m }}</div>{% endfor %}
+    {% for w in r.warnings %}<div class="note">{{ w }}</div>{% endfor %}
     {% else %}
     <p class="muted">Not started this season (no draft or rosters yet).</p>
     {% endif %}
