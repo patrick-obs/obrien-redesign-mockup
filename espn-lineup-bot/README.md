@@ -123,6 +123,13 @@ pip install pytest && pytest tests   # Python CLI and Flask app (21 tests)
   `worker/analyst.js`. If the Worker has an `ANTHROPIC_API_KEY` secret, Claude rewrites the same
   facts into better prose (model `claude-opus-5-5`, low effort, 25 s timeout); without the key, or
   if the call fails, the rules-based text is shown. The take is cached with the league report.
+- **Claude spending controls.** One call per league per report rebuild (reports are cached for
+  `CACHE_SECONDS`, default 10 minutes, and rebuilt by the cron three mornings a week). On top of
+  that: `ANALYST_DAILY_CAP` (plain variable, default 60) caps calls per UTC day, counted in the
+  Durable Object; `ANALYST_ENABLED=0` switches Claude off without removing the key; `max_tokens`
+  is 1500 and the prompt is a few hundred tokens, so a call costs well under a cent. Settings shows
+  the key status and today's count. Set a monthly spend limit in the Anthropic Console as the
+  outer guard. API calls are billed to the Console account, not to a Claude.ai subscription.
 - **Trade ideas** (`worker/trades.js`) now include two-player packages: 1-for-1, 2-for-1, 1-for-2
   and 2-for-2. Each is scored by what both sides' best weekly lineups gain for the rest of the
   season. Filters: you never ask for clearly more value than you give (the side that gets the best

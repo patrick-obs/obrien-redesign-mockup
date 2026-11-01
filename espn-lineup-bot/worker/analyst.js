@@ -69,7 +69,7 @@ export function analystTake(input) {
 }
 
 // First letter down, trailing period off, and any inner full stop softened so the sentence can be embedded.
-const lower = (s) => s.replace(/\.$/, "").replace(/\. /g, "; ").replace(/^(\w)/, (c) => c.toLowerCase());
+const lower = (s) => s.replace(/\.$/, "").replace(/\. (\w)/g, (m, c) => `; ${c.toLowerCase()}`).replace(/^(\w)/, (c) => c.toLowerCase());
 const ordinal = (n) => `${n}${["th", "st", "nd", "rd"][(n % 100 > 10 && n % 100 < 14) ? 0 : Math.min(n % 10, 4) % 4] || "th"}`;
 
 const MODEL = "claude-opus-5-5";

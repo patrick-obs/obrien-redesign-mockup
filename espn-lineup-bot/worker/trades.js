@@ -65,6 +65,7 @@ export function proposeTrades(mine, others, slotCounts, opts = {}) {
   for (const [teamName, entry] of Object.entries(others)) {
     const theirs = Array.isArray(entry) ? entry : entry.players;
     const theirId = Array.isArray(entry) ? null : entry.id;
+    const theirLogo = Array.isArray(entry) ? "" : entry.logo || "";
     const theirBase = optimize(theirs, slotCounts), baseTheirs = projectedTotal(theirBase);
     const theirPackages = packages(tradeable(theirs));
     const teamIdeas = [];
@@ -84,7 +85,7 @@ export function proposeTrades(mine, others, slotCounts, opts = {}) {
         gainOf.set(key(give, get), myGain);
         const pj = (p) => ({ name: p.name, pos: p.position, value: p.proj, player_id: p.playerId, team: p.proTeam });
         teamIdeas.push({
-          id: tradeId(theirId ?? teamName, give, get), with: teamName, with_team_id: theirId, kind: `${give.length}-for-${get.length}`,
+          id: tradeId(theirId ?? teamName, give, get), with: teamName, with_team_id: theirId, with_logo: theirLogo, kind: `${give.length}-for-${get.length}`,
           give: give.map(pj), get: get.map(pj), my_gain: myGain, their_gain: theirGain,
           // Legacy scalar fields, kept for the Flask templates and older callers.
           give_names: give.map((p) => p.name).join(" + "), get_names: get.map((p) => p.name).join(" + "),

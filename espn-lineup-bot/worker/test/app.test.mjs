@@ -148,3 +148,32 @@ test("add: full roster forces a drop, default is the cheapest bench player, waiv
   assert.equal(posts.length, 2); assert.equal(posts[1].waiver, true); assert.equal(posts[1].bid, 7);
   assert.equal((await app.handle(req("/add?league=1&player=424242", { cookie }))).status, 404);
 });
+
+test("Claude rewrite: counted per day, capped, switchable, and falls back on failure", async () => {
+  let calls = 0;
+  const claude = async (url, init) => {
+    if (!String(url).includes("api.anthropic.com")) throw new Error("no network in tests");
+    calls++;
+    const body = JSON.parse(init.body);
+    assert.equal(body.model, "claude-opus-5-5"); assert.equal(body.fallbacks, "default"); assert.equal(body.output_config.effort, "low");
+    assert.equal(init.headers["anthropic-version"], "2026-10-21");
+    return new Response(JSON.stringify({ stop_reason: "end_turn", content: [{ type: "text", text: "Rival is in trouble.\n\nPara one.\n\nPara two." }] }), { status: 200 });
+  };
+  const env = { APP_PASSWORD: "open-sesame", SECRET_KEY: "test-secret", ESPN_S2: "s2cookie", SWID: "{abc-123}", ANTHROPIC_API_KEY: "sk-test", ANALYST_DAILY_CAP: "2" };
+  const app = new App({ env, storage: new FakeStorage(), fetchFn: claude, espn: fakeEspn() });
+  const b1 = await app.bundle(1, true);
+  assert.equal(b1.analyst.source, "claude"); assert.equal(b1.analyst.headline, "Rival is in trouble."); assert.deepEqual(b1.analyst.paragraphs, ["Para one.", "Para two."]);
+  await app.bundle(1, true);
+  const b3 = await app.bundle(1, true);
+  assert.equal(calls, 2, "third rebuild must not call Claude once the daily cap is hit");
+  assert.equal(b3.analyst.source, "rules");
+  const cookie = await login(app);
+  const page = await (await app.handle(req("/settings", { cookie }))).text();
+  assert.match(page, /Calls today/); assert.match(page, /<span class="v">2<\/span><span class="m">\/ 2<\/span>/);
+  // Kill switch.
+  const off = new App({ env: { ...env, ANALYST_ENABLED: "0", ANALYST_DAILY_CAP: "100" }, storage: new FakeStorage(), fetchFn: claude, espn: fakeEspn() });
+  assert.equal((await off.bundle(1, true)).analyst.source, "rules"); assert.equal(calls, 2);
+  // A 500 from the API leaves the rules text in place and does not throw.
+  const broken = new App({ env: { ...env, ANALYST_DAILY_CAP: "100" }, storage: new FakeStorage(), fetchFn: async (u) => { if (String(u).includes("api.anthropic.com")) return new Response("nope", { status: 500 }); throw new Error("no network"); }, espn: fakeEspn() });
+  assert.equal((await broken.bundle(1, true)).analyst.source, "rules");
+});

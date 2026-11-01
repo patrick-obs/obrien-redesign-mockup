@@ -125,8 +125,8 @@ export function buildReport(league, me, boxes, week, now, faByPos = null) {
   const rep = {
     league_id: league.id, league: league.name, season: league.season, week, current_week: league.currentWeek,
     generated_at: new Date(now).toISOString().slice(0, 16).replace("T", " "),
-    team_id: me.id, team: me.name, record: record(me),
-    opponent: opp ? opp.name : "bye", opponent_record: opp ? record(opp) : "",
+    team_id: me.id, team: me.name, record: record(me), logo: me.logo || "",
+    opponent: opp ? opp.name : "bye", opponent_record: opp ? record(opp) : "", opponent_logo: opp ? opp.logo || "" : "",
     espn_projection: { me: mySide.projected, opponent: oppSide ? oppSide.projected : -1 },
     current_lineup_proj: projectedTotal(current), recommended_lineup_proj: projectedTotal(rec),
     slot_counts: slotCounts, slot_order: order,
@@ -143,7 +143,7 @@ export function buildReport(league, me, boxes, week, now, faByPos = null) {
   };
   rep.open_spots = rep.roster_size ? Math.max(0, rep.roster_size - rep.roster_count) : 0;
   const st = standings(league);
-  rep.standings = st.map((t, i) => ({ rank: i + 1, team: t.name, team_id: t.id, record: record(t), pf: Math.round(t.pointsFor * 10) / 10,
+  rep.standings = st.map((t, i) => ({ rank: i + 1, team: t.name, team_id: t.id, logo: t.logo || "", record: record(t), pf: Math.round(t.pointsFor * 10) / 10,
     pa: Math.round(t.pointsAgainst * 10) / 10, avg_pf: avgPf(t) }));
 
   // league-wide
@@ -154,19 +154,19 @@ export function buildReport(league, me, boxes, week, now, faByPos = null) {
       if (!side || !side.team) continue;
       const ps = side.lineup.map(toPlayer);
       rosterByTeam[side.teamId] = ps;
-      sides.push({ team: side.team.name, team_id: side.teamId, record: record(side.team), espn_proj: side.projected,
+      sides.push({ team: side.team.name, team_id: side.teamId, logo: side.team.logo || "", record: record(side.team), espn_proj: side.projected,
         best_lineup_proj: projectedTotal(optimize(ps, slotCounts)), problems: lineupProblems(ps, slotCounts) });
     }
     return sides;
   });
-  rep.injury_report = st.map((t) => ({ team: t.name, team_id: t.id, injuries: rosterInjuries(rosterByTeam[t.id] || []) }));
+  rep.injury_report = st.map((t) => ({ team: t.name, team_id: t.id, logo: t.logo || "", injuries: rosterInjuries(rosterByTeam[t.id] || []) }));
 
   const reg = league.regSeasonCount || me.schedule.length;
   const past = [], future = [];
   me.schedule.slice(0, reg).forEach((oppId, i) => {
     const wk = i + 1, o = league.byId[oppId];
     if (!o) return;
-    const entry = { week: wk, opponent: o.name, record: record(o), avg_pf: avgPf(o) };
+    const entry = { week: wk, opponent: o.name, opponent_logo: o.logo || "", record: record(o), avg_pf: avgPf(o) };
     const decided = ["W", "L", "T"].includes(me.outcomes[i]);
     if (wk < league.currentWeek || (wk === league.currentWeek && decided)) {
       past.push({ ...entry, result: me.outcomes[i] || "?", score: me.scores[i] ?? null, opp_score: o.scores[i] ?? null });

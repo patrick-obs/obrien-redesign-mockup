@@ -101,20 +101,39 @@ export class App {
         const conv = (t) => (rosters[t.id] || []).map((p) => rosterPlayer(p.name, p.position, p.eligible, p.status,
           playerValue(p.seasonProjAvg, p.seasonAvg, this.espn.gamesPlayed(t)), p.playerId, p.proTeam));
         const mine = conv(me);
-        const others = Object.fromEntries(league.teams.filter((t) => t.id !== me.id).map((t) => [t.name, { id: t.id, players: conv(t) }]));
+        const others = Object.fromEntries(league.teams.filter((t) => t.id !== me.id).map((t) => [t.name, { id: t.id, logo: t.logo || "", players: conv(t) }]));
         trades = proposeTrades(mine, others, rep.slot_counts);
       } catch (e) { console.warn("trades failed", e?.message); }
       const problem_count = rep.warnings.filter((w) => /No eligible|BYE| is out|injury reserve|suspension/.test(w)).length;
-      // The analyst's take: rules first, Claude's rewrite of the same facts when a key is configured.
+      // The analyst's take: rules first, Claude's rewrite of the same facts when a key is configured and the daily cap allows.
       let analyst = null;
       try {
         analyst = analystTake({ report: rep, trades, league });
-        const polished = await polishTake(analyst, { apiKey: this.env.ANTHROPIC_API_KEY, fetchFn: f });
-        if (polished) analyst = polished;
+        if (await this.claudeAllowed()) {
+          const polished = await polishTake(analyst, { apiKey: this.env.ANTHROPIC_API_KEY, fetchFn: f });
+          if (polished) analyst = polished;
+        }
         delete analyst.facts;
       } catch (e) { console.warn("analyst failed", e?.message); }
       return { ...b, report: rep, trades, analyst, team_id: me.id, week, problem_count };
     });
+  }
+
+  // ------------------------------------------------------------ Claude guardrails
+  /** Spending controls for the optional Claude rewrite: a kill switch and a per-day call cap, counted in storage. */
+  claudeConfig() {
+    return { enabled: !!this.env.ANTHROPIC_API_KEY && this.env.ANALYST_ENABLED !== "0", cap: Math.max(0, Number(this.env.ANALYST_DAILY_CAP || 60)) };
+  }
+  claudeKey() { return `claude:${new Date(this.now()).toISOString().slice(0, 10)}`; }
+  async claudeCallsToday() { return Number(await this.storage.get(this.claudeKey())) || 0; }
+  /** True (and counts the call) only when Claude is configured, switched on, and under today's cap. */
+  async claudeAllowed() {
+    const c = this.claudeConfig();
+    if (!c.enabled) return false;
+    const n = await this.claudeCallsToday();
+    if (n >= c.cap) { console.warn(`analyst: daily Claude cap of ${c.cap} reached`); return false; }
+    await this.storage.put(this.claudeKey(), n + 1);
+    return true;
   }
 
   // ------------------------------------------------------------ auth
@@ -262,6 +281,8 @@ export class App {
 
   async settingsPage(request) {
     const s = await this.settings();
+    s.claude = { ...this.claudeConfig(), hasKey: !!this.env.ANTHROPIC_API_KEY, today: await this.claudeCallsToday() };
+    s.cacheSeconds = this.cacheSeconds;
     const csrf = await this.csrf(request);
     if (request.method === "POST") {
       const form = await request.formData();

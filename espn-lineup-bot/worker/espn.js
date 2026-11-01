@@ -88,6 +88,7 @@ export function parseLeague(d, season, id) {
     owners: (t.owners || []).map((o) => (typeof o === "string" ? o : o?.id)).filter(Boolean),
     ownerNames: (t.owners || []).map((o) => members[typeof o === "string" ? o : o?.id]?.displayName).filter(Boolean),
     budgetSpent: t.transactionCounter?.acquisitionBudgetSpent || 0,
+    logo: typeof t.logo === "string" && /^https?:\/\//.test(t.logo) ? t.logo : "",
     schedule: [], scores: [], outcomes: [],
   })).sort((a, b) => a.id - b.id);
   const byId = Object.fromEntries(teams.map((t) => [t.id, t]));

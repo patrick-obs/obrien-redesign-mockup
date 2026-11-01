@@ -26,7 +26,7 @@ export const OTHERS = () => [bp("QB O", "QB", "QB", 15.0), bp("RB O", "RB", "RB"
 
 function team(id, name, owners, w, l) {
   return { id, name, abbrev: name.slice(0, 3), wins: w, losses: l, ties: 0, pointsFor: 900.5, pointsAgainst: 850.25, standing: id, finalStanding: 0,
-    owners, ownerNames: [], schedule: [], scores: [], outcomes: [] };
+    owners, ownerNames: [], schedule: [], scores: [], outcomes: [], logo: id === 7 ? "https://example.test/rival.png" : "" };
 }
 export function fakeLeague(id = 1, started = true) {
   const me = team(3, "Patrick's Team", ["{ABC-123}"], 5, 3), opp = team(7, "Rival", ["{XYZ}"], 4, 4), t3 = team(9, "Third", [], 2, 6), t4 = team(10, "Fourth", [], 6, 2);
