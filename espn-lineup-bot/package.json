@@ -1,0 +1,16 @@
+{
+  "name": "fantasy-advisor",
+  "private": true,
+  "version": "2.0.0",
+  "type": "module",
+  "description": "ESPN fantasy football advisor on Cloudflare Workers (free plan)",
+  "scripts": {
+    "test": "node --test \"worker/test/*.test.mjs\"",
+    "smoke": "node worker/smoke.mjs",
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev"
+  },
+  "devDependencies": {
+    "wrangler": "^4"
+  }
+}

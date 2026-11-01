@@ -1,6 +1,6 @@
 # Fantasy Advisor
 
-A private web app (and a command-line tool) for ESPN fantasy football. Log in, see every
+A private web app (and a command-line tool) for ESPN fantasy football, hosted free on Cloudflare. Log in, see every
 league your ESPN account is in, press one button to set all your lineups, and read trade
 and waiver ideas. It uses ESPN's own projections and ESPN's unofficial API.
 
@@ -35,29 +35,45 @@ empty slots, bye-week starters, injured starters, better players on the bench.
   still counts and is shown as EMPTY with waiver options to fill it.
 - `OppRk` is ESPN's opponent rank against the position, the same number the ESPN site shows.
 
-## Deploy the web app (Render, about 15 minutes)
+## Deploy on Cloudflare (free plan, dashboard only, about 15 minutes)
 
-The app needs a small always-on server because it holds your ESPN session and talks to ESPN on
-your behalf. Render's free web service is enough.
+The web app runs as a Cloudflare Worker plus one Durable Object (`worker/`, `wrangler.jsonc`).
+Both are on the free plan. Everything below happens in the Cloudflare dashboard; nothing runs
+on your computer.
 
-1. Push this repo to GitHub (it already is, if you are reading this there).
-2. At render.com, New, Blueprint, pick this repo. Render reads `render.yaml`.
-3. Fill in the environment variables it asks for:
-   - `APP_PASSWORD`: the passphrase she will log in with. Make it long.
-   - `ESPN_S2` and `SWID`: her ESPN cookies (see below). These can also be pasted later on
-     the app's Settings page, but the Settings page save does not survive a redeploy on the
-     free plan, so set them here too.
-   - `SECRET_KEY` is generated for you.
-4. Deploy. Open the Render URL, log in, check the dashboard loads (first load takes 20 to 30
-   seconds while it pulls every league from ESPN; after that it is cached for 10 minutes).
-5. Custom domain: in the Render service, Settings, Custom Domains, add
-   `christinewoodsfantasy.patrick-obrien.com` (or any name you like). Render shows a CNAME
-   target.
-6. DNS: in the Squarespace panel for patrick-obrien.com, add a CNAME record for
-   `christinewoodsfantasy` pointing at the target Render gave you. Render issues the TLS
-   certificate itself once DNS resolves, usually within minutes.
+1. **Create the Worker from GitHub**: Workers & Pages, Create, Workers, "Import a repository",
+   connect GitHub and pick this repo. Build settings:
+   - Root directory: `espn-lineup-bot` (blank if the app is at the root of its own repo)
+   - Production branch: `espn-lineup-bot` (or `main` in its own repo)
+   - Build command: leave empty
+   - Deploy command: `npx wrangler deploy`
+   Save; the first build takes a minute.
+2. **Secrets**: open the Worker, Settings, Variables and Secrets, add these four as secrets:
+   - `APP_PASSWORD`: the passphrase she logs in with. Make it long.
+   - `SECRET_KEY`: any long random string (signs the login cookie).
+   - `ESPN_S2` and `SWID`: her ESPN cookies (see below).
+   Secrets apply to the next deployment: Deployments, Deploy (or push any commit).
+3. **Check it**: open the `*.workers.dev` URL, log in. The first load pulls every league from
+   ESPN (a few seconds); after that pages are cached for 10 minutes, and a scheduled job
+   pre-builds everything Thursday, Saturday and Sunday mornings.
+4. **Subdomain**: Worker, Settings, Domains and Routes, Add, Custom domain,
+   `christinewoodsfantasy.patrick-obrien.com`. This needs `patrick-obrien.com` to be a zone on
+   Cloudflare (nameservers pointed at Cloudflare, free plan). Cloudflare creates the DNS record
+   and certificate itself. If the domain is not on Cloudflare yet, use the workers.dev URL for
+   now and add the domain under Cloudflare, Domains, Add a domain.
 
-Any Docker host works too (`Dockerfile` is included; mount `/data` to keep settings).
+When the ESPN cookies expire, paste new ones on the app's Settings page. They are stored in the
+Durable Object and survive redeploys, so the dashboard secrets only matter for the first start.
+
+Free plan limits that matter: 100,000 requests a day (this app uses a few dozen) and 50
+outbound requests per page load (a league needs about 10). Durable Objects on the free plan get
+30 seconds of CPU per request, which is why the app lives there and not in the Worker itself.
+
+### Other ways to run it
+
+- `python app.py` runs the same app as a Flask server (`Dockerfile` included) for a home
+  machine behind a Cloudflare Tunnel, or any Docker host.
+- `lineup.py` is the command-line version.
 
 ### Getting the ESPN cookies
 
@@ -94,8 +110,9 @@ Then open http://127.0.0.1:5000.
 ## Tests
 
 ```
-pip install pytest
-pytest tests        # 21 tests: optimizer, trades, lineup payload, CLI, and the web app with ESPN stubbed
+npm test                 # Worker: optimizer, trades, parsing, report, app routes (18 tests)
+ESPN_S2=... SWID=... npm run smoke   # Worker code against your real leagues, from your machine
+pip install pytest && pytest tests   # Python CLI and Flask app (21 tests)
 ```
 
 ## Known limits

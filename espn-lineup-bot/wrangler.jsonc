@@ -1,0 +1,14 @@
+{
+  // Cloudflare Workers (free plan) config. Deployed by Workers Builds with `npx wrangler deploy`.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "fantasy-advisor",
+  "main": "worker/index.js",
+  "compatibility_date": "2026-10-01",
+  "observability": { "enabled": true },
+  "durable_objects": {
+    "bindings": [{ "name": "ADVISOR", "class_name": "Advisor" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Advisor"] }],
+  // Pre-build every league Thursday, Saturday and Sunday at 12:00 UTC (8am ET) so the first visit is instant.
+  "triggers": { "crons": ["0 12 * * 4,6,0"] }
+}
