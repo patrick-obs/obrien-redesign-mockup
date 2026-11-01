@@ -115,6 +115,31 @@ ESPN_S2=... SWID=... npm run smoke   # Worker code against your real leagues, fr
 pip install pytest && pytest tests   # Python CLI and Flask app (21 tests)
 ```
 
+## Trades, waivers and the analyst
+
+- **Analyst's take.** Every league page opens with a short read of the week: the matchup, what the
+  lineup as set leaves on the bench, the biggest risk, the one waiver move and the one trade that
+  matter, and where you stand against the playoff line. It is built from the numbers in
+  `worker/analyst.js`. If the Worker has an `ANTHROPIC_API_KEY` secret, Claude rewrites the same
+  facts into better prose (model `claude-opus-5-5`, low effort, 25 s timeout); without the key, or
+  if the call fails, the rules-based text is shown. The take is cached with the league report.
+- **Trade ideas** (`worker/trades.js`) now include two-player packages: 1-for-1, 2-for-1, 1-for-2
+  and 2-for-2. Each is scored by what both sides' best weekly lineups gain for the rest of the
+  season. Filters: you never ask for clearly more value than you give (the side that gets the best
+  player in the deal pays a premium in depth), nobody is left with an empty starting slot, injured
+  and IR players are never involved, and a package is only shown when no simpler trade inside it
+  does nearly as well. Three per team, ten per league.
+- **Propose this trade on ESPN** sends the offer as an ESPN trade proposal. The other manager gets
+  ESPN's normal notice and accepts or declines there; nothing changes on your roster until then.
+  Only trades the app computed (and that are still in the cached report) can be sent.
+- **Add / Claim** on the waiver watch opens a confirm page. If the roster is full it picks the drop
+  for you (lowest rest-of-season value on the bench, never IR, never a locked player, starters
+  listed last) and lets you change it. Players on waivers become a waiver claim with a bid field in
+  FAAB leagues; free agents are added immediately. Drops only happen as part of an add.
+- These writes use the same unofficial ESPN transactions endpoint as "Set lineups" (types
+  `TRADE_PROPOSAL`, `FREEAGENT`, `WAIVER`). Any ESPN rejection is shown verbatim on the result page.
+- The older Flask version in `app.py`/`templates/` shares the theme but does not have these features.
+
 ## Look and feel
 
 - All CSS lives in one place per version: the `CSS` constant in `worker/html.js` (Worker) and the

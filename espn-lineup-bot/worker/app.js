@@ -3,8 +3,9 @@
 import * as espnMod from "./espn.js";
 import { buildReport, waiverThresholds } from "./report.js";
 import { playerValue, rosterPlayer, proposeTrades } from "./trades.js";
+import { analystTake, polishTake } from "./analyst.js";
 import { makeSession, verifySession, csrfFor, parseCookies, sessionCookie, clearSessionCookie, SESSION_COOKIE, timingSafeEqual } from "./auth.js";
-import { loginPage, errorPage, settingsPage, indexPage, leaguePage, lineupsPage } from "./html.js";
+import { loginPage, errorPage, settingsPage, indexPage, leaguePage, lineupsPage, tradePage, addPage } from "./html.js";
 
 const html = (body, status = 200, headers = {}) => new Response(body, { status, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", ...headers } });
 const redirect = (to, headers = {}) => new Response(null, { status: 302, headers: { location: to, ...headers } });
@@ -100,11 +101,19 @@ export class App {
         const conv = (t) => (rosters[t.id] || []).map((p) => rosterPlayer(p.name, p.position, p.eligible, p.status,
           playerValue(p.seasonProjAvg, p.seasonAvg, this.espn.gamesPlayed(t)), p.playerId, p.proTeam));
         const mine = conv(me);
-        const others = Object.fromEntries(league.teams.filter((t) => t.id !== me.id).map((t) => [t.name, conv(t)]));
+        const others = Object.fromEntries(league.teams.filter((t) => t.id !== me.id).map((t) => [t.name, { id: t.id, players: conv(t) }]));
         trades = proposeTrades(mine, others, rep.slot_counts);
       } catch (e) { console.warn("trades failed", e?.message); }
       const problem_count = rep.warnings.filter((w) => /No eligible|BYE| is out|injury reserve|suspension/.test(w)).length;
-      return { ...b, report: rep, trades, team_id: me.id, week, problem_count };
+      // The analyst's take: rules first, Claude's rewrite of the same facts when a key is configured.
+      let analyst = null;
+      try {
+        analyst = analystTake({ report: rep, trades, league });
+        const polished = await polishTake(analyst, { apiKey: this.env.ANTHROPIC_API_KEY, fetchFn: f });
+        if (polished) analyst = polished;
+        delete analyst.facts;
+      } catch (e) { console.warn("analyst failed", e?.message); }
+      return { ...b, report: rep, trades, analyst, team_id: me.id, week, problem_count };
     });
   }
 
@@ -135,6 +144,8 @@ export class App {
       if (path === "/") return this.index(url);
       if (path.startsWith("/league/")) return this.league(Number(path.split("/")[2]), url);
       if (path === "/lineups") return this.lineups(request, url);
+      if (path === "/trade") return this.trade(request, url);
+      if (path === "/add") return this.add(request, url);
       if (path === "/settings") return this.settingsPage(request);
       if (path === "/refresh" && request.method === "POST") { await this.clearCache(); return redirect("/"); }
       return html(errorPage("Page not found.", true), 404);
@@ -200,6 +211,53 @@ export class App {
     }
     await this.clearCache();
     return html(lineupsPage({ bundles, results, only, csrf }));
+  }
+
+  /** Preview, then send, one trade proposal the advisor computed. Only proposals in the cached bundle can be sent. */
+  async trade(request, url) {
+    const s = await this.settings();
+    const form = request.method === "POST" ? await request.formData() : null;
+    const leagueId = Number((form && form.get("league")) || url.searchParams.get("league") || 0);
+    const id = (form && form.get("id")) || url.searchParams.get("id") || "";
+    if (!leagueId || !id) return html(errorPage("That trade link is incomplete. Go back to the league page and pick a trade.", true), 404);
+    const b = await this.bundle(leagueId);
+    const trade = (b.trades || []).find((t) => t.id === id);
+    if (!trade) return html(errorPage("That trade is no longer on the board; projections or rosters changed since the page was built. Go back to the league page for the current ideas.", true), 404);
+    const csrf = await this.csrf(request);
+    if (request.method !== "POST") return html(tradePage(b, trade, csrf));
+    if (!(await this.checkCsrf(request, form))) return html(errorPage("Form expired. Go back and try again.", true), 400);
+    const give = trade.give.map((p) => p.player_id), get = trade.get.map((p) => p.player_id);
+    if (trade.with_team_id == null || give.some((x) => x == null) || get.some((x) => x == null)) return html(errorPage("ESPN ids are missing for this trade, so it cannot be sent from here. Propose it on ESPN by hand.", true));
+    const result = await this.espn.proposeTrade(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, b.week, trade.with_team_id, give, get);
+    await this.clearCache();
+    return html(tradePage(b, trade, csrf, result));
+  }
+
+  /** Preview, then submit, a free-agent add or waiver claim, dropping someone if the roster is full. */
+  async add(request, url) {
+    const s = await this.settings();
+    const form = request.method === "POST" ? await request.formData() : null;
+    const get = (k) => (form && form.get(k)) ?? url.searchParams.get(k) ?? "";
+    const leagueId = Number(get("league") || 0), playerId = Number(get("player") || 0);
+    if (!leagueId || !playerId) return html(errorPage("That add link is incomplete. Go back to the league page and pick a player.", true), 404);
+    const b = await this.bundle(leagueId);
+    const pick = Object.values(b.report?.waivers || {}).flat().find((p) => !p.error && p.player_id === playerId);
+    if (!pick) return html(errorPage("That player is no longer on the waiver watch; someone may have picked him up, or projections moved. Go back to the league page for the current list.", true), 404);
+    const r = b.report, candidates = r.drop_candidates || [];
+    const dropId = get("drop") === "" ? (r.open_spots > 0 ? null : candidates[0]?.player_id ?? null) : Number(get("drop"));
+    const drop = dropId == null ? null : candidates.find((c) => c.player_id === dropId) || null;
+    const bid = Math.max(0, Math.floor(Number(get("bid")) || 0));
+    const csrf = await this.csrf(request);
+    const state = { drop, bid, waiver: !!pick.on_waivers };
+    if (request.method !== "POST") return html(addPage(b, pick, csrf, state));
+    if (!(await this.checkCsrf(request, form))) return html(errorPage("Form expired. Go back and try again.", true), 400);
+    if (dropId != null && !drop) return html(addPage(b, pick, csrf, { ...state, flash: "Pick a drop from the list." }));
+    if (!drop && r.open_spots <= 0) return html(addPage(b, pick, csrf, { ...state, flash: "Your roster is full, so you have to drop someone to add him." }));
+    if (r.budget_left != null && bid > r.budget_left) return html(addPage(b, pick, csrf, { ...state, flash: `You only have $${r.budget_left} of waiver budget left.` }));
+    const result = await this.espn.addPlayer(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, b.week,
+      { addId: pick.player_id, dropId: drop ? drop.player_id : null, waiver: !!pick.on_waivers, bid });
+    await this.clearCache();
+    return html(addPage(b, pick, csrf, { ...state, result }));
   }
 
   async settingsPage(request) {

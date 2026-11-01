@@ -76,6 +76,9 @@ export function parseLeague(d, season, id) {
   const slotCounts = {};
   for (const [k, v] of Object.entries(s.rosterSettings?.lineupSlotCounts || {})) if (v) slotCounts[SLOT_LABEL[k]] = v;
   const matchupPeriods = s.scheduleSettings?.matchupPeriods || {};
+  const acq = s.acquisitionSettings || {};
+  // Everything except IR counts toward the roster limit.
+  const rosterSize = Object.entries(s.rosterSettings?.lineupSlotCounts || {}).reduce((n, [k, v]) => n + (Number(k) === 21 ? 0 : v), 0);
   const members = Object.fromEntries((d.members || []).map((m) => [m.id, m]));
   const teams = (d.teams || []).map((t) => ({
     id: t.id, abbrev: t.abbrev, name: t.name || `${t.location || ""} ${t.nickname || ""}`.trim() || `Team ${t.id}`,
@@ -84,6 +87,7 @@ export function parseLeague(d, season, id) {
     standing: t.playoffSeed || 0, finalStanding: t.rankFinal || t.rankCalculatedFinal || 0,
     owners: (t.owners || []).map((o) => (typeof o === "string" ? o : o?.id)).filter(Boolean),
     ownerNames: (t.owners || []).map((o) => members[typeof o === "string" ? o : o?.id]?.displayName).filter(Boolean),
+    budgetSpent: t.transactionCounter?.acquisitionBudgetSpent || 0,
     schedule: [], scores: [], outcomes: [],
   })).sort((a, b) => a.id - b.id);
   const byId = Object.fromEntries(teams.map((t) => [t.id, t]));
@@ -106,6 +110,8 @@ export function parseLeague(d, season, id) {
   return {
     id, season, name: s.name || `League ${id}`, currentWeek, currentMatchupPeriod: st.currentMatchupPeriod || 0,
     finalScoringPeriod: st.finalScoringPeriod || 17, regSeasonCount: s.scheduleSettings?.matchupPeriodCount || 14,
+    playoffTeamCount: s.scheduleSettings?.playoffTeamCount || 0, rosterSize,
+    acquisition: { type: acq.acquisitionType || "", usesBudget: !!acq.isUsingAcquisitionBudget, budget: acq.acquisitionBudget || 0 },
     matchupPeriods, slotCounts, teams, byId, started,
   };
 }
@@ -200,6 +206,8 @@ export function parseBoxPlayer(data, season, week, proSched, ratings, now) {
     proTeam: PRO_TEAM[proTeamId] || "", opponent, oppRank, gameDate, recentAvg: recentAverage(stats, week),
     percentOwned: p.ownership?.percentOwned ?? null,
     seasonProjAvg: Number(stats[0]?.projected_avg_points || 0), seasonAvg: Number(stats[0]?.avg_points || 0),
+    // "FREEAGENT", "WAIVERS" or "ONTEAM"; decides whether an add is instant or a waiver claim.
+    acquisition: data.status || ("lineupSlotId" in data ? "ONTEAM" : "FREEAGENT"),
   };
 }
 
@@ -257,16 +265,46 @@ export function buildLineupTransaction(teamId, swid, week, items) {
     items: items.map((it) => ({ playerId: it.playerId, type: "LINEUP", fromLineupSlotId: it.fromLineupSlotId, toLineupSlotId: it.toLineupSlotId })) };
 }
 
-export async function applyLineup(fetchFn, cookies, season, leagueId, teamId, week, items) {
-  if (!items.length) return { ok: true, status: 0, message: "No changes needed." };
+/** A trade offer: my players go to them, theirs come to me. ESPN notifies the other manager, who accepts or rejects on ESPN. */
+export function buildTradeTransaction(myTeamId, swid, week, theirTeamId, giveIds, getIds) {
+  return { isLeagueManager: false, teamId: myTeamId, type: "TRADE_PROPOSAL", memberId: swid, scoringPeriodId: week, executionType: "EXECUTE",
+    items: [...giveIds.map((id) => ({ playerId: id, type: "TRADE", fromTeamId: myTeamId, toTeamId: theirTeamId })),
+      ...getIds.map((id) => ({ playerId: id, type: "TRADE", fromTeamId: theirTeamId, toTeamId: myTeamId }))] };
+}
+
+/** Add a free agent (instant) or claim a player on waivers (processed by ESPN later), optionally dropping someone. */
+export function buildAddTransaction(teamId, swid, week, { addId, dropId = null, waiver = false, bid = 0 }) {
+  const items = [{ playerId: addId, type: "ADD", toTeamId: teamId, toLineupSlotId: 20 }];
+  if (dropId != null) items.push({ playerId: dropId, type: "DROP", fromTeamId: teamId });
+  const tx = { isLeagueManager: false, teamId, type: waiver ? "WAIVER" : "FREEAGENT", memberId: swid, scoringPeriodId: week, executionType: "EXECUTE", items };
+  if (waiver) tx.bidAmount = Number(bid) || 0;
+  return tx;
+}
+
+async function postTransaction(fetchFn, cookies, season, leagueId, body, okMessage) {
   const r = await fetchFn(`${WRITE}${season}/segments/0/leagues/${leagueId}/transactions/`, {
     method: "POST", headers: { Cookie: cookieHeader(cookies), "User-Agent": UA, "Content-Type": "application/json" },
-    body: JSON.stringify(buildLineupTransaction(teamId, cookies.swid, week, items)),
+    body: JSON.stringify(body),
   });
   const ok = r.status >= 200 && r.status < 300;
-  let body; const text = await r.text();
-  try { body = JSON.parse(text); } catch { body = text.slice(0, 500); }
-  return { ok, status: r.status, message: ok ? "Lineup set." : errorMessage(body, r.status), response: body };
+  let resp; const text = await r.text();
+  try { resp = JSON.parse(text); } catch { resp = text.slice(0, 500); }
+  return { ok, status: r.status, message: ok ? okMessage : errorMessage(resp, r.status), response: resp };
+}
+
+export async function applyLineup(fetchFn, cookies, season, leagueId, teamId, week, items) {
+  if (!items.length) return { ok: true, status: 0, message: "No changes needed." };
+  return postTransaction(fetchFn, cookies, season, leagueId, buildLineupTransaction(teamId, cookies.swid, week, items), "Lineup set.");
+}
+
+export async function proposeTrade(fetchFn, cookies, season, leagueId, myTeamId, week, theirTeamId, giveIds, getIds) {
+  return postTransaction(fetchFn, cookies, season, leagueId, buildTradeTransaction(myTeamId, cookies.swid, week, theirTeamId, giveIds, getIds),
+    "Trade proposed. The other manager has been notified on ESPN and can accept or decline there.");
+}
+
+export async function addPlayer(fetchFn, cookies, season, leagueId, teamId, week, opts) {
+  const msg = opts.waiver ? "Waiver claim submitted. ESPN processes claims on the league's waiver schedule; check ESPN for the result." : "Player added to your roster.";
+  return postTransaction(fetchFn, cookies, season, leagueId, buildAddTransaction(teamId, cookies.swid, week, opts), msg);
 }
 
 function errorMessage(body, status) {

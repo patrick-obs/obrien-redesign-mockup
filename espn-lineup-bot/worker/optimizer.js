@@ -12,6 +12,7 @@ export function makePlayer(p) {
     proj: Number(p.proj || 0), status: p.status || "ACTIVE", bye: !!p.bye, locked: !!p.locked,
     proTeam: p.proTeam || "", opponent: p.opponent || "", oppRank: p.oppRank || 0,
     recentAvg: p.recentAvg ?? null, percentOwned: p.percentOwned ?? null, playerId: p.playerId ?? null,
+    seasonProjAvg: Number(p.seasonProjAvg || 0), seasonAvg: Number(p.seasonAvg || 0), acquisition: p.acquisition || "",
   };
 }
 

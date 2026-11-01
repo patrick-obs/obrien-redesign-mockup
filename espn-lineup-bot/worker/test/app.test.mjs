@@ -35,7 +35,8 @@ test("dashboard and league page render", async () => {
   assert.match(h, /Test League/); assert.match(h, /Dead League/); assert.match(h, /Not started/);
   assert.match(h, /Set all lineups/); assert.match(h, /lineup change/); assert.match(h, /START RB C/); assert.match(h, /1 problem/);
   const l = await (await app.handle(req("/league/1", { cookie }))).text();
-  for (const s of ["Recommended lineup", "EMPTY", "nobody eligible", "Trade ideas", "Waiver watch", "League injury report", "Remaining schedule", "Standings", "fills your EMPTY slot", "TE FA"]) assert.match(l, new RegExp(s));
+  for (const s of ["Recommended lineup", "EMPTY", "nobody eligible", "Trade ideas", "Waiver watch", "League injury report", "Remaining schedule", "Standings", "fills your EMPTY slot", "TE FA", "Analyst's take", "/add\\?league=1&amp;player=", "Claim</a>"]) assert.match(l, new RegExp(s));
+  assert.match(h, /class="take"/);
   assert.ok(!l.includes("RB FA"));
   const dead = await app.handle(req("/league/2", { cookie }));
   assert.match(await dead.text(), /has not started/);
@@ -76,4 +77,74 @@ test("warm endpoint needs the key and fills the cache", async () => {
   const r = await app.handle(new Request("https://advisor.internal/__warm", { headers: { "x-warm-key": "test-secret" } }));
   assert.equal(await r.text(), "warmed 2");
   assert.ok(await app.storage.get("league:1"));
+});
+
+test("analyst take is built from the numbers and never claims to be Claude without a key", async () => {
+  const app = makeApp();
+  const cookie = await login(app);
+  await app.handle(req("/league/1", { cookie }));
+  const b = await app.bundle(1);
+  assert.equal(b.analyst.source, "rules");
+  assert.ok(b.analyst.headline.length > 5 && b.analyst.headline.length < 80);
+  assert.equal(b.analyst.paragraphs.length, 3);
+  assert.match(b.analyst.paragraphs[0], /Rival/);
+  assert.match(b.analyst.paragraphs[1], /leaves 17\.0 points on the bench/);
+  assert.match(b.analyst.paragraphs[2], /2nd of 4/);
+  assert.ok(!("facts" in b.analyst));
+});
+
+test("trade: preview then propose with CSRF; unknown ids rejected", async () => {
+  const posts = [];
+  const app = makeApp(posts);
+  const cookie = await login(app);
+  const b = await app.bundle(1);
+  assert.ok(b.trades.length, "fixture should produce at least one trade");
+  const t = b.trades[0];
+  const page = await app.handle(req(`/trade?league=1&id=${t.id}`, { cookie }));
+  assert.equal(page.status, 200);
+  const ph = await page.text();
+  assert.match(ph, /Send this offer to/); assert.match(ph, new RegExp(t.give[0].name));
+  assert.equal((await app.handle(req("/trade?league=1&id=deadbeef", { cookie }))).status, 404);
+  const csrf = ph.match(/name="csrf" value="([0-9a-f]+)"/)[1];
+  const noCsrf = await app.handle(req("/trade", { method: "POST", cookie, body: form({ league: 1, id: t.id }) }));
+  assert.equal(noCsrf.status, 400); assert.equal(posts.length, 0);
+  const done = await app.handle(req("/trade", { method: "POST", cookie, body: form({ league: 1, id: t.id, csrf }) }));
+  assert.match(await done.text(), /Trade proposed/);
+  assert.equal(posts.length, 1);
+  assert.equal(posts[0].kind, "trade"); assert.equal(posts[0].teamId, 3); assert.equal(posts[0].theirTeamId, t.with_team_id);
+  assert.deepEqual(posts[0].giveIds, t.give.map((p) => p.player_id)); assert.deepEqual(posts[0].getIds, t.get.map((p) => p.player_id));
+});
+
+test("add: full roster forces a drop, default is the cheapest bench player, waivers become a claim with a bid", async () => {
+  const posts = [];
+  const app = makeApp(posts);
+  const cookie = await login(app);
+  const b = await app.bundle(1);
+  const r = b.report;
+  assert.equal(r.open_spots, 0); assert.equal(r.budget_left, 100);
+  assert.ok(r.drop_candidates.length); assert.equal(r.drop_candidates[0].starter, false);
+  assert.ok(r.drop_candidates.every((c) => c.slot !== "IR" && c.name !== "K A"), "IR and locked players are never drop candidates");
+  const te = r.waivers.TE[0], dst = r.waivers["D/ST"][0];
+  assert.equal(te.on_waivers, false); assert.equal(dst.on_waivers, true);
+  // Free agent: preview shows a drop select with the cheapest bench player chosen.
+  const page = await (await app.handle(req(`/add?league=1&player=${te.player_id}`, { cookie }))).text();
+  assert.match(page, /your roster is full/); assert.match(page, new RegExp(`and drop ${r.drop_candidates[0].name}`));
+  const csrf = page.match(/name="csrf" value="([0-9a-f]+)"/)[1];
+  const done = await app.handle(req("/add", { method: "POST", cookie, body: form({ league: 1, player: te.player_id, drop: r.drop_candidates[1].player_id, csrf }) }));
+  assert.match(await done.text(), /Player added/);
+  assert.equal(posts.length, 1); assert.equal(posts[0].kind, "add"); assert.equal(posts[0].addId, te.player_id);
+  assert.equal(posts[0].dropId, r.drop_candidates[1].player_id); assert.equal(posts[0].waiver, false);
+  // A drop that is not a candidate (the IR player) is refused.
+  const b2 = await app.bundle(1);
+  const page2 = await (await app.handle(req(`/add?league=1&player=${dst.player_id}`, { cookie }))).text();
+  const csrf2 = page2.match(/name="csrf" value="([0-9a-f]+)"/)[1];
+  assert.match(page2, /Submit claim/); assert.match(page2, /Bid \(you have \$100 left\)/);
+  const bad = await app.handle(req("/add", { method: "POST", cookie, body: form({ league: 1, player: dst.player_id, drop: 999999, csrf: csrf2 }) }));
+  assert.match(await bad.text(), /Pick a drop from the list/); assert.equal(posts.length, 1);
+  const over = await app.handle(req("/add", { method: "POST", cookie, body: form({ league: 1, player: dst.player_id, drop: b2.report.drop_candidates[0].player_id, bid: 500, csrf: csrf2 }) }));
+  assert.match(await over.text(), /only have \$100/); assert.equal(posts.length, 1);
+  const claim = await app.handle(req("/add", { method: "POST", cookie, body: form({ league: 1, player: dst.player_id, drop: b2.report.drop_candidates[0].player_id, bid: 7, csrf: csrf2 }) }));
+  assert.match(await claim.text(), /Claim submitted/);
+  assert.equal(posts.length, 2); assert.equal(posts[1].waiver, true); assert.equal(posts[1].bid, 7);
+  assert.equal((await app.handle(req("/add?league=1&player=424242", { cookie }))).status, 404);
 });

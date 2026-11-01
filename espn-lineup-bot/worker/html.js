@@ -34,6 +34,7 @@ main{width:100%;max-width:1100px;margin:0 auto;padding:22px 20px 32px;flex:1}
 .muted{color:var(--muted)}.good{color:var(--good)}.bad{color:var(--bad)}.warn{color:var(--warn)}
 .tag{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:2px 9px;font-size:12px;font-weight:600;line-height:1.5;background:var(--soft);color:var(--muted);border:1px solid var(--line);white-space:nowrap;vertical-align:middle}
 .tag.warn{background:var(--warnbg);color:var(--warn);border-color:transparent}.tag.bad{background:var(--badbg);color:var(--bad);border-color:transparent}.tag.good{background:var(--goodbg);color:var(--good);border-color:transparent}
+.take{font-family:Fraunces,"Iowan Old Style",Georgia,serif;font-variation-settings:"SOFT" 60;font-size:19px;line-height:1.25;margin:12px 0 0}.take a{color:var(--head)}
 .tags{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 12px}
 .tablewrap{overflow-x:auto;margin:0 -8px;padding:0 8px}
 table{border-collapse:collapse;width:100%;font-size:14px}
@@ -69,6 +70,22 @@ label{display:block;font-weight:600;margin:14px 0 6px}
 .stamp{color:var(--muted);font-size:14px}
 footer{color:var(--muted);font-size:13px;text-align:center;padding:24px 20px 32px;max-width:60ch;margin:0 auto}
 @media (max-width:640px){header .logo{height:34px}.login .logo{height:120px}main{padding:16px 14px 28px}.card{padding:16px;border-radius:14px}h1{font-size:26px}.hero{padding:20px}.hero p{font-size:22px}.hero .btn.big{flex-basis:100%}header{padding:8px 12px}header nav a{padding:6px 8px;font-size:14px}}
+.btn.small{padding:6px 12px;font-size:13px;border-radius:8px}
+select{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:var(--soft);color:var(--ink);font-size:16px}
+select:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px var(--ring)}
+.analyst .headline{font-family:Fraunces,"Iowan Old Style",Georgia,serif;font-variation-settings:"SOFT" 60;font-size:24px;line-height:1.2;color:var(--head);margin:0 0 10px;font-weight:600}
+.analyst p{margin:0 0 10px;max-width:70ch}.analyst p:last-of-type{margin-bottom:0}.analyst .by{margin-top:12px}
+.trades{display:grid;gap:14px}
+.trade{border:1px solid var(--line);border-radius:14px;padding:14px 16px;background:var(--soft)}
+.trade .head{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-bottom:10px}.trade .head strong{font-size:16px}
+.trade .gain{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.swap{display:grid;grid-template-columns:1fr auto 1fr;gap:10px 14px;align-items:center}
+.swap .side{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.swap .side .lbl{font-size:12px;color:var(--muted);margin-bottom:4px}.swap .side div+div{margin-top:4px}
+.swap .arrow{color:var(--accent);font-size:22px;line-height:1}
+.trade .pitch{margin:12px 0 0;font-size:14.5px;max-width:80ch}.trade .act{margin:12px 0 0}
+.confirm .swap{margin:14px 0}
+@media (max-width:640px){.swap{grid-template-columns:1fr}.swap .arrow{transform:rotate(90deg);text-align:center}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}`;
 
 // The mascot (public/logo.png, served as a static asset) in the header and on the login card.
@@ -141,6 +158,7 @@ export function indexPage({ bundles, errors, totalMoves, season, now }) {
 <div class="kv"><span>Week ${r.week} vs ${esc(r.opponent)}</span><span class="muted">${esc(r.opponent_record)}</span></div>
 <div class="kv"><span>ESPN projection</span><span>${pts(r.espn_projection.me)} <span class="muted">vs ${pts(r.espn_projection.opponent)}</span></span></div>
 <div class="kv"><span>Lineup as set / best</span><span>${pts(r.current_lineup_proj)} / <strong>${pts(r.recommended_lineup_proj)}</strong> ${d > 0 ? `<span class="good">(+${pts(d)})</span>` : ""}</span></div>
+${b.analyst ? `<p class="take"><a href="/league/${b.league_id}#analyst">${esc(b.analyst.headline)}</a></p>` : ""}
 <div class="tags">${r.lineup_items.length ? `<span class="tag warn">${plural(r.lineup_items.length, "change")}</span>` : `<span class="tag good">lineup set</span>`}
 ${b.problem_count ? `<span class="tag bad">${plural(b.problem_count, "problem")}</span>` : ""}
 ${b.trades && b.trades.length ? `<span class="tag">${plural(b.trades.length, "trade idea")}</span>` : ""}</div>
@@ -154,20 +172,23 @@ export function leaguePage(b) {
   const r = b.report;
   const sides = (s) => `<strong>${esc(s.team)}</strong> (${esc(s.record)}) ${pts(s.espn_proj)}/${pts(s.best_lineup_proj)}`;
   const waivers = Object.keys(r.waivers).length
-    ? `<div class="tablewrap"><table><tr><th>Pos</th><th>Player</th><th>Team</th><th>Opp</th><th class="num">Proj</th><th>Why</th><th class="num">Owned</th></tr>
+    ? `<div class="tablewrap"><table><tr><th>Pos</th><th>Player</th><th>Team</th><th>Opp</th><th class="num">Proj</th><th>Why</th><th class="num">Owned</th><th></th></tr>
 ${Object.entries(r.waivers).map(([pos, picks]) => picks.map((d) => d.error
-        ? `<tr><td>${esc(pos)}</td><td colspan="6" class="muted">could not load: ${esc(d.error)}</td></tr>`
-        : `<tr><td>${esc(pos)}</td><td>${esc(d.name)}</td><td>${esc(d.team)}</td><td>${esc(d.opp)}</td><td class="num">${pts(d.proj)}</td>
+        ? `<tr><td class="slot"><span>${esc(pos)}</span></td><td colspan="7" class="muted">could not load: ${esc(d.error)}</td></tr>`
+        : `<tr><td class="slot"><span>${esc(pos)}</span></td><td class="player">${esc(d.name)}${d.on_waivers ? ` <span class="tag">waivers</span>` : ""}</td><td>${esc(d.team)}</td><td>${esc(d.opp)}</td><td class="num proj">${pts(d.proj)}</td>
 <td>${d.fills_empty_slot ? `<span class="tag bad">fills your EMPTY slot</span>` : `<span class="good">+${pts(d.edge)}</span>`}</td>
-<td class="num">${d.owned != null ? Math.round(d.owned) + "%" : ""}</td></tr>`).join("")).join("")}</table></div>`
+<td class="num">${d.owned != null ? Math.round(d.owned) + "%" : ""}</td>
+<td>${d.player_id != null ? `<a class="btn small" href="/add?league=${r.league_id}&amp;player=${d.player_id}">${d.on_waivers ? "Claim" : "Add"}</a>` : ""}</td></tr>`).join("")).join("")}</table></div>`
     : `<p class="good">No free agent out-projects your starters this week.</p>`;
   const trades = b.trades && b.trades.length
-    ? `<ul class="plain">${b.trades.map((t) => `<li><strong>${esc(t.with)}</strong>: give ${esc(t.give)} <span class="muted">(${esc(t.give_pos)}, ${pts(t.give_value)})</span> for ${esc(t.get)} <span class="muted">(${esc(t.get_pos)}, ${pts(t.get_value)})</span>
-<span class="right"><span class="good">you +${pts(t.my_gain)}</span> / <span class="${t.their_gain >= 0 ? "good" : "warn"}">them ${t.their_gain >= 0 ? "+" : "-"}${Math.abs(t.their_gain).toFixed(1)}</span></span>
-<div class="muted small">${esc(t.pitch)}</div></li>`).join("")}</ul>`
+    ? `<div class="trades">${b.trades.map((t) => tradeCard(r, t, true)).join("")}</div>`
     : `<p class="muted">Nothing that clearly helps you without hurting the other side. Check back as injuries change things.</p>`;
+  const analyst = b.analyst ? `<div class="card analyst" id="analyst"><h2 class="top">Analyst's take</h2><p class="headline">${esc(b.analyst.headline)}</p>
+${b.analyst.paragraphs.map((p) => `<p>${esc(p)}</p>`).join("")}
+<p class="stamp by">${b.analyst.source === "claude" ? "Written by Claude from this week's numbers." : "Built from this week's numbers."}</p></div>` : "";
   const body = `<h1>${esc(r.league)} <span class="muted">week ${r.week}</span></h1>
-<div class="tabs"><a href="#lineup">Lineup</a><a href="#opponent">Opponent</a><a href="#waivers">Waivers</a><a href="#trades">Trades</a><a href="#league">League</a><a href="#schedule">Schedule</a><a href="#standings">Standings</a></div>
+<div class="tabs"><a href="#analyst">Analyst</a><a href="#lineup">Lineup</a><a href="#opponent">Opponent</a><a href="#waivers">Waivers</a><a href="#trades">Trades</a><a href="#league">League</a><a href="#schedule">Schedule</a><a href="#standings">Standings</a></div>
+${analyst}
 <div class="card" id="lineup">
 <div class="kv"><strong>${esc(r.team)} (${esc(r.record)})</strong><span>vs ${esc(r.opponent)} (${esc(r.opponent_record)})</span></div>
 <div class="kv"><span>ESPN projects</span><span>you ${pts(r.espn_projection.me)}, them ${pts(r.espn_projection.opponent)}</span></div>
@@ -180,7 +201,7 @@ ${r.warnings.length ? `<h2>Watch out</h2>${r.warnings.map(note).join("")}` : ""}
 <div class="card" id="opponent"><h2 class="top">Opponent: ${esc(r.opponent)} <span class="muted">best possible ${pts(r.opponent_best_proj)}</span></h2>
 ${lineupTable(r, r.opponent_lineup)}${r.opponent_issues.length ? note(`Their problems as set: ${r.opponent_issues.join("; ")}`) : ""}</div>
 <div class="card" id="waivers"><h2 class="top">Waiver watch</h2><p class="muted">Free agents projected above your weakest starter at that position this week. Adding and dropping is left to you.</p>${waivers}</div>
-<div class="card" id="trades"><h2 class="top">Trade ideas</h2><p class="muted">One-for-one swaps ranked by what your best lineup gains per week for the rest of the season, filtered to offers the other side could reasonably accept. Values blend ESPN's season projection with results so far.</p>${trades}</div>
+<div class="card" id="trades"><h2 class="top">Trade ideas</h2><p class="muted">One-for-one and two-player packages, ranked by what your best lineup gains per week for the rest of the season and filtered to offers the other side could reasonably accept. Values blend ESPN's season projection with results so far. Proposing sends the offer through ESPN; the other manager still has to accept.</p>${trades}</div>
 <div class="card" id="league"><h2 class="top">All matchups, week ${r.week}</h2><p class="muted">ESPN projection / best possible from each roster.</p>
 <ul class="plain">${r.matchups.map((s) => `<li>${s.length === 2 ? `${sides(s[0])} vs ${sides(s[1])}${[s[0].team_id, s[1].team_id].includes(r.team_id) ? ` <span class="tag">you</span>` : ""}` : s.length ? `${esc(s[0].team)} has a bye` : ""}
 ${s.filter((x) => x.problems.length).map((x) => `<div class="note small">${esc(x.team)}: ${esc(x.problems.join("; "))}</div>`).join("")}</li>`).join("")}</ul>
@@ -193,6 +214,62 @@ ${r.schedule.map((e) => `<tr><td>${e.week}</td><td>${esc(e.opponent)}</td><td>${
 ${r.standings.map((t) => `<tr${t.team_id === r.team_id ? ' class="me"' : ""}><td>${t.rank}</td><td>${esc(t.team)}</td><td>${esc(t.record)}</td><td class="num">${pts(t.pf)}</td><td class="num">${pts(t.avg_pf)}</td><td class="num">${pts(t.pa)}</td></tr>`).join("")}</table></div></div>
 <p class="stamp">Data as of ${esc(r.generated_at)} UTC. <a href="/league/${r.league_id}?refresh=1">Refresh from ESPN</a></p>`;
   return layout(r.league, body, { authed: true });
+}
+
+function tradeCard(r, t, withButton) {
+  const side = (label, ps) => `<div class="side"><div class="lbl">${label}</div>${ps.map((p) => `<div><strong>${esc(p.name)}</strong> <span class="muted">${esc(p.pos)}${p.team ? ` ${esc(p.team)}` : ""}, ${pts(p.value)}/wk</span></div>`).join("")}</div>`;
+  return `<div class="trade"><div class="head"><strong>${esc(t.with)}</strong><span class="tag">${esc(t.kind)}</span>
+<span class="gain"><span class="tag good">you +${pts(t.my_gain)}/wk</span><span class="tag ${t.their_gain >= 0 ? "good" : "warn"}">them ${t.their_gain >= 0 ? "+" : "-"}${Math.abs(t.their_gain).toFixed(1)}/wk</span></span></div>
+<div class="swap">${side("You send", t.give)}<div class="arrow">&#8644;</div>${side("You get", t.get)}</div>
+<p class="pitch">${esc(t.pitch)}</p>
+${withButton ? `<p class="act"><a class="btn" href="/trade?league=${r.league_id}&amp;id=${esc(t.id)}">Propose this trade on ESPN</a></p>` : ""}</div>`;
+}
+
+export function tradePage(b, t, csrf, result = null) {
+  const r = b.report;
+  if (result) {
+    return layout("Trade proposed", `<h1>${result.ok ? "Trade proposed" : "ESPN did not take the trade"}</h1>
+<div class="card"><p class="${result.ok ? "good" : "bad"}">${esc(result.message)}</p>
+${result.ok ? `<p class="muted">You can see and withdraw the offer under your team's trades on ESPN. Nothing changes on your roster until ${esc(t.with)} accepts.</p>`
+  : `<p class="muted">Nothing was sent. If this keeps happening, propose it on ESPN by hand; if it mentions a 401 or cookies, update the ESPN cookies under Settings.</p>`}
+${tradeCard(r, t, false)}</div>
+<p><a class="btn ghost" href="/league/${r.league_id}#trades">Back to ${esc(r.league)}</a></p>`, { authed: true });
+  }
+  return layout("Propose trade", `<h1>Propose a trade <span class="muted">${esc(r.league)}</span></h1>
+<div class="card confirm"><p>This sends the offer below to <strong>${esc(t.with)}</strong> through ESPN. They get the usual ESPN notice and accept or decline there; your roster does not change until they accept.</p>
+${tradeCard(r, t, false)}
+<form method="post" action="/trade"><input type="hidden" name="csrf" value="${esc(csrf)}"><input type="hidden" name="league" value="${r.league_id}"><input type="hidden" name="id" value="${esc(t.id)}">
+<button class="btn big" type="submit">Send this offer to ${esc(t.with)}</button></form>
+<p class="stamp">Press once. If you change your mind afterwards, withdraw the offer on ESPN.</p></div>
+<p><a class="btn ghost" href="/league/${r.league_id}#trades">Back</a></p>`, { authed: true });
+}
+
+export function addPage(b, pick, csrf, { drop = null, bid = 0, waiver = false, flash = null, result = null } = {}) {
+  const r = b.report;
+  const who = `<strong>${esc(pick.name)}</strong> <span class="muted">${esc(pick.pos)} ${esc(pick.team)}, ${pts(pick.proj)} proj this week</span>`;
+  if (result) {
+    return layout(result.ok ? "Done" : "Problem", `<h1>${result.ok ? (waiver ? "Claim submitted" : "Added") : "ESPN did not make the move"}</h1>
+<div class="card"><p class="${result.ok ? "good" : "bad"}">${esc(result.message)}</p>
+<p>${waiver ? "Claim" : "Add"}: ${who}${drop ? `<br>Drop: <strong>${esc(drop.name)}</strong> <span class="muted">${esc(drop.pos)} ${esc(drop.team)}</span>` : ""}${waiver && r.budget_left != null ? `<br>Bid: $${bid}` : ""}</p>
+${result.ok ? `<p class="muted">${waiver ? "Once ESPN processes the claim, come back and set the lineup." : "He is on your bench. Set the lineup to start him where he belongs."}</p>`
+  : `<p class="muted">Nothing changed on your roster. If this keeps happening, make the move on ESPN by hand; if it mentions a 401 or cookies, update the ESPN cookies under Settings.</p>`}</div>
+<p><a class="btn" href="/league/${r.league_id}?refresh=1">Back to ${esc(r.league)}</a></p>`, { authed: true });
+  }
+  const cands = r.drop_candidates || [];
+  const needDrop = r.open_spots <= 0;
+  const options = (needDrop ? "" : `<option value=""${!drop ? " selected" : ""}>Nobody; you have ${plural(r.open_spots, "open roster spot")}</option>`)
+    + cands.map((c) => `<option value="${c.player_id}"${drop && drop.player_id === c.player_id ? " selected" : ""}>${esc(c.name)} (${esc(c.pos)} ${esc(c.team)}, ${pts(c.value)}/wk${c.starter ? ", recommended starter" : ""}${c.notes ? `, ${esc(c.notes)}` : ""})</option>`).join("");
+  const why = drop ? `<p class="muted">Why ${esc(drop.name)}: ${esc(drop.reason)}.</p>` : "";
+  return layout(waiver ? "Claim player" : "Add player", `<h1>${waiver ? "Claim" : "Add"} ${esc(pick.name)} <span class="muted">${esc(r.league)}</span></h1>
+${flash ? `<div class="flash">${esc(flash)}</div>` : ""}
+<div class="card confirm"><p>${who}. ${pick.fills_empty_slot ? `He fills a slot you cannot fill from your roster.` : `He out-projects your weakest ${esc(pick.pos)} starter by ${pts(pick.edge)} this week.`}
+${waiver ? ` He is on waivers, so this is a claim: ESPN processes it on the league's waiver schedule and he joins your team only if the claim wins.` : ` He is a free agent, so the add is immediate.`}</p>
+<form method="post" action="/add"><input type="hidden" name="csrf" value="${esc(csrf)}"><input type="hidden" name="league" value="${r.league_id}"><input type="hidden" name="player" value="${pick.player_id}">
+<label for="drop">Drop${needDrop ? " (your roster is full)" : ""}</label><select id="drop" name="drop">${options}</select>${why}
+${waiver && r.budget_left != null ? `<label for="bid">Bid (you have $${r.budget_left} left)</label><input type="text" id="bid" name="bid" value="${bid}" inputmode="numeric" pattern="[0-9]*">` : ""}
+<p><button class="btn big" type="submit">${waiver ? "Submit claim" : "Add"}${drop ? ` and drop ${esc(drop.name)}` : ""}</button></p></form>
+<p class="stamp">Press once. Dropping a player sends him to waivers on ESPN; there is no undo from here.</p></div>
+<p><a class="btn ghost" href="/league/${r.league_id}#waivers">Back</a></p>`, { authed: true });
 }
 
 export function lineupsPage({ bundles, results, only, csrf }) {

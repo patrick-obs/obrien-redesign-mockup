@@ -20,6 +20,7 @@ export const MINE = () => [
 export const THEIRS = () => [
   bp("QB Z", "QB", "QB", 19.0), bp("RB Z", "RB", "RB", 12.0), bp("RB Y", "RB", "RB", 10.0), bp("WR Z", "WR", "WR", 11.0, { status: "DOUBTFUL" }),
   bp("WR Y", "WR", "WR", 9.0), bp("TE Z", "TE", "TE", 7.0), bp("WR X", "WR", "RB/WR/TE", 6.0), bp("K Z", "K", "K", 7.0), bp("D Z", "D/ST", "D/ST", 6.0),
+  bp("D W", "D/ST", "BE", 5.0), // a spare defense on their bench: the obvious trade target for my empty D/ST slot
 ];
 export const OTHERS = () => [bp("QB O", "QB", "QB", 15.0), bp("RB O", "RB", "RB", 10.0, { status: "OUT" })];
 
@@ -34,7 +35,8 @@ export function fakeLeague(id = 1, started = true) {
   opp.scores = Array(8).fill(90);
   const teams = [me, opp, t3, t4];
   return { id, season: 2026, name: started ? "Test League" : "Dead League", currentWeek: started ? 9 : 0, currentMatchupPeriod: started ? 9 : 1, finalScoringPeriod: 17,
-    regSeasonCount: 14, matchupPeriods: {}, slotCounts: SLOTS, teams, byId: Object.fromEntries(teams.map((t) => [t.id, t])), started };
+    regSeasonCount: 14, playoffTeamCount: 2, rosterSize: 11, acquisition: { type: "WAIVERS_CONTINUOUS", usesBudget: true, budget: 100 },
+    matchupPeriods: {}, slotCounts: SLOTS, teams, byId: Object.fromEntries(teams.map((t) => [t.id, t])), started };
 }
 export function fakeBoxes(league) {
   const [me, opp, t3, t4] = league.teams;
@@ -43,7 +45,7 @@ export function fakeBoxes(league) {
     { home: { teamId: 9, team: t3, score: 0, projected: 60, lineup: OTHERS() }, away: { teamId: 10, team: t4, score: 0, projected: -1, lineup: [bp("QB F", "QB", "QB", 1.0)] } },
   ];
 }
-export const FA = { TE: [bp("TE FA", "TE", "FA", 9.5, { owned: 22 })], RB: [bp("RB FA", "RB", "FA", 5.0)], "D/ST": [bp("D FA", "D/ST", "FA", 6.5, { owned: 10 })] };
+export const FA = { TE: [bp("TE FA", "TE", "FA", 9.5, { owned: 22 })], RB: [bp("RB FA", "RB", "FA", 5.0)], "D/ST": [{ ...bp("D FA", "D/ST", "FA", 6.5, { owned: 10 }), acquisition: "WAIVERS" }] };
 
 /** A fake of the espn module for App tests. */
 export function fakeEspn({ posts = [] } = {}) {
@@ -58,7 +60,9 @@ export function fakeEspn({ posts = [] } = {}) {
     freeAgents: async (f, c, league, week, pos) => FA[pos] || [],
     rosters: async (f, c, league) => Object.fromEntries(league.teams.map((t) => [t.id, (t.id === 3 ? MINE() : t.id === 7 ? THEIRS() : OTHERS())])),
     gamesPlayed: (t) => t.wins + t.losses + t.ties,
-    applyLineup: async (f, c, season, leagueId, teamId, week, items) => { posts.push({ leagueId, teamId, week, items, cookies: c }); return { ok: true, status: 200, message: "Lineup set." }; },
+    applyLineup: async (f, c, season, leagueId, teamId, week, items) => { posts.push({ kind: "lineup", leagueId, teamId, week, items, cookies: c }); return { ok: true, status: 200, message: "Lineup set." }; },
+    proposeTrade: async (f, c, season, leagueId, teamId, week, theirTeamId, giveIds, getIds) => { posts.push({ kind: "trade", leagueId, teamId, week, theirTeamId, giveIds, getIds }); return { ok: true, status: 200, message: "Trade proposed." }; },
+    addPlayer: async (f, c, season, leagueId, teamId, week, opts) => { posts.push({ kind: "add", leagueId, teamId, week, ...opts }); return { ok: true, status: 200, message: opts.waiver ? "Waiver claim submitted." : "Player added." }; },
   };
 }
 export class FakeStorage {
