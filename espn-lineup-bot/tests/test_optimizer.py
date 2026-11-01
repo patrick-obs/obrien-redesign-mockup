@@ -1,7 +1,7 @@
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from optimizer import Player, optimize, diff_lineup, warnings_for, slot_counts_from_lineup, projected_total
+from advisor.optimizer import Player, optimize, diff_lineup, warnings_for, slot_counts_from_lineup, projected_total
 
 
 def P(name, pos, slot, proj, **kw):

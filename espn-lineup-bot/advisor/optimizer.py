@@ -36,6 +36,7 @@ class Player:
     opp_rank: int = 0
     recent_avg: Optional[float] = None
     percent_owned: Optional[float] = None
+    player_id: Optional[int] = None
     flags: List[str] = field(default_factory=list)
 
     @property
@@ -78,7 +79,9 @@ def optimize(players: List[Player], slot_counts: Dict[str, int]) -> Dict[str, Li
 
     Locked players stay where they are. A locked starter keeps its slot;
     a locked bench player stays on the bench. Everyone else is placed by
-    effective projection, most restrictive slot first.
+    effective projection, most restrictive slot first. A player who cannot
+    play (bye, out, IR, suspended) is never placed: an empty slot is the
+    honest answer and the report flags it.
     """
     assignment: Dict[str, List[Player]] = {s: [] for s in slot_counts}
     remaining = {s: n for s, n in slot_counts.items()}
@@ -95,7 +98,7 @@ def optimize(players: List[Player], slot_counts: Dict[str, int]) -> Dict[str, Li
 
     for slot in sorted(remaining, key=_slot_rank):
         while remaining[slot] > 0:
-            candidates = [p for p in pool if slot in p.eligible]
+            candidates = [p for p in pool if slot in p.eligible and p.can_play]
             if not candidates:
                 break
             best = max(candidates, key=lambda p: (p.effective_proj, p.proj))

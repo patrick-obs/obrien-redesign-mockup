@@ -1,0 +1,87 @@
+{% extends "base.html" %}{% block title %}{{ r.league }}{% endblock %}
+{% block body %}
+<h1>{{ r.league }} <span class="muted">week {{ r.week }}</span></h1>
+<div class="tabs"><a href="#lineup">Lineup</a><a href="#opponent">Opponent</a><a href="#waivers">Waivers</a><a href="#trades">Trades</a><a href="#league">League</a><a href="#schedule">Schedule</a><a href="#standings">Standings</a></div>
+
+<div class="card" id="lineup">
+  <div class="kv"><strong>{{ r.team }} ({{ r.record }})</strong><span>vs {{ r.opponent }} ({{ r.opponent_record }})</span></div>
+  <div class="kv"><span>ESPN projects</span><span>you {{ r.espn_projection.me|pts }}, them {{ r.espn_projection.opponent|pts }}</span></div>
+  <div class="kv"><span>Your starters as set / recommended</span><span>{{ r.current_lineup_proj|pts }} / <strong>{{ r.recommended_lineup_proj|pts }}</strong></span></div>
+  {% if r.lineup_items %}
+  <p><a class="btn" href="{{ url_for('lineups', league=r.league_id) }}">Set this lineup ({{ r.lineup_items|length }} change{{ 's' if r.lineup_items|length != 1 }})</a></p>
+  {% endif %}
+  <h2>Recommended lineup</h2>
+  {% with lineup = r.recommended %}{% include "_lineup_table.html" %}{% endwith %}
+  <h2>Changes to make</h2>
+  {% if r.moves %}{% for m in r.moves %}<div class="move">{{ m }}</div>{% endfor %}{% else %}<p class="good">None. Your lineup already matches the projections.</p>{% endif %}
+  {% if r.warnings %}<h2>Watch out</h2>{% for w in r.warnings %}<div class="warn">! {{ w }}</div>{% endfor %}{% endif %}
+  <h2>Bench</h2>
+  <ul class="plain">{% for p in r.bench %}<li>{{ p.name }} <span class="muted">{{ p.pos }} {{ p.team }}</span> <span style="float:right">{{ p.proj|pts }} {% if p.notes %}<span class="tag warn">{{ p.notes }}</span>{% endif %}</span></li>{% endfor %}</ul>
+</div>
+
+<div class="card" id="opponent">
+  <h2 style="margin-top:0">Opponent: {{ r.opponent }} <span class="muted">best possible {{ r.opponent_best_proj|pts }}</span></h2>
+  {% with lineup = r.opponent_lineup %}{% include "_lineup_table.html" %}{% endwith %}
+  {% if r.opponent_issues %}<p class="warn">Their problems as set: {{ r.opponent_issues|join('; ') }}</p>{% endif %}
+</div>
+
+<div class="card" id="waivers">
+  <h2 style="margin-top:0">Waiver watch</h2>
+  <p class="muted">Free agents projected above your weakest starter at that position this week. Adding and dropping is left to you.</p>
+  {% if r.waivers %}
+  <div class="tablewrap"><table><tr><th>Pos</th><th>Player</th><th>Team</th><th>Opp</th><th class="num">Proj</th><th>Why</th><th class="num">Owned</th></tr>
+  {% for pos, picks in r.waivers.items() %}{% for d in picks %}
+    {% if d.error %}<tr><td>{{ pos }}</td><td colspan="6" class="muted">could not load: {{ d.error }}</td></tr>{% else %}
+    <tr><td>{{ pos }}</td><td>{{ d.name }}</td><td>{{ d.team }}</td><td>{{ d.opp }}</td><td class="num">{{ d.proj|pts }}</td>
+        <td>{% if d.fills_empty_slot %}<span class="tag bad">fills your EMPTY slot</span>{% else %}<span class="good">+{{ d.edge|pts }}</span>{% endif %}</td>
+        <td class="num">{% if d.owned is not none %}{{ d.owned|round|int }}%{% endif %}</td></tr>
+    {% endif %}
+  {% endfor %}{% endfor %}</table></div>
+  {% else %}<p class="good">No free agent out-projects your starters this week.</p>{% endif %}
+</div>
+
+<div class="card" id="trades">
+  <h2 style="margin-top:0">Trade ideas</h2>
+  <p class="muted">One-for-one swaps ranked by what your best lineup gains per week for the rest of the season, filtered to offers the other side could reasonably accept. Values blend ESPN's season projection with results so far.</p>
+  {% if b.trades %}
+  <ul class="plain">{% for t in b.trades %}
+    <li><strong>{{ t.with }}</strong>: give {{ t.give }} <span class="muted">({{ t.give_pos }}, {{ t.give_value|pts }})</span> for {{ t.get }} <span class="muted">({{ t.get_pos }}, {{ t.get_value|pts }})</span>
+      <span style="float:right"><span class="good">you +{{ t.my_gain|pts }}</span> / <span class="{{ 'good' if t.their_gain >= 0 else 'warn' }}">them {{ '+' if t.their_gain >= 0 }}{{ t.their_gain|pts }}</span></span>
+      <div class="muted" style="font-size:13px">{{ t.pitch }}</div></li>
+  {% endfor %}</ul>
+  {% else %}<p class="muted">Nothing that clearly helps you without hurting the other side. Check back as injuries change things.</p>{% endif %}
+</div>
+
+<div class="card" id="league">
+  <h2 style="margin-top:0">All matchups, week {{ r.week }}</h2>
+  <p class="muted">ESPN projection / best possible from each roster.</p>
+  <ul class="plain">{% for sides in r.matchups %}
+    <li>{% if sides|length == 2 %}{% set a = sides[0] %}{% set c = sides[1] %}
+      <strong>{{ a.team }}</strong> ({{ a.record }}) {{ a.espn_proj|pts }}/{{ a.best_lineup_proj|pts }} vs <strong>{{ c.team }}</strong> ({{ c.record }}) {{ c.espn_proj|pts }}/{{ c.best_lineup_proj|pts }}
+      {% if r.team_id in [a.team_id, c.team_id] %}<span class="tag">you</span>{% endif %}
+      {% elif sides %}{{ sides[0].team }} has a bye{% endif %}
+      {% for s in sides %}{% if s.problems %}<div class="warn" style="font-size:13px">{{ s.team }}: {{ s.problems|join('; ') }}</div>{% endif %}{% endfor %}
+    </li>{% endfor %}</ul>
+  <h2>League injury report</h2>
+  <ul class="plain">{% for t in r.injury_report %}<li><strong>{{ t.team }}</strong>{% if t.team_id == r.team_id %} <span class="tag">you</span>{% endif %}: {% if t.injuries %}{{ t.injuries|join('; ') }}{% else %}<span class="good">healthy</span>{% endif %}</li>{% endfor %}</ul>
+</div>
+
+<div class="card" id="schedule">
+  {% if r.results %}<h2 style="margin-top:0">Season so far</h2>
+  <div class="tablewrap"><table><tr><th>Wk</th><th></th><th>Score</th><th>Opponent</th></tr>
+  {% for e in r.results %}<tr><td>{{ e.week }}</td><td class="{{ 'good' if e.result == 'W' else 'bad' }}">{{ e.result }}</td><td>{% if e.score is not none and e.opp_score is not none %}{{ e.score|pts }} - {{ e.opp_score|pts }}{% endif %}</td><td>{{ e.opponent }}</td></tr>{% endfor %}
+  </table></div>{% endif %}
+  {% if r.schedule %}<h2>Remaining schedule</h2>
+  <div class="tablewrap"><table><tr><th>Wk</th><th>Opponent</th><th>Record</th><th class="num">Avg PF</th><th>Injuries</th></tr>
+  {% for e in r.schedule %}<tr><td>{{ e.week }}</td><td>{{ e.opponent }}</td><td>{{ e.record }}</td><td class="num">{{ e.avg_pf|pts }}</td><td>{% if e.injuries %}{{ e.injuries|join('; ') }}{% endif %}</td></tr>{% endfor %}
+  </table></div>{% endif %}
+</div>
+
+<div class="card" id="standings">
+  <h2 style="margin-top:0">Standings</h2>
+  <div class="tablewrap"><table><tr><th>#</th><th>Team</th><th>Record</th><th class="num">PF</th><th class="num">Avg</th><th class="num">PA</th></tr>
+  {% for t in r.standings %}<tr{% if t.team_id == r.team_id %} style="font-weight:700"{% endif %}><td>{{ t.rank }}</td><td>{{ t.team }}</td><td>{{ t.record }}</td><td class="num">{{ t.pf|pts }}</td><td class="num">{{ t.avg_pf|pts }}</td><td class="num">{{ t.pa|pts }}</td></tr>{% endfor %}
+  </table></div>
+</div>
+<p class="muted">Data as of {{ r.generated_at }}. <a href="{{ url_for('league_page', league_id=r.league_id, refresh=1) }}">Refresh from ESPN</a></p>
+{% endblock %}

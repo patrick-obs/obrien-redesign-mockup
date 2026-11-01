@@ -1,0 +1,6 @@
+{% extends "base.html" %}{% block title %}Problem{% endblock %}
+{% block body %}
+<div class="card"><h1>Something went wrong</h1><p>{{ message }}</p>
+<p class="muted">If this mentions a 401 or cookies, your ESPN login expired. Update the cookies under Settings.</p>
+<p><a class="btn ghost" href="{{ url_for('index') }}">Back</a></p></div>
+{% endblock %}

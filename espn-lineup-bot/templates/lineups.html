@@ -1,0 +1,36 @@
+{% extends "base.html" %}{% block title %}Set lineups{% endblock %}
+{% block body %}
+{% if results is none %}
+<h1>Set {{ 'this lineup' if only else 'all lineups' }}</h1>
+<p class="muted">This is exactly what will be sent to ESPN. Only slot changes: nobody is added or dropped, locked players are left alone, and IR is never touched.</p>
+{% set any = bundles|map(attribute='report.lineup_items')|map('length')|sum %}
+{% for b in bundles %}
+<div class="card">
+  <h2 style="margin-top:0">{{ b.name }} <span class="muted">week {{ b.week }}</span></h2>
+  {% if b.report.lineup_items %}
+  <ul class="plain">{% for it in b.report.lineup_items %}<li>{{ it.name }}: <span class="muted">{{ it.from }}</span> &rarr; <strong>{{ it.to }}</strong></li>{% endfor %}</ul>
+  <p class="muted">Projected: {{ b.report.current_lineup_proj|pts }} &rarr; {{ b.report.recommended_lineup_proj|pts }}</p>
+  {% else %}<p class="good">Already set. No changes.</p>{% endif %}
+</div>
+{% endfor %}
+{% if any %}
+<form method="post" action="{{ url_for('lineups') }}">
+  <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+  {% if only %}<input type="hidden" name="league" value="{{ only }}">{% endif %}
+  <button class="btn big" type="submit">Confirm and send to ESPN</button>
+</form>
+<p class="muted">Press once. ESPN has no undo for this; if you change your mind, change the lineup back on ESPN or re-run after projections move.</p>
+{% else %}<p><a class="btn ghost" href="{{ url_for('index') }}">Back</a></p>{% endif %}
+{% else %}
+<h1>Done</h1>
+{% for x in results %}
+<div class="card">
+  <h2 style="margin-top:0">{{ x.name }}</h2>
+  <p class="{{ 'good' if x.result.ok else 'bad' }}">{{ x.result.message }}</p>
+  {% if x.items and not x.result.ok %}<p class="muted">Tried: {% for it in x.items %}{{ it.name }} {{ it.from }}&rarr;{{ it.to }}{{ ', ' if not loop.last }}{% endfor %}</p>
+  <p class="muted">Make these on ESPN by hand, then come back. If this keeps failing with 401, update the cookies under Settings.</p>{% endif %}
+</div>
+{% endfor %}
+<p><a class="btn" href="{{ url_for('index', refresh=1) }}">Back to your leagues</a></p>
+{% endif %}
+{% endblock %}
