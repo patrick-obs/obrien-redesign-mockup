@@ -3,8 +3,8 @@ export const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&a
 export const pts = (v) => (v === null || v === undefined || isNaN(Number(v)) || Number(v) < 0) ? "n/a" : Number(v).toFixed(1);
 const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
 
-const CSS = `:root{--bg:#f6f7f9;--card:#fff;--ink:#1a1d23;--muted:#5f6670;--line:#e3e6ea;--accent:#1f6feb;--good:#1a7f37;--bad:#c62828;--warn:#9a6700;--warnbg:#fff8e1;--badbg:#fdecea;--goodbg:#e9f6ec}
-@media (prefers-color-scheme:dark){:root{--bg:#0f1115;--card:#171a21;--ink:#e6e8eb;--muted:#9aa3ad;--line:#2a2f38;--accent:#4c8dff;--good:#3fb950;--bad:#ff6b6b;--warn:#e3b341;--warnbg:#2a2410;--badbg:#2d1a1a;--goodbg:#15271a}}
+const CSS = `:root{--bg:#fff0f6;--card:#fff;--ink:#2b1a24;--muted:#7a5a6b;--line:#f7d0e1;--accent:#d6336c;--good:#1a7f37;--bad:#c62828;--warn:#9a6700;--warnbg:#fff8e1;--badbg:#fdecea;--goodbg:#e9f6ec}
+@media (prefers-color-scheme:dark){:root{--bg:#1a0f15;--card:#25161f;--ink:#f7e8ef;--muted:#c49cb1;--line:#3f2533;--accent:#e64980;--good:#3fb950;--bad:#ff6b6b;--warn:#e3b341;--warnbg:#2a2410;--badbg:#2d1a1a;--goodbg:#15271a}}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
 a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
 header{background:var(--card);border-bottom:1px solid var(--line);padding:10px 16px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
