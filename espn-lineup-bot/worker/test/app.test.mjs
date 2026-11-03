@@ -224,3 +224,24 @@ test("Claude rewrite: counted per day, capped, switchable, and falls back on fai
   const broken = new App({ env: { ...env, ANALYST_DAILY_CAP: "100" }, storage: new FakeStorage(), fetchFn: async (u) => { if (String(u).includes("api.anthropic.com")) return new Response("nope", { status: 500 }); throw new Error("no network"); }, espn: fakeEspn() });
   assert.equal((await broken.bundle(1, true)).analyst.source, "rules");
 });
+
+test("everything sent to ESPN is recorded and shown on the dashboard", async () => {
+  const posts = [];
+  const app = makeApp(posts);
+  const cookie = await login(app);
+  let h = await (await app.handle(req("/", { cookie }))).text();
+  assert.match(h, /Nothing has been sent yet/);
+  const b = await app.bundle(1);
+  const t = b.trades[0];
+  const csrf = (await (await app.handle(req(`/trade?league=1&id=${t.id}`, { cookie }))).text()).match(/name="csrf" value="([0-9a-f]+)"/)[1];
+  await app.handle(req("/trade", { method: "POST", cookie, body: form({ league: 1, id: t.id, csrf }) }));
+  const te = b.report.waivers.TE[0];
+  await app.handle(req("/add", { method: "POST", cookie, body: form({ league: 1, player: te.player_id, drop: b.report.drop_candidates[0].player_id, csrf }) }));
+  await app.handle(req("/lineups", { method: "POST", cookie, body: form({ csrf }) }));
+  await app.handle(new Request("https://advisor.internal/__warm", { headers: { "x-warm-key": "test-secret" } }));
+  const log = await app.activity();
+  assert.deepEqual(log.map((e) => e.kind), ["lineup", "lineup", "add", "trade"]);
+  assert.equal(log[0].by, "auto"); assert.equal(log[1].by, "you"); assert.equal(log[3].with, t.with);
+  h = await (await app.handle(req("/", { cookie }))).text();
+  assert.match(h, /Sent to ESPN/); assert.match(h, new RegExp(`Trade offer to ${t.with}`)); assert.match(h, /Added TE FA, dropped/); assert.match(h, /automatic/);
+});

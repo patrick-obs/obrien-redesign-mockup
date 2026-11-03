@@ -152,6 +152,15 @@ export class App {
     });
   }
 
+  // ------------------------------------------------------------ activity log
+  /** Everything the app ever sends to ESPN, newest first, capped at 200 entries. */
+  async logActivity(entry) {
+    const log = (await this.storage.get("activity")) || [];
+    log.unshift({ at: this.now(), ...entry });
+    await this.storage.put("activity", log.slice(0, 200));
+  }
+  async activity() { return (await this.storage.get("activity")) || []; }
+
   // ------------------------------------------------------------ Claude guardrails
   /** Spending controls for the optional Claude rewrite: a kill switch and a per-day call cap, counted in storage. */
   claudeConfig() {
@@ -242,7 +251,7 @@ export class App {
     const totalMoves = bundles.reduce((n, b) => n + (b.report ? b.report.lineup_items.length : 0), 0);
     const saved = url.searchParams.get("saved");
     if (saved) errors.unshift(`Saved. ESPN reports ${saved} league(s) for this account.`);
-    return html(indexPage({ bundles, errors, totalMoves, season: s.season, now: this.now(), csrf: await this.csrf(url.request || new Request(url.href)), hiddenCount: s.hidden.length }));
+    return html(indexPage({ bundles, errors, totalMoves, season: s.season, now: this.now(), csrf: await this.csrf(url.request || new Request(url.href)), hiddenCount: s.hidden.length, activity: (await this.activity()).slice(0, 12) }));
   }
 
   async league(id, url) {
@@ -266,6 +275,7 @@ export class App {
       const items = b.report.lineup_items;
       const result = await this.espn.applyLineup(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, b.week, items);
       results.push({ name: b.name, items, result });
+      if (items.length) await this.logActivity({ kind: "lineup", league: b.name, league_id: b.league_id, week: b.week, ok: result.ok, message: result.message, changes: items.length, items: items.map((it) => `${it.name} ${it.from}→${it.to}`), by: "you" });
     }
     await this.clearCache();
     return html(lineupsPage({ bundles, results, only, csrf }));
@@ -300,6 +310,7 @@ export class App {
     const give = trade.give.map((p) => p.player_id), get = trade.get.map((p) => p.player_id);
     if (trade.with_team_id == null || give.some((x) => x == null) || get.some((x) => x == null)) return html(errorPage("ESPN ids are missing for this trade, so it cannot be sent from here. Propose it on ESPN by hand.", true));
     const result = await this.espn.proposeTrade(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, b.week, trade.with_team_id, give, get);
+    await this.logActivity({ kind: "trade", league: b.name, league_id: b.league_id, week: b.week, ok: result.ok, message: result.message, with: trade.with, give: trade.give_names, get: trade.get_names, my_gain: trade.my_gain, their_gain: trade.their_gain, by: "you" });
     await this.clearCache();
     return html(tradePage(b, trade, csrf, result));
   }
@@ -327,6 +338,7 @@ export class App {
     if (r.budget_left != null && bid > r.budget_left) return html(addPage(b, pick, csrf, { ...state, flash: `You only have $${r.budget_left} of waiver budget left.` }));
     const result = await this.espn.addPlayer(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, b.week,
       { addId: pick.player_id, dropId: drop ? drop.player_id : null, waiver: !!pick.on_waivers, bid });
+    await this.logActivity({ kind: pick.on_waivers ? "claim" : "add", league: b.name, league_id: b.league_id, week: b.week, ok: result.ok, message: result.message, add: pick.name, drop: drop ? drop.name : null, bid: pick.on_waivers ? bid : null, by: "you" });
     await this.clearCache();
     return html(addPage(b, pick, csrf, { ...state, result }));
   }
@@ -391,6 +403,7 @@ export class App {
         const result = await this.espn.applyLineup(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, b.week, r.lineup_items);
         prev.target = { ...slots }; for (const it of r.lineup_items) prev.target[it.name] = it.to;
         log({ kind: "lineup", ok: result.ok, changes: r.lineup_items.length, message: result.message, items: r.lineup_items.map((it) => `${it.name} ${it.from}→${it.to}`) });
+        await this.logActivity({ kind: "lineup", league: b.name, league_id: b.league_id, week: b.week, ok: result.ok, message: result.message, changes: r.lineup_items.length, items: r.lineup_items.map((it) => `${it.name} ${it.from}→${it.to}`), by: "auto" });
         acted = true;
       }
     }
@@ -401,6 +414,7 @@ export class App {
         const result = await this.espn.addPlayer(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, b.week, { addId: pick.player_id, dropId: drop ? drop.player_id : null, waiver: false, bid: 0 });
         prev.filled = true;
         log({ kind: "add", ok: result.ok, message: result.message, add: pick.name, drop: drop ? drop.name : null });
+        await this.logActivity({ kind: "add", league: b.name, league_id: b.league_id, week: b.week, ok: result.ok, message: result.message, add: pick.name, drop: drop ? drop.name : null, by: "auto" });
         acted = true;
       }
     }

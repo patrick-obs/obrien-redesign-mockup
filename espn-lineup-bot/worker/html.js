@@ -261,7 +261,18 @@ function todo(b) {
   return `<div class="todo"><div class="lbl">To do</div><div class="group">${items.map((it) => `<a class="row link${it.primary ? " primary" : ""}" href="${it.href}"><div class="main"><div class="t">${it.text}</div><div class="s">${it.sub}</div></div><div class="trail">${I.chev}</div></a>`).join("")}</div></div>`;
 }
 
-export function indexPage({ bundles, errors, totalMoves, season, now, csrf = "", hiddenCount = 0 }) {
+const fmtDay = (ts) => new Date(ts).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York" });
+/** "Sent to ESPN": the app's own record of every write, so "what did we send" has an answer. */
+function activityList(items) {
+  if (!items.length) return `<div class="card"><h2 class="top">Sent to ESPN</h2><p class="muted">Nothing has been sent yet. Trade ideas and waiver picks are only suggestions until you confirm one; automatic lineup sets will show up here too.</p></div>`;
+  const line = (e) => e.kind === "trade" ? `Trade offer to ${esc(e.with)}: ${esc(e.give)} for ${esc(e.get)} <span class="muted">(+${pts(e.my_gain)}/wk for you, ${e.their_gain >= 0 ? "+" : "-"}${Math.abs(e.their_gain).toFixed(1)} for them)</span>`
+    : e.kind === "claim" ? `Waiver claim for ${esc(e.add)}${e.drop ? `, dropping ${esc(e.drop)}` : ""}${e.bid ? ` (bid $${e.bid})` : ""}`
+    : e.kind === "add" ? `Added ${esc(e.add)}${e.drop ? `, dropped ${esc(e.drop)}` : ""}`
+    : `Lineup set: ${plural(e.changes, "change")}${e.items ? ` <span class="muted">(${esc(e.items.join(", "))})</span>` : ""}`;
+  return `<div class="card" id="activity"><h2 class="top">Sent to ESPN</h2><div class="group">${items.map((e) => `<div class="row"><div class="main"><div class="t">${line(e)}</div><div class="s">${esc(e.league)} · week ${e.week} · ${esc(fmtDay(e.at))} ET · ${e.by === "auto" ? "automatic" : "by you"}${e.ok ? "" : ` · <span class="bad">ESPN refused: ${esc(e.message)}</span>`}</div></div><div class="trail"><span class="tag ${e.ok ? "good" : "bad"}">${e.ok ? (e.kind === "trade" ? "offered" : e.kind === "claim" ? "pending" : "done") : "failed"}</span></div></div>`).join("")}</div></div>`;
+}
+
+export function indexPage({ bundles, errors, totalMoves, season, now, csrf = "", hiddenCount = 0, activity = [] }) {
   const live = bundles.filter((b) => b.started);
   const when = new Date(now).toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York" });
   let top = "";
@@ -299,7 +310,7 @@ ${r.warnings.length ? `<div class="notes">${r.warnings.map(note).join("")}</div>
 ${r.moves.length ? `<details class="moves"><summary>${plural(r.moves.length, "lineup change")} recommended</summary>${r.moves.map(move).join("")}</details>` : ""}</div>`;
   });
   const hiddenNote = hiddenCount ? `<p class="stamp">${plural(hiddenCount, "hidden league")}. <a href="/settings">Show again in Settings</a>.</p>` : "";
-  return layout("Your leagues", `<h1>Your leagues <span class="muted">${esc(season)}</span></h1>${errors.map(flashBox).join("")}${top}<div class="grid">${cards.join("")}</div>${hiddenNote}`, { authed: true });
+  return layout("Your leagues", `<h1>Your leagues <span class="muted">${esc(season)}</span></h1>${errors.map(flashBox).join("")}${top}<div class="grid">${cards.join("")}</div>${hiddenNote}${activityList(activity)}`, { authed: true });
 }
 
 // ------------------------------------------------------------------ league page
