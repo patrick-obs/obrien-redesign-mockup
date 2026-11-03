@@ -332,3 +332,14 @@ test("a slot empty only because of a bye is cover-only: not urgent, not pre-tick
   await app.handle(new Request("https://advisor.internal/__warm", { headers: { "x-warm-key": "test-secret" } }));
   assert.equal(posts.filter((p) => p.kind === "add").length, 0);
 });
+
+test("Automanage master switch stops every automatic action", async () => {
+  const posts = [];
+  const app = makeApp(posts);
+  await app.savePrefs({ automanage: false, auto_lineup: true, auto_fill_empty: true });
+  assert.equal(await (await app.handle(new Request("https://advisor.internal/__warm", { headers: { "x-warm-key": "test-secret" } }))).text(), "warmed 2, auto-managed 0");
+  assert.equal(posts.length, 0);
+  const cookie = await login(app);
+  const sp = await (await app.handle(req("/settings", { cookie }))).text();
+  assert.match(sp, /id="automanage" name="automanage" value="1">/); assert.ok(!/id="automanage" name="automanage" value="1" checked/.test(sp));
+});

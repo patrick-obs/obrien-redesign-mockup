@@ -90,3 +90,17 @@ test("blitz set: best first, no player twice, one offer per manager, busy player
   assert.deepEqual(blitzSet(board, { busy: new Set([1]) }).map((t) => t.id), ["b", "d", "e", "f"]);
   assert.deepEqual(blitzSet(board, { max: 2 }).map((t) => t.id), ["a", "d"]);
 });
+
+test("value parity: a bench player does not buy a starter unless their lineup clearly improves", () => {
+  const ELIG = { QB: ["QB", "BE"], RB: ["RB", "RB/WR/TE", "BE"], WR: ["WR", "RB/WR/TE", "BE"], TE: ["TE", "RB/WR/TE", "BE"] };
+  let n = 900; const rp = (name, pos, v) => rosterPlayer(name, pos, ELIG[pos], "ACTIVE", v, n++);
+  // My backup QB (15) for their starting WR (14): their lineup barely moves (they already start a 20-point QB) and they lose value.
+  const mine = [rp("QB1", "QB", 24), rp("QBb", "QB", 15), rp("RB1", "RB", 14), rp("RB2", "RB", 12), rp("WR1", "WR", 12), rp("WR2", "WR", 3), rp("TE1", "TE", 7)];
+  // They have an equal receiver on the bench, so their lineup does not move; a rational manager still says no to a backup QB.
+  const theirs = [rp("QBx", "QB", 20), rp("RBa", "RB", 13), rp("RBb", "RB", 12), rp("WRa", "WR", 14), rp("WRb", "WR", 13), rp("WRc", "WR", 12), rp("WRd", "WR", 14), rp("TEx", "TE", 7)];
+  const SLOTS = { QB: 1, RB: 2, WR: 2, TE: 1, "RB/WR/TE": 1 };
+  const ideas = proposeTrades(mine, { Them: { id: 7, players: theirs } }, SLOTS, { perTeam: 20, perLeague: 40 });
+  assert.ok(!ideas.some((i) => i.give_names === "QBb"), ideas.map((i) => `${i.give_names}>${i.get_names}`).join(", "));
+  const loose = proposeTrades(mine, { Them: { id: 7, players: theirs } }, SLOTS, { perTeam: 20, perLeague: 40, parity: 0, requireStart: false });
+  assert.ok(loose.some((i) => i.give_names === "QBb"), "without the rules the engine would offer it: " + loose.map((i) => `${i.give_names}>${i.get_names}`).join(", "));
+});

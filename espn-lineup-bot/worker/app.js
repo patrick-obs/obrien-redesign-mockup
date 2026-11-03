@@ -41,6 +41,7 @@ export class App {
     const saved = await this.storage.get("settings");
     if (saved) { if (saved.espn_s2) s.espn_s2 = saved.espn_s2; if (saved.swid) s.swid = saved.swid; }
     const prefs = (await this.storage.get("prefs")) || {};
+    s.automanage = prefs.automanage !== false;            // master switch: on unless switched off
     s.auto_lineup = prefs.auto_lineup !== false;          // on unless switched off
     s.auto_fill_empty = prefs.auto_fill_empty === true;    // off unless switched on
     s.hidden = Array.isArray(prefs.hidden) ? prefs.hidden : [];
@@ -506,7 +507,7 @@ export class App {
       const form = await request.formData();
       if (!(await this.checkCsrf(request, form))) return html(errorPage("Form expired. Go back and try again.", true), 400);
       if (form.get("prefs") === "1") {
-        await this.savePrefs({ auto_lineup: form.get("auto_lineup") === "1", auto_fill_empty: form.get("auto_fill_empty") === "1" });
+        await this.savePrefs({ automanage: form.get("automanage") === "1", auto_lineup: form.get("auto_lineup") === "1", auto_fill_empty: form.get("auto_fill_empty") === "1" });
         return redirect("/settings?prefs=saved");
       }
       const espn_s2 = (form.get("espn_s2") || "").trim(), swid = (form.get("swid") || "").trim();
@@ -544,6 +545,7 @@ export class App {
    * lowest-value bench player. Returns true when anything was sent to ESPN. Everything is logged under auto:<league>:<week>.
    */
   async autoManage(b, s) {
+    if (!s.automanage) return false;
     const r = b.report, key = `auto:${b.league_id}:${b.week}`;
     const prev = (await this.storage.get(key)) || { week: b.week, events: [] };
     const slots = {}; for (const p of [...Object.values(r.recommended).flat(), ...r.bench]) if (p.name) slots[p.name] = p.slot;

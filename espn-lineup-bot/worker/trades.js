@@ -3,6 +3,9 @@
 import { NO_PLAY, makePlayer, optimize, projectedTotal } from "./optimizer.js";
 
 export const MIN_MY_GAIN = 1.0, MAX_THEIR_LOSS = 0.5, MAX_VALUE_ASK = 1.15, PER_TEAM = 3, PER_LEAGUE = 10;
+// A manager judges value, not just lineup math: unless their lineup clearly improves, they must receive at least
+// this share of the weekly value they give up (a bench quarterback does not buy a starting receiver).
+export const PARITY = 0.85, CLEAR_GAIN = 1.0;
 // The side that consolidates (gets the best player in the deal) pays a premium in total value.
 export const CONSOLIDATION_PREMIUM = 1.35;
 // A package has to beat the best simpler trade inside it by this much, or the simpler trade is offered instead.
@@ -62,9 +65,10 @@ function slotOf(assignment, name) {
 export function proposeTrades(mine, others, slotCounts, opts = {}) {
   const minMyGain = opts.minMyGain ?? MIN_MY_GAIN, maxTheirLoss = opts.maxTheirLoss ?? MAX_THEIR_LOSS, maxAsk = opts.maxValueAsk ?? MAX_VALUE_ASK;
   const perTeam = opts.perTeam ?? PER_TEAM, perLeague = opts.perLeague ?? PER_LEAGUE;
-  // Star protection: your two most valuable players only leave in a deal that brings back someone at least as good.
-  const protect = new Set(opts.protectIds || mine.filter((p) => p.playerId != null).sort((a, b) => b.proj - a.proj).slice(0, 2).map((p) => p.playerId));
   const myBase = optimize(mine, slotCounts), baseMine = projectedTotal(myBase);
+  // Star protection: your two most valuable starters only leave in a deal that brings back someone at least as good.
+  const starters = new Set(Object.values(myBase).flat().map((p) => p.name));
+  const protect = new Set(opts.protectIds || mine.filter((p) => p.playerId != null && starters.has(p.name)).sort((a, b) => b.proj - a.proj).slice(0, 2).map((p) => p.playerId));
   const myPackages = packages(tradeable(mine));
   const ideas = [];
   for (const [teamName, entry] of Object.entries(others)) {
@@ -89,6 +93,9 @@ export function proposeTrades(mine, others, slotCounts, opts = {}) {
         if (filled(myAfter) < filled(myBase) || filled(theirAfter) < filled(theirBase)) continue;
         const myGain = r1(projectedTotal(myAfter) - baseMine), theirGain = r1(projectedTotal(theirAfter) - baseTheirs);
         if (myGain < minMyGain || theirGain < -maxTheirLoss) continue;
+        if (theirGain < CLEAR_GAIN && giveSum < sum(get) * (opts.parity ?? PARITY)) continue;
+        // ...and unless their lineup clearly improves, at least one player they receive has to start for them.
+        if (theirGain < CLEAR_GAIN && (opts.requireStart ?? true) && !give.some((p) => slotOf(theirAfter, p.name))) continue;
         gainOf.set(key(give, get), myGain);
         const pj = (p) => ({ name: p.name, pos: p.position, value: p.weekly ?? p.proj, season_value: p.proj, avail: p.avail ?? 1, byes: p.byes || [], player_id: p.playerId, team: p.proTeam });
         teamIdeas.push({
@@ -152,7 +159,11 @@ export function evaluateTrade(mine, theirs, giveIds, getIds, slotCounts) {
   const myAfter = optimize(mine.filter((p) => !give.includes(p)).concat(get), slotCounts);
   const theirAfter = optimize(theirs.filter((p) => !get.includes(p)).concat(give), slotCounts);
   const pj = (p) => ({ name: p.name, pos: p.position, value: p.weekly ?? p.proj, player_id: p.playerId, team: p.proTeam });
-  return { give: give.map(pj), get: get.map(pj), my_gain: r1(projectedTotal(myAfter) - projectedTotal(myBase)), their_gain: r1(projectedTotal(theirAfter) - projectedTotal(theirBase)),
+  const theirGain = r1(projectedTotal(theirAfter) - projectedTotal(theirBase));
+  const parity = sum(get) > 0 ? Math.round((sum(give) / sum(get)) * 100) / 100 : null;
+  const theyStart = give.some((p) => slotOf(theirAfter, p.name));
+  return { give: give.map(pj), get: get.map(pj), my_gain: r1(projectedTotal(myAfter) - projectedTotal(myBase)), their_gain: theirGain,
+    parity, they_start: theyStart, acceptable: theirGain >= -MAX_THEIR_LOSS && (theirGain >= CLEAR_GAIN || ((parity == null || parity >= PARITY) && theyStart)),
     give_names: give.map((p) => p.name).join(" + "), get_names: get.map((p) => p.name).join(" + "), kind: `${give.length}-for-${get.length}` };
 }
 
