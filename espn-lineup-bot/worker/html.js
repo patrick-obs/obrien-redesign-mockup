@@ -130,6 +130,7 @@ label.row{cursor:pointer;font-weight:400;margin:0}
 .group.ceiling{margin:0 0 14px;background:var(--tint)}.group.ceiling .row{align-items:flex-start}.group.ceiling .move{background:var(--card);margin:6px 0 0}
 td .s{font-size:12px;color:var(--muted);line-height:1.2;margin-top:2px;white-space:nowrap}
 .runnow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 18px}.runnow .btn svg{width:16px;height:16px}
+.respond{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:-6px 0 12px}
 @media (max-width:640px){main{padding:16px 14px 28px}.card{padding:16px;border-radius:16px}h1{font-size:30px}h2{font-size:20px}.hero{padding:20px}.hero p{font-size:24px}.hero .btn.big{flex-basis:100%}header{padding:8px 12px}header .logo{height:32px}header nav a{padding:6px 8px;font-size:14px}.login .logo{height:120px}.swap{grid-template-columns:1fr}.swap .arrow{text-align:center}.swap .arrow svg{transform:rotate(90deg)}.matchup .big{font-size:32px}.seg{top:54px;margin:0 -14px 18px;padding:3px 14px;border-radius:0}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}html{scroll-behavior:auto}}`;
 
@@ -281,7 +282,7 @@ function activityList(items) {
     : e.kind === "add" ? `Added ${esc(e.add)}${e.drop ? `, dropped ${esc(e.drop)}` : ""}`
     : e.kind === "withdraw" ? `Withdrew offer to ${esc(e.with)}: ${esc(e.give)} for ${esc(e.get)}`
     : e.kind === "settled" ? `${esc(e.message)} <span class="muted">(${esc(e.give)} for ${esc(e.get)})</span>`
-    : e.kind === "auth" ? esc(e.message)
+    : e.kind === "auth" || e.kind === "incoming" ? esc(e.message)
     : `Lineup set: ${plural(e.changes, "change")}${e.items ? ` <span class="muted">(${esc(e.items.join(", "))})</span>` : ""}`;
   return `<div class="card" id="activity"><h2 class="top">Sent to ESPN</h2><div class="group">${items.map((e) => `<div class="row"><div class="main"><div class="t">${line(e)}</div><div class="s">${esc(e.league)}${e.week ? ` · week ${e.week}` : ""} · ${esc(fmtDay(e.at))} ET · ${e.by === "auto" ? "automatic" : e.by === "espn" ? "from ESPN" : "by you"}${e.ok || e.kind === "settled" ? "" : ` · <span class="bad">ESPN refused: ${esc(e.message)}</span>`}</div></div><div class="trail"><span class="tag ${e.kind === "settled" ? (e.ok ? "good" : "") : e.ok ? "good" : "bad"}">${e.kind === "settled" ? esc(e.outcome) : e.ok ? (e.kind === "trade" ? "offered" : e.kind === "claim" ? "pending" : "done") : "failed"}</span></div></div>`).join("")}</div></div>`;
 }
@@ -344,7 +345,10 @@ ${Object.entries(r.waivers).map(([pos, picks]) => picks.map((d) => d.error
   const trades = b.trades && b.trades.length
     ? `<div class="trades">${b.trades.map((t) => tradeCard(r, t, true)).join("")}</div>`
     : `<p class="muted">Nothing that clearly helps you without hurting the other side. Check back as injuries change things.</p>`;
-  const pending = b.pending && b.pending.length ? `<h3>Offers out on ESPN</h3><div class="trades">${b.pending.map((t) => pendingCard(r, t, csrfFor(b))).join("")}</div>` : "";
+  const outgoing = (b.pending || []).filter((t) => t.mine), incoming = (b.pending || []).filter((t) => !t.mine);
+  const pending = (outgoing.length ? `<h3>Offers out on ESPN</h3><div class="trades">${outgoing.map((t) => pendingCard(r, t)).join("")}</div>` : "")
+    + (incoming.length ? `<h3>Offers made to you</h3><div class="trades">${incoming.map((t) => `${pendingCard(r, t)}<form method="post" action="/respond" class="respond"><input type="hidden" name="csrf" value="${esc(b.csrf || "")}"><input type="hidden" name="league" value="${r.league_id}"><input type="hidden" name="tx" value="${esc(String(t.id))}"><button class="btn small" name="action" value="accept" type="submit">Accept</button> <button class="btn ghost small" name="action" value="decline" type="submit">Decline</button><span class="stamp">${t.my_gain == null ? "Not scored." : t.my_gain >= 2 ? "Clearly good for you; the autopilot would accept it." : t.my_gain < 0 ? "Costs you; the autopilot would decline it." : "Marginal; your call."}</span></form>`).join("")}</div>` : "")
+    + (r.trades_closed ? `<p class="flash">${I.warn}<span>The trade deadline has passed in this league. No offers can be sent or accepted now; waivers and lineups still work.</span></p>` : r.trade_deadline ? `<p class="stamp">Trade deadline: ${esc(fmtExp(r.trade_deadline))} ET.</p>` : "");
   const analyst = b.analyst ? `<div class="card analyst" id="analyst"><h2 class="top">Analyst's take</h2><p class="headline">${esc(b.analyst.headline)}</p>
 ${b.analyst.paragraphs.map((p) => `<p>${esc(p)}</p>`).join("")}
 <p class="stamp by">${b.analyst.source === "claude" ? "Written by Claude from this week's numbers." : "Built from this week's numbers."}</p></div>` : "";
@@ -352,7 +356,7 @@ ${b.analyst.paragraphs.map((p) => `<p>${esc(p)}</p>`).join("")}
   const matchup = `<div class="matchup">
 <div class="side">${badge(r.team, r.logo, "lg")}<div class="nm">${esc(r.team)}</div><div class="rec">${esc(r.record)}</div><div class="big">${pts(r.projected_finish.me)}</div><div class="sub">projected finish · ${pts(r.score.me)} so far</div><div class="sub">best lineup ${pts(r.recommended_lineup_proj)} · Advisor ${pts(r.advisor?.me)}</div></div>
 <div class="vs"><div class="pct ${wp == null ? "" : wp >= 0.6 ? "good" : wp <= 0.4 ? "bad" : ""}">${pct(wp)}</div><div class="sub">win chance</div></div>
-<div class="side them">${badge(r.opponent, r.opponent_logo, "lg")}<div class="nm">${esc(r.opponent)}</div><div class="rec">${esc(r.opponent_record)}</div><div class="big dim">${pts(r.projected_finish.opponent)}</div><div class="sub">projected finish · ${pts(r.score.opponent)} so far</div><div class="sub">best possible ${pts(r.opponent_best_proj)} · Advisor ${pts(r.advisor?.opponent)}</div></div>
+<div class="side them">${r.no_matchup ? `<div class="nm">No matchup this week</div><div class="sub">playoff bye, eliminated, or not scheduled</div>` : `${badge(r.opponent, r.opponent_logo, "lg")}<div class="nm">${esc(r.opponent)}</div><div class="rec">${esc(r.opponent_record)}</div><div class="big dim">${pts(r.projected_finish.opponent)}</div><div class="sub">projected finish · ${pts(r.score.opponent)} so far</div><div class="sub">best possible ${pts(r.opponent_best_proj)} · Advisor ${pts(r.advisor?.opponent)}</div>`}</div>
 </div><div class="meter"><i style="width:${wp == null ? 50 : Math.round(wp * 100)}%"></i></div>
 <p class="stamp">Win chance comes from the gap between the two projected finishes and how much of the week is still to play${r.live ? "; it tightens as games finish" : ""}. "Advisor" is our own projection: ESPN blended with each player's last three games and season average, adjusted for the matchup.</p>`;
   const sn = b.season || {};

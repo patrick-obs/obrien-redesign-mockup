@@ -64,6 +64,8 @@ export function fakeEspn({ posts = [] } = {}) {
     PRO_TEAM: { 12: "KC", 2: "BUF" },
     tradeStatus: "PENDING",
     tradeTransactions: async function (f, c, league, teamId) { return league.id === 1 ? [{ id: 555, proposed_by: 3, mine: true, with_team_id: 7, with: "Rival", with_logo: "", give: [ids.get("RB B")], get: [ids.get("D W")], proposed_at: NOW - 3600e3, expires_at: NOW + 86400e3, status: this.tradeStatus }] : []; },
+    respondTrade: async function (f, c, season, leagueId, teamId, txId, accept) { posts.push({ kind: accept ? "accept" : "decline", leagueId, teamId, txId }); return { ok: true, status: 200, message: accept ? "Offer accepted." : "Offer declined." }; },
+    rosterLineup: async () => MINE(),
     cancelTrade: async function (f, c, season, leagueId, teamId, txId) { posts.push({ kind: "withdraw", leagueId, teamId, txId }); this.tradeStatus = "CANCELED"; return { ok: true, status: 200, message: "Offer withdrawn." }; },
     applyLineup: async (f, c, season, leagueId, teamId, week, items) => { posts.push({ kind: "lineup", leagueId, teamId, week, items, cookies: c }); return { ok: true, status: 200, message: "Lineup set." }; },
     proposeTrade: async (f, c, season, leagueId, teamId, week, theirTeamId, giveIds, getIds) => { posts.push({ kind: "trade", leagueId, teamId, week, theirTeamId, giveIds, getIds }); return { ok: true, status: 200, message: "Trade proposed." }; },

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { App } from "../app.js";
-import { fakeEspn, FakeStorage, ids, NOW } from "./fixtures.mjs";
+import { fakeEspn, FakeStorage, ids, NOW, fakeLeague, fakeBoxes, bp } from "./fixtures.mjs";
 
 function makeApp(posts = []) {
   const env = { APP_PASSWORD: "open-sesame", SECRET_KEY: "test-secret", ESPN_S2: "s2cookie", SWID: "{abc-123}" };
@@ -449,4 +449,61 @@ test("per-league autopilot switch, automatic pickups with claims, and Run autopi
   assert.match(sp, /name="league_auto_1" value="1" checked/);
   const saved = await app.handle(req("/settings", { method: "POST", cookie, body: form({ csrf, prefs: 1, automanage: 1, auto_lineup: 1, auto_fill_empty: 1, auto_trades: 1, league_auto_1: 0 }) }));
   assert.equal(saved.status, 302); assert.equal((await app.storage.get("prefs")).league_auto["1"], false);
+});
+
+test("blind spots: trade deadline, protected drops, IR blocker, no matchup, incoming offers, notifications", async () => {
+  const posts = [], notes = [];
+  const espn = fakeEspn({ posts });
+  const fetchFn = async (url, init) => { if (String(url).includes("ntfy.test")) { notes.push({ title: init.headers.Title, body: init.body }); return new Response("ok"); } throw new Error("no network"); };
+  const mk = (over = {}) => new App({ env: { APP_PASSWORD: "open-sesame", SECRET_KEY: "test-secret", ESPN_S2: "s2cookie", SWID: "{abc-123}", NOTIFY_URL: "https://ntfy.test/luna", ...over }, storage: new FakeStorage(), fetchFn, espn, now: () => NOW });
+  // Trade deadline passed: no ideas, autopilot sends nothing, page says so.
+  const past = { ...espn, loadLeague: async (f, c, season, id) => ({ ...fakeLeague(id, id === 1), tradeDeadline: NOW - 86400e3 }) };
+  const closed = new App({ env: { APP_PASSWORD: "open-sesame", SECRET_KEY: "test-secret", ESPN_S2: "s2cookie", SWID: "{abc-123}" }, storage: new FakeStorage(), fetchFn, espn: past, now: () => NOW });
+  const bc = await closed.bundle(1);
+  assert.equal(bc.report.trades_closed, true); assert.equal(bc.trades.length, 0);
+  await closed.savePrefs({ auto_lineup: false, auto_fill_empty: false });
+  await closed.handle(new Request("https://advisor.internal/__warm", { headers: { "x-warm-key": "test-secret" } }));
+  assert.equal(posts.filter((p) => p.kind === "trade").length, 0);
+  const cookieC = await (async () => { const r = await closed.handle(req("/login", { method: "POST", body: form({ password: "open-sesame" }) })); return r.headers.get("set-cookie").split(";")[0]; })();
+  assert.match(await (await closed.handle(req("/league/1", { cookie: cookieC }))).text(), /trade deadline has passed/);
+  // Protected drops: RB B is in the pending offer, so it is never a drop candidate.
+  const app = mk();
+  const b = await app.bundle(1);
+  assert.ok(!b.report.drop_candidates.some((c) => c.name === "RB B"), "player in a pending offer cannot be dropped");
+  // IR blocker: a healthy player parked in IR is flagged and moved to the bench when there is room.
+  const irEspn = { ...espn, boxScores: async (f, c, league) => { const bx = fakeBoxes(league); bx[0].away.lineup.push(bp("WR Fine", "WR", "IR", 9.0)); return bx; }, loadLeague: async (f, c, season, id) => ({ ...fakeLeague(id, id === 1), rosterSize: 20 }) };
+  const ir = new App({ env: { APP_PASSWORD: "x", SECRET_KEY: "s", ESPN_S2: "a", SWID: "{abc-123}" }, storage: new FakeStorage(), fetchFn, espn: irEspn, now: () => NOW });
+  const bi = await ir.bundle(1);
+  assert.equal(bi.report.ir_blockers[0].name, "WR Fine"); assert.match(bi.report.warnings[0], /in IR but listed active/);
+  assert.ok(bi.report.lineup_items.some((it) => it.name === "WR Fine" && it.from === "IR" && it.to === "BE"));
+  // No matchup: the report still builds from the roster view and says so.
+  const byeEspn = { ...espn, boxScores: async (f, c, league) => fakeBoxes(league).slice(1) };
+  const bye = new App({ env: { APP_PASSWORD: "x", SECRET_KEY: "s", ESPN_S2: "a", SWID: "{abc-123}" }, storage: new FakeStorage(), fetchFn, espn: byeEspn, now: () => NOW });
+  const bb = await bye.bundle(1);
+  assert.equal(bb.report.no_matchup, true); assert.equal(bb.report.win_prob, null); assert.match(bb.report.warnings[0], /No matchup this week/);
+  assert.ok(bb.report.lineup_items.length > 0, "lineup still managed");
+  // Incoming offers: a clearly good one is accepted, a bad one declined, a marginal one left to you (and said once).
+  const inc = { ...espn, tradeTransactions: async (f, c, league) => league.id !== 1 ? [] : [
+    { id: 901, proposed_by: 7, mine: false, with_team_id: 7, with: "Rival", with_logo: "", give: [ids.get("TE B")], get: [ids.get("D Z")], status: "PENDING" },   // they give D Z (6) for my bench TE B: +6 for me
+    { id: 902, proposed_by: 7, mine: false, with_team_id: 7, with: "Rival", with_logo: "", give: [ids.get("QB A")], get: [ids.get("K Z")], status: "PENDING" },   // my QB for a kicker: terrible
+    { id: 903, proposed_by: 7, mine: false, with_team_id: 7, with: "Rival", with_logo: "", give: [ids.get("RB B")], get: [ids.get("WR X")], status: "PENDING" },  // my injured bench back for their bench WR: zero either way, marginal
+  ] };
+  const app2 = new App({ env: { APP_PASSWORD: "open-sesame", SECRET_KEY: "test-secret", ESPN_S2: "s2cookie", SWID: "{abc-123}", NOTIFY_URL: "https://ntfy.test/luna" }, storage: new FakeStorage(), fetchFn, espn: inc, now: () => NOW });
+  await app2.savePrefs({ auto_lineup: false, auto_fill_empty: false });
+  const before = posts.length;
+  await app2.handle(new Request("https://advisor.internal/__warm", { headers: { "x-warm-key": "test-secret" } }));
+  const responses = posts.slice(before).filter((p) => p.kind === "accept" || p.kind === "decline");
+  assert.deepEqual(responses.map((p) => `${p.kind}:${p.txId}`).sort(), ["accept:901", "decline:902"]);
+  const log = await app2.activity();
+  assert.ok(log.some((e) => e.kind === "incoming" && /Your call/.test(e.message)), "marginal offer is surfaced");
+  assert.ok(notes.length >= 3, "notifications were sent"); assert.ok(notes.some((n) => /Accepted Rival/.test(n.body)));
+  await app2.handle(new Request("https://advisor.internal/__warm", { headers: { "x-warm-key": "test-secret" } }));
+  assert.equal(posts.filter((p) => p.kind === "accept" || p.kind === "decline").length, responses.length, "each incoming offer handled once");
+  // Manual respond from the league page.
+  const cookie2 = await (async () => { const r = await app2.handle(req("/login", { method: "POST", body: form({ password: "open-sesame" }) })); return r.headers.get("set-cookie").split(";")[0]; })();
+  const page = await (await app2.handle(req("/league/1", { cookie: cookie2 }))).text();
+  assert.match(page, /Offers made to you/); assert.match(page, /name="tx" value="903"/);
+  const csrf = page.match(/name="csrf" value="([0-9a-f]+)"/)[1];
+  const r = await app2.handle(req("/respond", { method: "POST", cookie: cookie2, body: form({ csrf, league: 1, tx: 903, action: "decline" }) }));
+  assert.equal(r.status, 200); assert.ok(posts.some((p) => p.kind === "decline" && p.txId === 903));
 });

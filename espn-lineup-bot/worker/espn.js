@@ -113,6 +113,7 @@ export function parseLeague(d, season, id) {
     id, season, name: s.name || `League ${id}`, currentWeek, currentMatchupPeriod: st.currentMatchupPeriod || 0,
     finalScoringPeriod: st.finalScoringPeriod || 17, regSeasonCount: s.scheduleSettings?.matchupPeriodCount || 14,
     playoffTeamCount: s.scheduleSettings?.playoffTeamCount || 0, rosterSize,
+    tradeDeadline: Number(s.tradeSettings?.deadlineDate) || null, // ms epoch; offers after this are refused by ESPN
     acquisition: { type: acq.acquisitionType || "", usesBudget: !!acq.isUsingAcquisitionBudget, budget: acq.acquisitionBudget || 0 },
     matchupPeriods, slotCounts, teams, byId, started, drafted,
   };
@@ -267,6 +268,13 @@ export async function playerWeeklyStats(fetchFn, cookies, league, ids, week) {
   return out;
 }
 
+/** My roster as box players for a week with no matchup (uses the roster view with the week's stats). */
+export async function rosterLineup(fetchFn, cookies, league, teamId, week, proSchedWeek, ratings, now) {
+  const d = await getJson(fetchFn, `${leagueUrl(league.season, league.id)}?view=mRoster&scoringPeriodId=${week}`, cookies);
+  const t = (d.teams || []).find((x) => x.id === teamId);
+  return (t?.roster?.entries || []).map((e) => parseBoxPlayer(e, league.season, week, proSchedWeek, ratings, now));
+}
+
 /** Compact season-value rosters for every team (the 4 MB view; parsed and dropped immediately). */
 export async function rosters(fetchFn, cookies, league) {
   const d = await getJson(fetchFn, `${leagueUrl(league.season, league.id)}?view=mRoster`, cookies);
@@ -310,6 +318,19 @@ export async function pendingTrades(fetchFn, cookies, league, teamId) {
  * Withdraw (cancel) a trade proposal. ESPN's own client updates the transaction with status CANCELED; the exact shape is
  * unofficial, so the response is returned verbatim for the page to show.
  */
+/** Accept or decline an offer another manager sent us. Same unofficial shape as withdrawing; the reply is shown verbatim. */
+export async function respondTrade(fetchFn, cookies, season, leagueId, teamId, txId, accept) {
+  const url = `${WRITE}${season}/segments/0/leagues/${leagueId}/transactions/${txId}`;
+  const headers = { Cookie: cookieHeader(cookies), "User-Agent": UA, "Content-Type": "application/json" };
+  const status = accept ? "ACCEPTED" : "REJECTED";
+  let r = await fetchFn(url, { method: "PUT", headers, body: JSON.stringify({ id: txId, teamId, status, memberId: cookies.swid }) });
+  if (r.status === 404 || r.status === 405) r = await fetchFn(url, { method: "POST", headers, body: JSON.stringify({ id: txId, teamId, type: "TRADE_PROPOSAL", executionType: accept ? "ACCEPT" : "REJECT", memberId: cookies.swid }) });
+  const ok = r.status >= 200 && r.status < 300;
+  let resp; const text = await r.text();
+  try { resp = JSON.parse(text); } catch { resp = text.slice(0, 500); }
+  return { ok, status: r.status, message: ok ? (accept ? "Offer accepted." : "Offer declined.") : errorMessage(resp, r.status), response: resp };
+}
+
 export async function cancelTrade(fetchFn, cookies, season, leagueId, teamId, txId) {
   const url = `${WRITE}${season}/segments/0/leagues/${leagueId}/transactions/${txId}`;
   const headers = { Cookie: cookieHeader(cookies), "User-Agent": UA, "Content-Type": "application/json" };

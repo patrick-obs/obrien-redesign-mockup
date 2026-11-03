@@ -104,10 +104,10 @@ export function waiverWatch(thresholds, mine, faByPos) {
  * Who to drop to make room for an add: cheapest rest-of-season value first, never IR, never a locked player.
  * Recommended starters are listed last and flagged, so the default pick is always a bench player.
  */
-export function dropCandidates(players, assignment, games) {
+export function dropCandidates(players, assignment, games, protectedIds = new Set()) {
   const starters = new Set(Object.values(assignment).flat().map((p) => p.name));
   return players
-    .filter((p) => p.slot !== "IR" && !p.locked && p.playerId != null)
+    .filter((p) => p.slot !== "IR" && !p.locked && p.playerId != null && !protectedIds.has(p.playerId))
     .map((p) => ({ player_id: p.playerId, name: p.name, pos: p.position, team: p.proTeam, slot: p.slot, starter: starters.has(p.name),
       value: playerValue(p.seasonProjAvg, p.seasonAvg, games), notes: fmtStatus(p),
       reason: !canPlay(p) ? (p.bye ? "on bye this week" : p.status.replace(/_/g, " ").toLowerCase()) : starters.has(p.name) ? "recommended starter" : "lowest rest-of-season value on your bench" }))
@@ -115,10 +115,14 @@ export function dropCandidates(players, assignment, games) {
 }
 
 /** Slot moves that turn the current lineup into the recommended one. Never locked players, never IR, never add/drop. */
-export function planLineupItems(players, assignment) {
+export function planLineupItems(players, assignment, openSpots = 0) {
   const target = {}; for (const [slot, ps] of Object.entries(assignment)) for (const p of ps) target[p.name] = slot;
   const items = [];
   for (const p of players) {
+    if (p.slot === "IR" && openSpots > 0 && !["INJURY_RESERVE", "OUT", "SUSPENSION", "DOUBTFUL"].includes(p.status) && p.playerId != null) {
+      items.push({ playerId: p.playerId, name: p.name, from: "IR", to: "BE", fromLineupSlotId: SLOT_IDS.IR, toLineupSlotId: SLOT_IDS.BE });
+      continue;
+    }
     if (p.locked || p.slot === "IR" || p.playerId == null) continue;
     const to = target[p.name] || "BE";
     if (to === p.slot || !(to in SLOT_IDS) || !(p.slot in SLOT_IDS)) continue;
@@ -134,8 +138,10 @@ export function planLineupItems(players, assignment) {
  * @param faByPos {pos: [players]} for the positions from waiverThresholds (or null to skip)
  */
 export function buildReport(league, me, boxes, week, now, faByPos = null, ctx = {}) {
-  const box = boxes.find((b) => [b.home?.teamId, b.away?.teamId].includes(me.id));
-  if (!box) throw new Error(`No matchup found for ${me.name} in week ${week} (bye week or playoffs?).`);
+  let box = boxes.find((b) => [b.home?.teamId, b.away?.teamId].includes(me.id));
+  // No matchup this week (playoff bye, eliminated, or consolation not scheduled): report the roster against nobody.
+  const noMatchup = !box;
+  if (noMatchup) box = { home: { teamId: me.id, team: me, score: 0, projected: -1, lineup: ctx.rosterLineup || [] }, away: null };
   const home = box.home?.teamId === me.id;
   const mySide = home ? box.home : box.away, oppSide = home ? box.away : box.home;
   // Attach this week's game context (line, implied total, weather) to every player by pro team.
@@ -179,16 +185,22 @@ export function buildReport(league, me, boxes, week, now, faByPos = null, ctx = 
     slot_counts: slotCounts, slot_order: order,
     recommended: Object.fromEntries(order.map((s) => [s, (rec[s] || []).map(playerJson)])),
     bench: bench.map(playerJson), moves: diffLineup(mine, rec), warnings: warningsFor(mine, rec, slotCounts),
-    lineup_items: planLineupItems(mine, rec),
+    lineup_items: [], // filled below once roster room is known
     opponent_lineup: Object.fromEntries(order.map((s) => [s, (oppRec[s] || []).map(playerJson)])),
     opponent_best_proj: projectedTotal(oppRec), opponent_issues: lineupProblems(theirs, slotCounts),
     waiver_thresholds: thresholds, waivers: faByPos ? waiverWatch(thresholds, mine, faByPos) : {},
-    drop_candidates: dropCandidates(mine, rec, gamesPlayed(me)),
+    drop_candidates: dropCandidates(mine, rec, gamesPlayed(me), new Set(ctx.protectedIds || [])),
+    no_matchup: noMatchup,
+    // A healthy player parked in IR makes ESPN refuse every other move until he is taken off.
+    ir_blockers: mine.filter((p) => p.slot === "IR" && !["INJURY_RESERVE", "OUT", "SUSPENSION", "DOUBTFUL"].includes(p.status)).map((p) => ({ name: p.name, player_id: p.playerId, status: p.status })),
     roster_size: league.rosterSize || 0, roster_count: mine.filter((p) => p.slot !== "IR").length,
     acquisition: league.acquisition || { type: "", usesBudget: false, budget: 0 },
     budget_left: league.acquisition?.usesBudget ? Math.max(0, (league.acquisition.budget || 0) - (me.budgetSpent || 0)) : null,
   };
   rep.open_spots = rep.roster_size ? Math.max(0, rep.roster_size - rep.roster_count) : 0;
+  rep.lineup_items = planLineupItems(mine, rec, rep.open_spots);
+  for (const p of rep.ir_blockers) rep.warnings.unshift(`${p.name} is in IR but listed ${p.status.toLowerCase()}. ESPN blocks every move until he is taken off IR${rep.open_spots > 0 ? "; the next automatic lineup set moves him to the bench" : "; drop someone or move him yourself first"}.`);
+  if (noMatchup) rep.warnings.unshift(`No matchup this week for ${me.name} (playoff bye, eliminated, or not scheduled). Lineup and roster moves still apply.`);
   const st = standings(league);
   rep.standings = st.map((t, i) => ({ rank: i + 1, team: t.name, team_id: t.id, logo: t.logo || "", record: record(t), pf: Math.round(t.pointsFor * 10) / 10,
     pa: Math.round(t.pointsAgainst * 10) / 10, avg_pf: avgPf(t) }));

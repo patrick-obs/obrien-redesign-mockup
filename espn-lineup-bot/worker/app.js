@@ -109,6 +109,11 @@ export class App {
       const vegas = await this.cached(`vegas:${s.season}:${week}`, 3600, false, async () => { try { return await fetchScoreboard(f, s.season, week); } catch (e) { console.warn("scoreboard failed", e?.message); return {}; } });
       const weekSd = leagueSd(league);
       const boxes = await this.espn.boxScores(f, c, league, week, sched, ratings, now);
+      // When there is no matchup this week (playoff bye / eliminated), the roster still needs managing: use the mRoster view as the lineup.
+      let rosterLineup = [];
+      if (!boxes.some((bx) => [bx.home?.teamId, bx.away?.teamId].includes(me.id)) && this.espn.rosterLineup) {
+        try { rosterLineup = await this.espn.rosterLineup(f, c, league, me.id, week, sched, ratings, now); } catch (e) { console.warn("roster lineup failed", e?.message); }
+      }
       // Week-by-week points for everyone in my matchup: recent form, volatility, floor and ceiling. Optional.
       if (this.espn.playerWeeklyStats) {
         try {
@@ -134,7 +139,11 @@ export class App {
       const byes = byeWeeks(allSched, week + 1, league.finalScoringPeriod || 17);
       const abbrToId = Object.fromEntries(Object.entries(this.espn.PRO_TEAM || {}).map(([id, ab]) => [ab, Number(id)]));
       const byesFor = (abbr) => byes[abbrToId[abbr]] || [];
-      let rep = buildReport(league, me, boxes, week, now, null, { vegas, weekSd });
+      // Players in any pending offer must never be dropped (it would void the offer).
+      let protectedIds = [];
+      try { if (this.espn.tradeTransactions) protectedIds = (await this.espn.tradeTransactions(f, c, league, me.id)).filter((t) => t.status === "PENDING").flatMap((t) => [...t.give, ...t.get]); } catch (e) { console.warn("protected ids failed", e?.message); }
+      const ctx = { vegas, weekSd, protectedIds, rosterLineup };
+      let rep = buildReport(league, me, boxes, week, now, null, ctx);
       // waivers: only the positions worth scanning
       const faByPos = {};
       const positions = Object.keys(rep.waiver_thresholds);
@@ -142,7 +151,9 @@ export class App {
         try { return await this.espn.freeAgents(f, c, league, week, pos, sched, ratings, now); } catch (e) { return { error: e.message }; }
       }));
       positions.forEach((pos, i) => { faByPos[pos] = results[i]; });
-      rep = buildReport(league, me, boxes, week, now, faByPos, { vegas, weekSd });
+      rep = buildReport(league, me, boxes, week, now, faByPos, ctx);
+      rep.trade_deadline = league.tradeDeadline || null;
+      rep.trades_closed = !!(league.tradeDeadline && now > league.tradeDeadline);
       // Trades and roster shape, valued over the rest of the season: weekly value times the share of the weighted
       // remaining weeks the player is available for (bye weeks removed, playoff weeks weighted by contention).
       let trades = [], strength = null, byesAhead = [], pending = [], rosterPlayers = null;
@@ -164,7 +175,7 @@ export class App {
         // Kept for the blitz, which simulates combinations of accepted offers against real rosters.
         const slim = (ps) => ps.map((p) => ({ name: p.name, position: p.position, eligible: p.eligible, slot: "BE", proj: p.proj, status: p.status, playerId: p.playerId, proTeam: p.proTeam, weekly: p.weekly }));
         rosterPlayers = { [me.id]: slim(mine), ...Object.fromEntries(Object.values(others).map((o) => [o.id, slim(o.players)])) };
-        trades = proposeTrades(mine, others, rep.slot_counts, { weeksLeft, horizonNote: contending ? "with the playoff weeks counted extra" : "" });
+        trades = rep.trades_closed ? [] : proposeTrades(mine, others, rep.slot_counts, { weeksLeft, horizonNote: contending ? "with the playoff weeks counted extra" : "" });
         strength = positionalStrength({ [me.id]: mine, ...Object.fromEntries(Object.values(others).map((o) => [o.id, o.players])) }, me.id, rep.slot_counts);
         const starters = new Set(Object.values(rep.recommended).flat().map((p) => p.name));
         byesAhead = mine.filter((p) => starters.has(p.name) && p.byes.length).map((p) => ({ name: p.name, pos: p.position, week: p.byes[0] })).sort((a, b) => a.week - b.week);
@@ -231,12 +242,27 @@ export class App {
     else if (!ok && !a.failed) { await this.storage.put("espn_auth", { failed: true, since: this.now(), message }); await this.logActivity({ kind: "auth", ok: false, league: "all leagues", week: null, message: `ESPN rejected the cookies: ${message}. Lineups, pickups and trades are paused until new cookies are saved under Settings.`, by: "espn" }); }
   }
 
+  // ------------------------------------------------------------ notifications
+  /** Push a short message to NOTIFY_URL if set (an ntfy.sh topic URL or any webhook that accepts a text POST). Never throws. */
+  async notify(title, text) {
+    const url = this.env.NOTIFY_URL; if (!url) return;
+    try {
+      const isSlack = /hooks\.slack\.com/.test(url);
+      await this.fetchFn(url, { method: "POST", headers: isSlack ? { "content-type": "application/json" } : { "content-type": "text/plain", Title: title.replace(/[^\x20-\x7e]/g, "") }, body: isSlack ? JSON.stringify({ text: `*${title}*\n${text}` }) : text, signal: AbortSignal.timeout(8000) });
+    } catch (e) { console.warn("notify failed", e?.message); }
+  }
+
   // ------------------------------------------------------------ activity log
   /** Everything the app ever sends to ESPN, newest first, capped at 200 entries. */
   async logActivity(entry) {
     const log = (await this.storage.get("activity")) || [];
     log.unshift({ at: this.now(), ...entry });
     await this.storage.put("activity", log.slice(0, 200));
+    // Tell the phone about anything that changes the roster or needs a human.
+    const line = entry.kind === "trade" ? `Offer to ${entry.with}: ${entry.give} for ${entry.get}` : entry.kind === "withdraw" ? `Withdrew offer to ${entry.with}` : entry.kind === "settled" ? entry.message
+      : entry.kind === "claim" ? `Claim ${entry.add}${entry.drop ? `, drop ${entry.drop}` : ""}` : entry.kind === "add" ? `Added ${entry.add}${entry.drop ? `, dropped ${entry.drop}` : ""}` : entry.kind === "lineup" ? `Lineup set (${entry.changes} changes)`
+      : entry.kind === "auth" ? entry.message : entry.kind === "incoming" ? entry.message : null;
+    if (line) await this.notify(`${entry.league}${entry.ok === false ? " (failed)" : ""}`, `${line}${entry.ok === false ? ` — ${entry.message}` : ""}${entry.by === "auto" ? " (autopilot)" : ""}`);
   }
   async activity() { return (await this.storage.get("activity")) || []; }
 
@@ -282,7 +308,7 @@ export class App {
       if (path === "/logout" && request.method === "POST") return redirect("/login", { "set-cookie": clearSessionCookie() });
       if (!(await this.authed(request))) return redirect(`/login?next=${encodeURIComponent(path)}`);
       if (path === "/") return this.index(url, request);
-      if (path.startsWith("/league/")) return this.league(Number(path.split("/")[2]), url);
+      if (path.startsWith("/league/")) return this.league(Number(path.split("/")[2]), url, request);
       if (path === "/lineups") return this.lineups(request, url);
       if (path === "/trade") return this.trade(request, url);
       if (path === "/trades") return this.blitz(request, url);
@@ -290,6 +316,7 @@ export class App {
       if (path === "/add") return this.add(request, url);
       if (path === "/hide" && request.method === "POST") return this.hide(request);
       if (path === "/autopilot" && request.method === "POST") return this.runNow(request);
+      if (path === "/respond" && request.method === "POST") return this.respond(request);
       if (path === "/settings") return this.settingsPage(request);
       if (path === "/refresh" && request.method === "POST") { await this.clearCache(); return redirect("/"); }
       return html(errorPage("Page not found.", true), 404);
@@ -345,11 +372,11 @@ export class App {
     return html(indexPage({ bundles, errors, totalMoves, season: s.season, now: this.now(), csrf: await this.csrf(url.request || new Request(url.href)), hiddenCount: s.hidden.length, activity: (await this.activity()).slice(0, 12), automanage: s.automanage }));
   }
 
-  async league(id, url) {
+  async league(id, url, request) {
     if (!id) return html(errorPage("Bad league id.", true), 404);
     const b = await this.bundle(id, url.searchParams.get("refresh") === "1");
     if (!b.started) return html(errorPage(`${b.name} has not started this season.`, true));
-    return html(leaguePage(b));
+    return html(leaguePage({ ...b, csrf: await this.csrf(request) }));
   }
 
   async lineups(request, url) {
@@ -373,6 +400,55 @@ export class App {
     }
     await this.clearCache();
     return html(lineupsPage({ bundles, results, only, csrf }));
+  }
+
+  /**
+   * Offers other managers sent us. Accept when the deal is clearly good and safe (gain >= 2 a week, every slot still
+   * filled, roster within its limit); decline when it costs us; leave the in-between for you, and say so once.
+   */
+  async autoRespond(b, s, log) {
+    const incoming = (b.pending || []).filter((t) => !t.mine);
+    if (!incoming.length || b.report.trades_closed) return false;
+    const seenKey = `incoming:${b.league_id}`; const seen = (await this.storage.get(seenKey)) || {};
+    let acted = false;
+    for (const t of incoming) {
+      if (seen[t.id]) continue;
+      let decision = null;
+      if (t.my_gain != null && t.my_gain < 0) decision = false;
+      else if (t.my_gain != null && t.my_gain >= 2.0) {
+        const mine = (b.rosters || {})[b.team_id] || [];
+        const check = mine.length ? robustSet([{ ...t, with_team_id: t.with_team_id, give: t.give, get: t.get, my_gain: t.my_gain }], { mine, rosters: b.rosters || {}, slotCounts: b.report.slot_counts, rosterSize: b.report.roster_size, rosterCount: b.report.roster_count, max: 1 }) : { offers: [] };
+        decision = check.offers.length === 1;
+      }
+      if (decision == null) {
+        seen[t.id] = "ask";
+        await this.logActivity({ kind: "incoming", league: b.name, league_id: b.league_id, week: b.week, ok: true, message: `${t.with} offered ${t.get_names} for ${t.give_names} (${t.my_gain == null ? "unscored" : `${t.my_gain >= 0 ? "+" : ""}${t.my_gain.toFixed(1)}/wk for you`}). Your call: accept or decline on the league page.`, by: "espn" });
+        continue;
+      }
+      const result = await this.espn.respondTrade(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, t.id, decision);
+      seen[t.id] = decision ? "accepted" : "declined";
+      log({ kind: decision ? "accept" : "decline", ok: result.ok, with: t.with, message: result.message });
+      await this.logActivity({ kind: "incoming", league: b.name, league_id: b.league_id, week: b.week, ok: result.ok, message: `${decision ? "Accepted" : "Declined"} ${t.with}'s offer of ${t.get_names} for ${t.give_names} (${t.my_gain >= 0 ? "+" : ""}${t.my_gain.toFixed(1)}/wk for you).${result.ok ? "" : ` ESPN said: ${result.message}`}`, by: "auto" });
+      acted = true;
+    }
+    await this.storage.put(seenKey, seen);
+    return acted;
+  }
+
+  /** Manual accept or decline of an incoming offer. */
+  async respond(request) {
+    const s = await this.settings();
+    const form = await request.formData();
+    if (!(await this.checkCsrf(request, form))) return html(errorPage("Form expired. Go back and try again.", true), 400);
+    const leagueId = Number(form.get("league") || 0), txId = String(form.get("tx") || ""), accept = form.get("action") === "accept";
+    const b = await this.bundle(leagueId);
+    const t = (b.pending || []).find((x) => String(x.id) === txId && !x.mine);
+    if (!t) return html(errorPage("That offer is not pending, or it is one of yours.", true), 404);
+    const result = await this.espn.respondTrade(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, t.id, accept);
+    const seen = (await this.storage.get(`incoming:${b.league_id}`)) || {}; seen[t.id] = accept ? "accepted" : "declined"; await this.storage.put(`incoming:${b.league_id}`, seen);
+    await this.logActivity({ kind: "incoming", league: b.name, league_id: b.league_id, week: b.week, ok: result.ok, message: `${accept ? "Accepted" : "Declined"} ${t.with}'s offer of ${t.get_names} for ${t.give_names}.${result.ok ? "" : ` ESPN said: ${result.message}`}`, by: "you" });
+    await this.clearCache();
+    return html(errorPage(result.ok ? `${accept ? "Accepted" : "Declined"}: ${t.get_names} for ${t.give_names} from ${t.with}.` : result.message, true), result.ok ? 200 : 502);
   }
 
   /** "Run autopilot now": the same pass the cron makes, on demand. */
@@ -689,7 +765,7 @@ export class App {
       }
       prev.claimed = [...claimed];
     }
-    if (s.auto_trades) { if (await this.autoTrades(b, s, log)) acted = true; }
+    if (s.auto_trades) { if (await this.autoTrades(b, s, log)) acted = true; if (await this.autoRespond(b, s, log)) acted = true; }
     await this.storage.put(key, prev);
     if (acted) { this.mem.delete(`league:${b.league_id}`); await this.storage.delete(`league:${b.league_id}`); }
     return acted;
@@ -701,6 +777,7 @@ export class App {
    * a package declined or expired in the last 7 days is not re-sent, and a manager who declined gets 48 hours of quiet.
    */
   async autoTrades(b, s, log) {
+    if (b.report.trades_closed) return false;
     const AUTO_MIN_GAIN = 2.0, AUTO_MAX_OPEN = 3, WEEK = 7 * 86400e3, COOLDOWN = 48 * 3600e3;
     const stKey = `autotrade:${b.league_id}`;
     const st = (await this.storage.get(stKey)) || { declined: {}, cooldown: {}, offered: {} };
