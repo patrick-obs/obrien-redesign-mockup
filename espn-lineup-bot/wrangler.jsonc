@@ -1,0 +1,21 @@
+{
+  // Cloudflare Workers (free plan) config. Deployed by Workers Builds with `npx wrangler deploy`.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "fantasy-advisor",
+  "main": "worker/index.js",
+  "compatibility_date": "2026-10-01",
+  "observability": { "enabled": true },
+  // Logo, favicon and touch icon. Served straight from the edge; everything else reaches the Durable Object.
+  "assets": { "directory": "./public" },
+  "durable_objects": {
+    "bindings": [{ "name": "ADVISOR", "class_name": "Advisor" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Advisor"] }],
+  // Pre-build every league and run automatic lineup management: Thursday, Saturday and Sunday at 12:00 UTC (8am ET),
+  // plus a last pass before Thursday night (22:00 UTC, 6pm ET) and before the Sunday 1pm games (16:00 UTC, noon ET).
+  // Plus every four hours for the autopilot (injury news, trade responses, waivers clearing).
+  // And late inactives: Sunday 3pm ET before the 4pm games, and 7:30pm ET before Thursday/Monday night kickoffs.
+  // Every four hours covers 8am and noon ET; the extras are 6pm ET Thursday, 3pm ET Sunday, and 7:30pm ET before
+  // Thursday and Monday night kickoffs (expressed in UTC, so FRI and TUE).
+  "triggers": { "crons": ["0 */4 * * *", "0 22 * * THU", "0 19 * * SUN", "30 0 * * FRI,TUE"] }
+}

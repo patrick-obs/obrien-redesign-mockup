@@ -1,0 +1,16 @@
+{% extends "base.html" %}{% block title %}Settings{% endblock %}
+{% block body %}
+<div class="card" style="max-width:640px">
+  <h1 style="margin-top:0">ESPN connection</h1>
+  <p class="muted">These two cookies let the app read your leagues and set your lineups. Get them from fantasy.espn.com while logged in: press F12, open Application, then Cookies, then https://fantasy.espn.com. They expire now and then; paste fresh ones when the app says it cannot load a league.</p>
+  <form method="post">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <label for="swid">SWID (keep the curly braces)</label>
+    <input type="text" id="swid" name="swid" value="{{ s.swid }}" autocomplete="off">
+    <label for="espn_s2">espn_s2</label>
+    <textarea id="espn_s2" name="espn_s2" rows="4" autocomplete="off">{{ s.espn_s2 }}</textarea>
+    <p class="muted">Season: {{ s.season }}</p>
+    <p><button class="btn" type="submit">Save and test</button></p>
+  </form>
+</div>
+{% endblock %}
