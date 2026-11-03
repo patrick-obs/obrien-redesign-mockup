@@ -35,7 +35,7 @@ test("dashboard and league page render", async () => {
   assert.match(h, /Test League/); assert.match(h, /Dead League/); assert.match(h, /Not renewed|Not started/);
   assert.match(h, /Set all lineups/); assert.match(h, /lineup change/); assert.match(h, /START RB C/); assert.match(h, /1 problem/);
   const l = await (await app.handle(req("/league/1", { cookie }))).text();
-  for (const s of ["Recommended lineup", "EMPTY", "nobody eligible", "Trade ideas", "Waiver watch", "League injury report", "Remaining schedule", "Standings", "fills your EMPTY slot", "TE FA", "Analyst's take", "/add\\?league=1&amp;player=", "Claim</a>"]) assert.match(l, new RegExp(s));
+  for (const s of ["Recommended lineup", "EMPTY", "nobody eligible", "Trade ideas", "Waiver watch", "League injury report", "Remaining schedule", "Standings", "covers D A's bye this week only", "TE FA", "Analyst's take", "/add\\?league=1&amp;player=", "Claim</a>"]) assert.match(l, new RegExp(s));
   assert.match(h, /class="take"/);
   assert.ok(!l.includes("RB FA"));
   const dead = await app.handle(req("/league/2", { cookie }));
@@ -308,7 +308,7 @@ test("accepted or declined offers are noticed on the next rebuild; blitz can sen
   assert.match(await (await app.handle(req("/", { cookie }))).text(), /was declined/);
   // Waiver moves on the blitz page: the D/ST claim is pre-ticked because it fills an empty slot; sending it posts a claim with a drop.
   const page = await (await app.handle(req("/trades?league=1", { cookie }))).text();
-  assert.match(page, /Waiver moves/); assert.match(page, /name="move" value="\d+" form="blitz" checked/);
+  assert.match(page, /Waiver moves/); assert.match(page, /name="move" value="\d+" form="blitz"/); assert.match(page, /covers D A's bye this week only/);
   const dst = (await app.bundle(1)).report.waivers["D/ST"][0];
   const csrf = page.match(/name="csrf" value="([0-9a-f]+)"/)[1];
   const done = await (await app.handle(req("/trades", { method: "POST", cookie, body: form({ csrf, league: 1, move: dst.player_id }) }))).text();
