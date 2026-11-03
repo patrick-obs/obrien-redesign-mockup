@@ -10,6 +10,7 @@ import { fetchScoreboard } from "./vegas.js";
 import { makeSession, verifySession, csrfFor, parseCookies, sessionCookie, clearSessionCookie, SESSION_COOKIE, timingSafeEqual } from "./auth.js";
 import { loginPage, errorPage, settingsPage, indexPage, leaguePage, lineupsPage, tradePage, addPage, blitzPage } from "./html.js";
 
+const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
 const html = (body, status = 200, headers = {}) => new Response(body, { status, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", ...headers } });
 const redirect = (to, headers = {}) => new Response(null, { status: 302, headers: { location: to, ...headers } });
 
@@ -46,8 +47,11 @@ export class App {
     s.auto_fill_empty = prefs.auto_fill_empty !== false;   // on unless switched off (real holes only, never bye cover)
     s.auto_trades = prefs.auto_trades !== false;           // on unless switched off (robust plan only, with guardrails)
     s.hidden = Array.isArray(prefs.hidden) ? prefs.hidden : [];
+    s.league_auto = prefs.league_auto && typeof prefs.league_auto === "object" ? prefs.league_auto : {};
     return s;
   }
+  /** Autopilot applies to a league when the master switch is on and the league's own switch is not off. */
+  autoFor(s, leagueId) { return !!s.automanage && s.league_auto[String(leagueId)] !== false; }
   async savePrefs(patch) {
     const prefs = (await this.storage.get("prefs")) || {};
     await this.storage.put("prefs", { ...prefs, ...patch });
@@ -285,6 +289,7 @@ export class App {
       if (path === "/withdraw" && request.method === "POST") return this.withdraw(request);
       if (path === "/add") return this.add(request, url);
       if (path === "/hide" && request.method === "POST") return this.hide(request);
+      if (path === "/autopilot" && request.method === "POST") return this.runNow(request);
       if (path === "/settings") return this.settingsPage(request);
       if (path === "/refresh" && request.method === "POST") { await this.clearCache(); return redirect("/"); }
       return html(errorPage("Page not found.", true), 404);
@@ -334,7 +339,10 @@ export class App {
     const totalMoves = bundles.reduce((n, b) => n + (b.report ? b.report.lineup_items.length : 0), 0);
     const saved = url.searchParams.get("saved");
     if (saved) errors.unshift(`Saved. ESPN reports ${saved} league(s) for this account.`);
-    return html(indexPage({ bundles, errors, totalMoves, season: s.season, now: this.now(), csrf: await this.csrf(url.request || new Request(url.href)), hiddenCount: s.hidden.length, activity: (await this.activity()).slice(0, 12) }));
+    const ran = url.searchParams.get("ran");
+    if (ran === "off") errors.unshift("Automanage is switched off, so the autopilot did not run. Turn it on under Settings.");
+    else if (ran != null) errors.unshift(`Autopilot ran: acted in ${plural(Number(ran), "league")}. Details are in Sent to ESPN below.`);
+    return html(indexPage({ bundles, errors, totalMoves, season: s.season, now: this.now(), csrf: await this.csrf(url.request || new Request(url.href)), hiddenCount: s.hidden.length, activity: (await this.activity()).slice(0, 12), automanage: s.automanage }));
   }
 
   async league(id, url) {
@@ -365,6 +373,22 @@ export class App {
     }
     await this.clearCache();
     return html(lineupsPage({ bundles, results, only, csrf }));
+  }
+
+  /** "Run autopilot now": the same pass the cron makes, on demand. */
+  async runNow(request) {
+    const form = await request.formData();
+    if (!(await this.checkCsrf(request, form))) return html(errorPage("Form expired. Go back and try again.", true), 400);
+    const s = await this.settings();
+    if (!s.automanage) return redirect("/?ran=off");
+    const leagues = await this.leagues(true);
+    let acted = 0;
+    for (const lg of leagues) {
+      if (s.hidden.includes(lg.league_id)) continue;
+      try { const b = await this.bundle(lg.league_id, true); if (b.started && (await this.autoManage(b, s))) acted++; await this.noteAuth(true); }
+      catch (e) { console.warn("run now failed", lg.league_name, e?.message); if (/\b401\b|cookies/i.test(e?.message || "")) await this.noteAuth(false, e.message); }
+    }
+    return redirect(`/?ran=${acted}`);
   }
 
   /** Hide a league from the dashboard (an orphaned one, say) or show it again. */
@@ -564,13 +588,19 @@ export class App {
     const s = await this.settings();
     s.claude = { ...this.claudeConfig(), hasKey: !!this.env.ANTHROPIC_API_KEY, today: await this.claudeCallsToday() };
     s.cacheSeconds = this.cacheSeconds;
-    try { s.hidden_leagues = (await this.leagues()).filter((lg) => s.hidden.includes(lg.league_id)).map((lg) => ({ id: lg.league_id, name: lg.league_name })); } catch { s.hidden_leagues = s.hidden.map((id) => ({ id, name: `League ${id}` })); }
+    try {
+      const all = await this.leagues();
+      s.hidden_leagues = all.filter((lg) => s.hidden.includes(lg.league_id)).map((lg) => ({ id: lg.league_id, name: lg.league_name }));
+      s.auto_leagues = all.filter((lg) => !s.hidden.includes(lg.league_id)).map((lg) => ({ id: lg.league_id, name: lg.league_name, on: s.league_auto[String(lg.league_id)] !== false }));
+    } catch { s.hidden_leagues = s.hidden.map((id) => ({ id, name: `League ${id}` })); s.auto_leagues = []; }
     const csrf = await this.csrf(request);
     if (request.method === "POST") {
       const form = await request.formData();
       if (!(await this.checkCsrf(request, form))) return html(errorPage("Form expired. Go back and try again.", true), 400);
       if (form.get("prefs") === "1") {
-        await this.savePrefs({ automanage: form.get("automanage") === "1", auto_lineup: form.get("auto_lineup") === "1", auto_fill_empty: form.get("auto_fill_empty") === "1", auto_trades: form.get("auto_trades") === "1" });
+        const league_auto = {};
+        for (const [k, v] of form.entries()) { const m = /^league_auto_(\d+)$/.exec(k); if (m) league_auto[m[1]] = v === "1"; }
+        await this.savePrefs({ automanage: form.get("automanage") === "1", auto_lineup: form.get("auto_lineup") === "1", auto_fill_empty: form.get("auto_fill_empty") === "1", auto_trades: form.get("auto_trades") === "1", league_auto: { ...s.league_auto, ...league_auto } });
         return redirect("/settings?prefs=saved");
       }
       const espn_s2 = (form.get("espn_s2") || "").trim(), swid = (form.get("swid") || "").trim();
@@ -613,7 +643,7 @@ export class App {
    * lowest-value bench player. Returns true when anything was sent to ESPN. Everything is logged under auto:<league>:<week>.
    */
   async autoManage(b, s) {
-    if (!s.automanage) return false;
+    if (!this.autoFor(s, b.league_id)) return false;
     const r = b.report, key = `auto:${b.league_id}:${b.week}`;
     const prev = (await this.storage.get(key)) || { week: b.week, events: [] };
     const slots = {}; for (const p of [...Object.values(r.recommended).flat(), ...r.bench]) if (p.name) slots[p.name] = p.slot;
@@ -640,6 +670,24 @@ export class App {
         await this.logActivity({ kind: "add", league: b.name, league_id: b.league_id, week: b.week, ok: result.ok, message: result.message, add: pick.name, drop: drop ? drop.name : null, by: "auto" });
         acted = true;
       }
+    }
+    if (s.auto_fill_empty) {
+      // The plan's pickups: real holes and clear upgrades, drops never a recommended starter, never bye cover.
+      // Claims are conditional on ESPN's side (the drop only happens if the claim wins); at most two per run, no repeats this week.
+      const claimed = new Set(prev.claimed || []);
+      let made = 0;
+      for (const m of this.blitzPlan(b).moves) {
+        if (made >= 2) break;
+        if (claimed.has(m.player_id)) continue;
+        if (!m.drop && r.open_spots <= 0) continue;
+        const bid = m.on_waivers ? (this.suggestBid(b, m) ?? 0) : 0;
+        const result = await this.espn.addPlayer(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, b.week, { addId: m.player_id, dropId: m.drop ? m.drop.player_id : null, waiver: !!m.on_waivers, bid });
+        claimed.add(m.player_id); made++;
+        log({ kind: m.on_waivers ? "claim" : "add", ok: result.ok, message: result.message, add: m.name, drop: m.drop ? m.drop.name : null });
+        await this.logActivity({ kind: m.on_waivers ? "claim" : "add", league: b.name, league_id: b.league_id, week: b.week, ok: result.ok, message: result.message, add: m.name, drop: m.drop ? m.drop.name : null, bid: m.on_waivers ? bid : null, by: "auto" });
+        acted = true;
+      }
+      prev.claimed = [...claimed];
     }
     if (s.auto_trades) { if (await this.autoTrades(b, s, log)) acted = true; }
     await this.storage.put(key, prev);

@@ -90,10 +90,11 @@ test("warm endpoint needs the key, fills the cache, sets lineups once and respec
   const app2 = new App({ env: { APP_PASSWORD: "open-sesame", SECRET_KEY: "test-secret", ESPN_S2: "s2cookie", SWID: "{abc-123}" }, storage: app.storage, fetchFn: async () => { throw new Error("no network"); }, espn: fakeEspn({ posts }) });
   await app2.clearCache();
   assert.equal(await (await app2.handle(new Request("https://advisor.internal/__warm", { headers: { "x-warm-key": "test-secret" } }))).text(), "warmed 2, auto-managed 0");
-  // Opt-in empty-slot fill: D FA is on waivers in the fixture, so nothing is added (claims are never automatic).
+  // Pickups on: the D/ST gap is bye cover, so that defense is never bought; the TE upgrade (+3.5) is.
   await app2.savePrefs({ auto_lineup: false, auto_fill_empty: true, auto_trades: false });
   await app2.handle(new Request("https://advisor.internal/__warm", { headers: { "x-warm-key": "test-secret" } }));
-  assert.equal(posts.filter((p) => p.kind === "add").length, 0);
+  const dstId = (await app2.bundle(1)).report.waivers["D/ST"][0].player_id;
+  assert.ok(!posts.some((p) => p.kind === "add" && p.addId === dstId));
   // Dashboard shows the automatic set, and the orphaned league is called out and can be hidden.
   const cookie = await login(app);
   const h = await (await app.handle(req("/", { cookie }))).text();
@@ -320,9 +321,9 @@ test("a slot empty only because of a bye is cover-only: not urgent, not pre-tick
   assert.match(h, /empty this week only \(D A is on bye\); optional/);
   const page = await (await app.handle(req("/trades?league=1", { cookie }))).text();
   assert.ok(!new RegExp(`name="move" value="${dst.player_id}" checked`).test(page), "the bye-gap defense is not pre-ticked");
-  await app.savePrefs({ auto_lineup: false, auto_fill_empty: true });
+  await app.savePrefs({ auto_lineup: false, auto_fill_empty: true, auto_trades: false });
   await app.handle(new Request("https://advisor.internal/__warm", { headers: { "x-warm-key": "test-secret" } }));
-  assert.equal(posts.filter((p) => p.kind === "add").length, 0);
+  assert.ok(!posts.some((p) => p.kind === "add" && p.addId === dst.player_id), "bye cover is never bought automatically");
 });
 
 test("Automanage master switch stops every automatic action", async () => {
@@ -420,4 +421,32 @@ test("expired cookies: banner, feed entry, 503 health, cleared by saving new coo
   await app.handle(req("/settings", { method: "POST", cookie, body: form({ csrf, swid: "{abc-123}", espn_s2: "fresh" }) }));
   assert.equal((await app.handle(req("/health"))).status, 200);
   assert.ok((await app.activity()).some((e) => e.kind === "auth" && e.ok));
+});
+
+test("per-league autopilot switch, automatic pickups with claims, and Run autopilot now", async () => {
+  const posts = [];
+  const app = makeApp(posts);
+  await app.savePrefs({ auto_lineup: false, auto_trades: false, auto_fill_empty: true, league_auto: { "1": false } });
+  await app.handle(new Request("https://advisor.internal/__warm", { headers: { "x-warm-key": "test-secret" } }));
+  assert.equal(posts.length, 0, "league 1 switched off: nothing happens");
+  await app.savePrefs({ league_auto: { "1": true } });
+  await app.handle(new Request("https://advisor.internal/__warm", { headers: { "x-warm-key": "test-secret" } }));
+  // The fixture's plan pickup is the TE FA claim (+3.5 over TE B), dropping a bench player, with a bid; the D/ST bye cover is not bought.
+  const adds = posts.filter((p) => p.kind === "add");
+  assert.equal(adds.length, 1); assert.equal(adds[0].waiver, false); assert.ok(adds[0].dropId != null);
+  const dstId = (await app.bundle(1)).report.waivers["D/ST"][0].player_id;
+  assert.ok(!adds.some((p) => p.addId === dstId));
+  await app.handle(new Request("https://advisor.internal/__warm", { headers: { "x-warm-key": "test-secret" } }));
+  assert.equal(posts.filter((p) => p.kind === "add").length, 1, "no repeat pickup this week");
+  // Run now from the dashboard.
+  const cookie = await login(app);
+  const h = await (await app.handle(req("/", { cookie }))).text();
+  assert.match(h, /Run autopilot now/);
+  const csrf = h.match(/name="csrf" value="([0-9a-f]+)"/)[1];
+  const r = await app.handle(req("/autopilot", { method: "POST", cookie, body: form({ csrf }) }));
+  assert.equal(r.status, 302); assert.match(r.headers.get("location"), /ran=\d/);
+  const sp = await (await app.handle(req("/settings", { cookie }))).text();
+  assert.match(sp, /name="league_auto_1" value="1" checked/);
+  const saved = await app.handle(req("/settings", { method: "POST", cookie, body: form({ csrf, prefs: 1, automanage: 1, auto_lineup: 1, auto_fill_empty: 1, auto_trades: 1, league_auto_1: 0 }) }));
+  assert.equal(saved.status, 302); assert.equal((await app.storage.get("prefs")).league_auto["1"], false);
 });
