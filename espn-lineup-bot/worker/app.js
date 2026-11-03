@@ -404,7 +404,7 @@ export class App {
       if (r.open_spots - out.filter((m) => !m.drop).length <= 0) { drop = cands.find((c) => !used.has(c.player_id)) || null; if (!drop) continue; used.add(drop.player_id); }
       out.push({ ...p, pos: p.pos || pos, drop });
     }
-    return out.sort((a, b) => (b.fills_empty_slot - a.fills_empty_slot) || (b.edge - a.edge));
+    return out.sort((a, b) => ((b.fills_empty_slot && !b.bye_cover) - (a.fills_empty_slot && !a.bye_cover)) || (b.edge - a.edge));
   }
 
   /** Withdraw one pending offer of yours. */
@@ -515,7 +515,7 @@ export class App {
       }
     }
     if (s.auto_fill_empty && !prev.filled) {
-      const pick = Object.values(r.waivers).flat().find((p) => !p.error && p.fills_empty_slot && p.player_id != null && !p.on_waivers);
+      const pick = Object.values(r.waivers).flat().find((p) => !p.error && p.fills_empty_slot && !p.bye_cover && p.player_id != null && !p.on_waivers);
       const drop = r.open_spots > 0 ? null : (r.drop_candidates || []).find((c) => !c.starter) || null;
       if (pick && (drop || r.open_spots > 0)) {
         const result = await this.espn.addPlayer(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, b.week, { addId: pick.player_id, dropId: drop ? drop.player_id : null, waiver: false, bid: 0 });

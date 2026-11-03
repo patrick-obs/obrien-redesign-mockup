@@ -165,8 +165,8 @@ export function gamePlan({ report: r, odds, outlook, strength, trades = [], week
   // 2. This week's non-negotiables.
   const fix = [];
   if (r.lineup_items.length) fix.push(`set the lineup (${r.lineup_items.length} change${r.lineup_items.length === 1 ? "" : "s"}, ${f1(r.recommended_lineup_proj - r.current_lineup_proj)} points)`);
-  const picks = Object.entries(r.waivers).flatMap(([pos, ps]) => ps.filter((p) => !p.error).map((p) => ({ ...p, pos }))).sort((a, b) => (b.fills_empty_slot - a.fills_empty_slot) || (b.edge - a.edge));
-  if (picks[0]) fix.push(picks[0].fills_empty_slot ? `add ${picks[0].name} (${picks[0].pos}) to fill the empty ${picks[0].pos} slot` : `add ${picks[0].name} (${picks[0].pos}), +${f1(picks[0].edge)} over your weakest starter there`);
+  const picks = Object.entries(r.waivers).flatMap(([pos, ps]) => ps.filter((p) => !p.error).map((p) => ({ ...p, pos }))).sort((a, b) => ((b.fills_empty_slot && !b.bye_cover) - (a.fills_empty_slot && !a.bye_cover)) || (b.edge - a.edge));
+  if (picks[0]) fix.push(picks[0].fills_empty_slot ? (picks[0].bye_cover ? `${picks[0].pos} is empty this week only (${picks[0].returning} on bye); adding ${picks[0].name} is optional` : `add ${picks[0].name} (${picks[0].pos}) to fill the empty ${picks[0].pos} slot`) : `add ${picks[0].name} (${picks[0].pos}), +${f1(picks[0].edge)} over your weakest starter there`);
   if (fix.length) bullets.push(`This week: ${fix.join("; ")}.`);
   // 3. Roster shape.
   if (weak.length) {

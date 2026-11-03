@@ -72,6 +72,8 @@ export function waiverThresholds(assignment, slotCounts) {
 export function waiverWatch(thresholds, mine, faByPos) {
   const out = {};
   const names = new Set(mine.map((p) => p.name));
+  // A slot that is empty only because its usual player is on bye this week fills itself next week.
+  const byeCover = (pos) => mine.some((p) => p.position === pos && p.bye && !NO_PLAY.has(p.status));
   for (const [pos, thr] of Object.entries(thresholds)) {
     const fas = faByPos[pos];
     if (!fas) continue;
@@ -82,7 +84,8 @@ export function waiverWatch(thresholds, mine, faByPos) {
       if (names.has(p.name) || !canPlay(p)) continue;
       const edge = Math.round((effectiveProj(p) - thr) * 10) / 10;
       if (edge > 0) picks.push({ name: p.name, pos: p.position, team: p.proTeam, opp: p.opponent, proj: p.proj, edge, owned: p.percentOwned, status: p.status,
-        fills_empty_slot: thr === 0, player_id: p.playerId, on_waivers: p.acquisition === "WAIVERS",
+        fills_empty_slot: thr === 0, bye_cover: thr === 0 && byeCover(pos), returning: thr === 0 ? (mine.find((p) => p.position === pos && p.bye && !NO_PLAY.has(p.status))?.name || null) : null,
+        player_id: p.playerId, on_waivers: p.acquisition === "WAIVERS",
         value: playerValue(p.seasonProjAvg, p.seasonAvg, 8) });
     }
     picks.sort((a, b) => b.edge - a.edge);

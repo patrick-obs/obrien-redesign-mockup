@@ -316,3 +316,19 @@ test("accepted or declined offers are noticed on the next rebuild; blitz can sen
   const add = posts.find((p) => p.kind === "add");
   assert.ok(add && add.waiver === true && add.addId === dst.player_id && add.dropId != null);
 });
+
+test("a slot empty only because of a bye is cover-only: not urgent, not pre-ticked, never auto-filled", async () => {
+  const posts = [];
+  const app = makeApp(posts);
+  const b = await app.bundle(1);
+  const dst = b.report.waivers["D/ST"][0];
+  assert.equal(dst.fills_empty_slot, true); assert.equal(dst.bye_cover, true); assert.equal(dst.returning, "D A");
+  const cookie = await login(app);
+  const h = await (await app.handle(req("/", { cookie }))).text();
+  assert.match(h, /empty this week only \(D A is on bye\); optional/);
+  const page = await (await app.handle(req("/trades?league=1", { cookie }))).text();
+  assert.ok(!/name="move" value="\d+" form="blitz" checked/.test(page), "nothing pre-ticked for a bye gap");
+  await app.savePrefs({ auto_lineup: false, auto_fill_empty: true });
+  await app.handle(new Request("https://advisor.internal/__warm", { headers: { "x-warm-key": "test-secret" } }));
+  assert.equal(posts.filter((p) => p.kind === "add").length, 0);
+});

@@ -12,7 +12,7 @@ export function analystFacts({ report: r, trades = [], league = {}, odds = null,
   const problems = r.warnings.filter((w) => /No eligible|BYE| is out|injury reserve|suspension/.test(w));
   const shaky = r.warnings.filter((w) => /questionable|doubtful|day to day/i.test(w));
   const picks = Object.entries(r.waivers).flatMap(([pos, ps]) => ps.filter((p) => !p.error).map((p) => ({ ...p, pos })));
-  picks.sort((a, b) => (b.fills_empty_slot - a.fills_empty_slot) || (b.edge - a.edge));
+  picks.sort((a, b) => ((b.fills_empty_slot && !b.bye_cover) - (a.fills_empty_slot && !a.bye_cover)) || (b.edge - a.edge));
   const me = r.standings.find((t) => t.team_id === r.team_id);
   const rank = me ? me.rank : null;
   const playoffTeams = league.playoffTeamCount || 0;
@@ -53,7 +53,7 @@ export function analystTake(input) {
   if (f.problems.length) bits.push(`The real risk is ${lower(f.problems[0])}${f.problems.length > 1 ? `, and ${f.problems.length - 1} more like it` : ""}.`);
   else if (f.shaky.length) bits.push(`Watch the injury report: ${lower(f.shaky[0])}.`);
   if (f.top_pick) bits.push(f.top_pick.fills_empty_slot
-    ? `Top waiver priority is ${f.top_pick.name} (${f.top_pick.pos}); he fills a slot you cannot fill from the roster.`
+    ? (f.top_pick.bye_cover ? `Your ${f.top_pick.pos} slot is empty this week only because ${f.top_pick.returning} is on bye; ${f.top_pick.name} would cover it, but nothing is broken for next week.` : `Top waiver priority is ${f.top_pick.name} (${f.top_pick.pos}); he fills a slot you cannot fill from the roster.`)
     : `If you make one waiver move, make it ${f.top_pick.name} (${f.top_pick.pos}), who out-projects your weakest starter there by ${f1(f.top_pick.edge)}.`);
   p.push(bits.join(" "));
   // 3. Season picture and trade angle.
