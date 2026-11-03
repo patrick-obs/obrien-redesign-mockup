@@ -2,11 +2,11 @@
 // Runs inside one Durable Object. Pure enough to test in Node with fakes.
 import * as espnMod from "./espn.js";
 import { buildReport, waiverThresholds } from "./report.js";
-import { playerValue, rosterPlayer, proposeTrades } from "./trades.js";
+import { playerValue, rosterPlayer, proposeTrades, blitzSet } from "./trades.js";
 import { analystTake, polishTake } from "./analyst.js";
 import { byeWeeks, horizonWeights, availability, simulateSeason, scheduleOutlook, positionalStrength, gamePlan } from "./season.js";
 import { makeSession, verifySession, csrfFor, parseCookies, sessionCookie, clearSessionCookie, SESSION_COOKIE, timingSafeEqual } from "./auth.js";
-import { loginPage, errorPage, settingsPage, indexPage, leaguePage, lineupsPage, tradePage, addPage } from "./html.js";
+import { loginPage, errorPage, settingsPage, indexPage, leaguePage, lineupsPage, tradePage, addPage, blitzPage } from "./html.js";
 
 const html = (body, status = 200, headers = {}) => new Response(body, { status, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", ...headers } });
 const redirect = (to, headers = {}) => new Response(null, { status: 302, headers: { location: to, ...headers } });
@@ -208,6 +208,7 @@ export class App {
       if (path.startsWith("/league/")) return this.league(Number(path.split("/")[2]), url);
       if (path === "/lineups") return this.lineups(request, url);
       if (path === "/trade") return this.trade(request, url);
+      if (path === "/trades") return this.blitz(request, url);
       if (path === "/add") return this.add(request, url);
       if (path === "/hide" && request.method === "POST") return this.hide(request);
       if (path === "/settings") return this.settingsPage(request);
@@ -315,6 +316,34 @@ export class App {
     await this.logActivity({ kind: "trade", league: b.name, league_id: b.league_id, week: b.week, ok: result.ok, message: result.message, with: trade.with, give: trade.give_names, get: trade.get_names, my_gain: trade.my_gain, their_gain: trade.their_gain, by: "you" });
     await this.clearCache();
     return html(tradePage(b, trade, csrf, result));
+  }
+
+  /** Several offers to several managers in one go: the non-overlapping best set, each one sent as its own ESPN proposal. */
+  async blitz(request, url) {
+    const s = await this.settings();
+    const form = request.method === "POST" ? await request.formData() : null;
+    const leagueId = Number((form && form.get("league")) || url.searchParams.get("league") || 0);
+    if (!leagueId) return html(errorPage("Pick a league first.", true), 404);
+    const b = await this.bundle(leagueId);
+    if (!b.started) return html(errorPage(`${b.name} has not started this season.`, true));
+    const picks = blitzSet(b.trades || []);
+    const csrf = await this.csrf(request);
+    if (request.method !== "POST") return html(blitzPage(b, picks, csrf));
+    if (!(await this.checkCsrf(request, form))) return html(errorPage("Form expired. Go back and try again.", true), 400);
+    const chosen = new Set(form.getAll("id"));
+    const toSend = picks.filter((t) => chosen.has(t.id));
+    if (!toSend.length) return html(blitzPage(b, picks, csrf, { flash: "Tick at least one offer to send." }));
+    const results = [];
+    for (const t of toSend) {
+      const give = t.give.map((p) => p.player_id), get = t.get.map((p) => p.player_id);
+      let result;
+      if (give.some((x) => x == null) || get.some((x) => x == null)) result = { ok: false, message: "ESPN ids missing for this offer; propose it on ESPN by hand." };
+      else result = await this.espn.proposeTrade(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, b.week, t.with_team_id, give, get);
+      await this.logActivity({ kind: "trade", league: b.name, league_id: b.league_id, week: b.week, ok: result.ok, message: result.message, with: t.with, give: t.give_names, get: t.get_names, my_gain: t.my_gain, their_gain: t.their_gain, by: "you" });
+      results.push({ trade: t, result });
+    }
+    await this.clearCache();
+    return html(blitzPage(b, picks, csrf, { results }));
   }
 
   /** Preview, then submit, a free-agent add or waiver claim, dropping someone if the roster is full. */

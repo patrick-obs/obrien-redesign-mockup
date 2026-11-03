@@ -124,6 +124,22 @@ export function proposeTrades(mine, others, slotCounts, opts = {}) {
 }
 
 /**
+ * The best set of offers that can all be out at once: best gain first, never the same outgoing player in two offers,
+ * at most one offer per manager, and never a player ESPN already has in a pending offer (pass their ids in `busy`).
+ */
+export function blitzSet(trades, { busy = new Set(), max = 6 } = {}) {
+  const used = new Set(busy), partners = new Set(), out = [];
+  for (const t of trades.slice().sort((a, b) => b.my_gain - a.my_gain)) {
+    if (t.with_team_id == null || partners.has(t.with_team_id)) continue;
+    if (t.give.some((p) => used.has(p.player_id)) || t.get.some((p) => used.has(p.player_id))) continue;
+    out.push(t); partners.add(t.with_team_id);
+    for (const p of [...t.give, ...t.get]) used.add(p.player_id);
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
+/**
  * Value fairness, by shape. maxAsk is how much more total value you may ask for than you give.
  * - Even swaps: total asked <= total given * maxAsk, and the best player you get <= the best you give * maxAsk.
  * - You consolidate (give more players, get fewer): you may receive the best player in the deal, but total asked

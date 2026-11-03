@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { proposeTrades, playerValue, rosterPlayer, tradeId } from "../trades.js";
+import { proposeTrades, playerValue, rosterPlayer, tradeId, blitzSet } from "../trades.js";
 import { buildLineupTransaction, buildTradeTransaction, buildAddTransaction } from "../espn.js";
 import { planLineupItems } from "../report.js";
 import { makePlayer, optimize } from "../optimizer.js";
@@ -81,4 +81,12 @@ test("lineup transaction payload", () => {
   const tx = buildLineupTransaction(6, "{SWID}", 8, items);
   assert.equal(tx.teamId, 6); assert.equal(tx.scoringPeriodId, 8); assert.equal(tx.executionType, "EXECUTE");
   assert.ok(tx.items.every((it) => it.type === "LINEUP") && tx.items.length === 2);
+});
+
+test("blitz set: best first, no player twice, one offer per manager, busy players skipped", () => {
+  const mk = (id, withId, give, get, gain) => ({ id, with_team_id: withId, give: give.map((n) => ({ player_id: n })), get: get.map((n) => ({ player_id: n })), my_gain: gain });
+  const board = [mk("a", 7, [1], [20], 6), mk("b", 7, [2], [21], 5.5), mk("c", 9, [1], [30], 5), mk("d", 9, [3], [31], 4), mk("e", 10, [4, 5], [40], 3), mk("f", 11, [6], [41], 2)];
+  assert.deepEqual(blitzSet(board).map((t) => t.id), ["a", "d", "e", "f"]);
+  assert.deepEqual(blitzSet(board, { busy: new Set([1]) }).map((t) => t.id), ["b", "d", "e", "f"]);
+  assert.deepEqual(blitzSet(board, { max: 2 }).map((t) => t.id), ["a", "d"]);
 });

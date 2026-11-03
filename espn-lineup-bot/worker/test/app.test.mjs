@@ -245,3 +245,21 @@ test("everything sent to ESPN is recorded and shown on the dashboard", async () 
   h = await (await app.handle(req("/", { cookie }))).text();
   assert.match(h, /Sent to ESPN/); assert.match(h, new RegExp(`Trade offer to ${t.with}`)); assert.match(h, /Added TE FA, dropped/); assert.match(h, /automatic/);
 });
+
+test("trade blitz: preview the non-overlapping set, send the ticked ones, log each", async () => {
+  const posts = [];
+  const app = makeApp(posts);
+  const cookie = await login(app);
+  const page = await (await app.handle(req("/trades?league=1", { cookie }))).text();
+  assert.match(page, /Trade blitz/); assert.match(page, /Send the ticked offers/);
+  const ids = [...page.matchAll(/name="id" value="([0-9a-f]+)"/g)].map((m) => m[1]);
+  assert.ok(ids.length >= 1);
+  const csrf = page.match(/name="csrf" value="([0-9a-f]+)"/)[1];
+  const none = await app.handle(req("/trades", { method: "POST", cookie, body: form({ csrf, league: 1 }) }));
+  assert.match(await none.text(), /Tick at least one/); assert.equal(posts.length, 0);
+  const body = new URLSearchParams({ csrf, league: 1 }); for (const id of ids) body.append("id", id);
+  const done = await app.handle(req("/trades", { method: "POST", cookie, body: body.toString() }));
+  assert.match(await done.text(), new RegExp(`${ids.length} offer`));
+  assert.equal(posts.filter((p) => p.kind === "trade").length, ids.length);
+  assert.equal((await app.activity()).filter((e) => e.kind === "trade").length, ids.length);
+});
