@@ -135,6 +135,12 @@ label.row{cursor:pointer;font-weight:400;margin:0}
 td .s{font-size:12px;color:var(--muted);line-height:1.2;margin-top:2px;white-space:nowrap}
 .runnow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 18px}.runnow .btn svg{width:16px;height:16px}
 .respond{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:-6px 0 12px}
+.luna{width:40px;height:40px;border-radius:50%;flex:none;object-fit:cover}.luna.md{width:44px;height:44px}.luna.lg{width:140px;height:140px}
+.luna-hero{align-items:center;gap:22px}.luna-hero .bubble{flex:1 1 320px;position:relative;background:var(--soft);border-radius:18px;padding:18px 20px}
+.luna-hero .bubble::before{content:"";position:absolute;left:-10px;top:52px;width:20px;height:20px;background:var(--soft);transform:rotate(45deg);border-radius:4px}
+.luna-hero .bubble p{font-size:24px;line-height:1.2;margin:0 0 12px;font-weight:700;letter-spacing:-.02em;color:var(--head)}.luna-hero .bubble p strong{color:var(--accent)}
+.luna-hero .bubble .btn.big{width:auto;display:inline-flex}.luna-hero .bubble p.stamp{font-size:14px;font-weight:400;letter-spacing:0;color:var(--muted);margin:10px 0 0}
+@media (max-width:640px){.luna.lg{width:88px;height:88px}.luna-hero .bubble::before{display:none}}
 @media (max-width:640px){main{padding:16px 14px 28px}.card{padding:16px;border-radius:16px}h1{font-size:30px}h2{font-size:20px}.hero{padding:20px}.hero p{font-size:24px}.hero .btn.big{flex-basis:100%}header{padding:8px 12px}header .logo{height:32px}header nav a{padding:6px 8px;font-size:14px}.login .logo{height:120px}.swap{grid-template-columns:1fr}.swap .arrow{text-align:center}.swap .arrow svg{transform:rotate(90deg)}.matchup .big{font-size:32px}.seg{top:54px;margin:0 -14px 18px;padding:3px 14px;border-radius:0}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}html{scroll-behavior:auto}}
 </style>

@@ -131,6 +131,12 @@ label.row{cursor:pointer;font-weight:400;margin:0}
 td .s{font-size:12px;color:var(--muted);line-height:1.2;margin-top:2px;white-space:nowrap}
 .runnow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 18px}.runnow .btn svg{width:16px;height:16px}
 .respond{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:-6px 0 12px}
+.luna{width:40px;height:40px;border-radius:50%;flex:none;object-fit:cover}.luna.md{width:44px;height:44px}.luna.lg{width:140px;height:140px}
+.luna-hero{align-items:center;gap:22px}.luna-hero .bubble{flex:1 1 320px;position:relative;background:var(--soft);border-radius:18px;padding:18px 20px}
+.luna-hero .bubble::before{content:"";position:absolute;left:-10px;top:52px;width:20px;height:20px;background:var(--soft);transform:rotate(45deg);border-radius:4px}
+.luna-hero .bubble p{font-size:24px;line-height:1.2;margin:0 0 12px;font-weight:700;letter-spacing:-.02em;color:var(--head)}.luna-hero .bubble p strong{color:var(--accent)}
+.luna-hero .bubble .btn.big{width:auto;display:inline-flex}.luna-hero .bubble p.stamp{font-size:14px;font-weight:400;letter-spacing:0;color:var(--muted);margin:10px 0 0}
+@media (max-width:640px){.luna.lg{width:88px;height:88px}.luna-hero .bubble::before{display:none}}
 @media (max-width:640px){main{padding:16px 14px 28px}.card{padding:16px;border-radius:16px}h1{font-size:30px}h2{font-size:20px}.hero{padding:20px}.hero p{font-size:24px}.hero .btn.big{flex-basis:100%}header{padding:8px 12px}header .logo{height:32px}header nav a{padding:6px 8px;font-size:14px}.login .logo{height:120px}.swap{grid-template-columns:1fr}.swap .arrow{text-align:center}.swap .arrow svg{transform:rotate(90deg)}.matchup .big{font-size:32px}.seg{top:54px;margin:0 -14px 18px;padding:3px 14px;border-radius:0}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}html{scroll-behavior:auto}}`;
 
@@ -138,6 +144,7 @@ td .s{font-size:12px;color:var(--muted);line-height:1.2;margin-top:2px;white-spa
 
 // The mascot (public/logo.png, served as a static asset) in the header and on the login card.
 export const LOGO = `<img class="logo" src="/logo.png" alt="" width="355" height="640">`;
+export const LUNA = (cls = "luna") => `<img class="${cls}" src="/luna-face.png" alt="Luna" width="512" height="512">`;
 const HEAD = `<link rel="icon" href="/favicon.png" type="image/png"><link rel="apple-touch-icon" href="/apple-touch-icon.png">`;
 
 // SF Symbols-style glyphs, inline so pages stay a single request.
@@ -194,20 +201,20 @@ export function layout(title, body, { authed = false, flash = [], script = "" } 
 <header><a class="brand" href="/">${LOGO}Fantasy Advisor</a>
 ${authed ? `<nav><a href="/">Leagues</a><a href="/lineups">Set lineups</a><a href="/settings">Settings</a></nav><form method="post" action="/logout"><button class="btn ghost" type="submit">Log out</button></form>` : ""}
 </header><main>${flash.map(flashBox).join("")}${body}</main>
-<footer>Projections are ESPN's. Nothing here guarantees a win; it just stops points being left on the bench.</footer>${script}</body></html>`;
+<footer>Luna is a very good dog. Projections are ESPN's; nothing here guarantees a win, it just stops points being left on the bench.</footer>${script}</body></html>`;
 }
 
 // ------------------------------------------------------------------ simple pages
 
 export const loginPage = (configured, flash = []) => layout("Log in", `
 <div class="card login">${LOGO}<h1>Fantasy Advisor</h1>
-<p class="lede">Every league, the best lineup, one button.</p>
+<p class="lede">Luna runs the lineups. You take the wins.</p>
 ${configured ? "" : `<p class="bad">APP_PASSWORD is not set on the server, so nobody can log in yet.</p>`}
 <form method="post"><label for="password">Passphrase</label>
 <input type="password" id="password" name="password" autofocus autocomplete="current-password">
 <p><button class="btn big" type="submit">Enter</button></p></form></div>`, { flash });
 
-export const errorPage = (message, authed) => layout("Problem", `<h1>Something went wrong</h1><div class="card"><p>${esc(message)}</p>
+export const errorPage = (message, authed) => layout("Problem", `<h1>Hmm.</h1><div class="card"><div class="lg-head">${LUNA("luna md")}<div class="main"><div class="t">Luna hit a snag</div></div></div><p>${esc(message)}</p>
 <p class="muted">If this mentions a 401 or cookies, the ESPN login expired. Update the cookies under Settings.</p>
 <p><a class="btn ghost" href="/">Back</a></p></div>`, { authed });
 
@@ -220,7 +227,7 @@ export const settingsPage = (s, csrf, flash = []) => layout("Settings", `
 <p class="muted">Season: ${esc(s.season)}</p><p><button class="btn" type="submit">Save and test</button></p></form></div>
 <h2>Automation</h2><div class="card" style="max-width:640px"><form method="post"><input type="hidden" name="csrf" value="${esc(csrf)}"><input type="hidden" name="prefs" value="1">
 <div class="group">
-<label class="row" for="automanage"><div class="main"><div class="t">Automanage</div><div class="s">The autopilot. On, it runs every four hours and before every slate: sets lineups to the latest recommendation (injury news included), fills real roster holes, sends the recommended offers, withdraws stale ones, watches for acceptances and declines, and moves on to the next-best offer after a no. Off, nothing is sent to ESPN without you pressing a button.</div></div><div class="trail"><input type="hidden" name="automanage" value="0"><input type="checkbox" class="switch" id="automanage" name="automanage" value="1"${s.automanage ? " checked" : ""}></div></label>
+<label class="row" for="automanage"><div class="main"><div class="t">Luna's autopilot</div><div class="s">The autopilot. On, it runs every four hours and before every slate: sets lineups to the latest recommendation (injury news included), fills real roster holes, sends the recommended offers, withdraws stale ones, watches for acceptances and declines, and moves on to the next-best offer after a no. Off, nothing is sent to ESPN without you pressing a button.</div></div><div class="trail"><input type="hidden" name="automanage" value="0"><input type="checkbox" class="switch" id="automanage" name="automanage" value="1"${s.automanage ? " checked" : ""}></div></label>
 <label class="row" for="auto_lineup"><div class="main"><div class="t">Set lineups automatically</div><div class="s">Thursday, Saturday and Sunday at 8am ET, again Thursday at 6pm and Sunday at noon ET, the advisor sets each lineup to the recommendation. The first run of the week sets it; later runs only touch it if the lineup still matches what the advisor set. If you move anyone on ESPN, it leaves that week alone.</div></div><div class="trail"><input type="hidden" name="auto_lineup" value="0"><input type="checkbox" class="switch" id="auto_lineup" name="auto_lineup" value="1"${s.auto_lineup ? " checked" : ""}></div></label>
 <label class="row" for="auto_fill_empty"><div class="main"><div class="t">Pickups automatically</div><div class="s">Makes the recommended pickups: a real roster hole, or a free agent or waiver player who beats your weakest starter by 2 or more. Drops are never a recommended starter; one-week bye cover is never bought. Claims use the suggested bid and only go through if you win them. At most two a run.</div></div><div class="trail"><input type="hidden" name="auto_fill_empty" value="0"><input type="checkbox" class="switch" id="auto_fill_empty" name="auto_fill_empty" value="1"${s.auto_fill_empty ? " checked" : ""}></div></label>
 <label class="row" for="auto_trades"><div class="main"><div class="t">Trade automatically</div><div class="s">Sends only the recommended set: each offer safe whichever managers accept, worth at least 2 points a week to you, graded acceptable for them, your two best starters protected. At most three offers out per league; a declined package is not re-sent for a week and a manager who declines gets two days of quiet. Offers the engine now rates as likely declined are withdrawn. You can always withdraw on ESPN.</div></div><div class="trail"><input type="hidden" name="auto_trades" value="0"><input type="checkbox" class="switch" id="auto_trades" name="auto_trades" value="1"${s.auto_trades ? " checked" : ""}></div></label>
@@ -268,15 +275,15 @@ function todo(b) {
   const picks = Object.entries(r.waivers).flatMap(([pos, ps]) => ps.filter((p) => !p.error && p.player_id != null).map((p) => ({ ...p, pos: p.pos || pos }))).sort((a, b) => ((b.fills_empty_slot && !b.bye_cover) - (a.fills_empty_slot && !a.bye_cover)) || (b.edge - a.edge));
   if (picks[0]) items.push({ href: `/add?league=${b.league_id}&amp;player=${picks[0].player_id}`, text: `${picks[0].on_waivers ? "Claim" : "Add"} ${picks[0].name}`, sub: picks[0].fills_empty_slot ? (picks[0].bye_cover ? `your ${picks[0].pos} slot is empty this week only (${picks[0].returning} is on bye); optional` : `fills your empty ${picks[0].pos} slot`) : `+${pts(picks[0].edge)} over your weakest ${picks[0].pos}`, primary: picks[0].fills_empty_slot && !picks[0].bye_cover });
   if (b.trades && b.trades[0]) items.push({ href: `/trade?league=${b.league_id}&amp;id=${esc(b.trades[0].id)}`, text: `Propose ${b.trades[0].kind} trade to ${b.trades[0].with}`, sub: `+${pts(b.trades[0].my_gain)} a week, ${b.trades[0].their_gain >= 0 ? "they gain too" : "costs them little"}` });
-  if (b.trades && b.trades.length > 1) items.push({ href: `/trades?league=${b.league_id}`, text: "Recommended moves", sub: "the offers and pickups to make, one button" });
-  items.push({ href: `/league/${b.league_id}#plan`, text: "Game plan", sub: b.season?.odds ? `${b.season.odds.playoff_odds}% playoff odds` : "season strategy" });
+  if (b.trades && b.trades.length > 1) items.push({ href: `/trades?league=${b.league_id}`, text: "Luna's moves", sub: "the offers and pickups to make, one button" });
+  items.push({ href: `/league/${b.league_id}#plan`, text: "Luna's game plan", sub: b.season?.odds ? `${b.season.odds.playoff_odds}% playoff odds` : "season strategy" });
   return `<div class="todo"><div class="lbl">To do</div><div class="group">${items.map((it) => `<a class="row link${it.primary ? " primary" : ""}" href="${it.href}"><div class="main"><div class="t">${it.text}</div><div class="s">${it.sub}</div></div><div class="trail">${I.chev}</div></a>`).join("")}</div></div>`;
 }
 
 const fmtDay = (ts) => new Date(ts).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York" });
 /** "Sent to ESPN": the app's own record of every write, so "what did we send" has an answer. */
 function activityList(items) {
-  if (!items.length) return `<div class="card"><h2 class="top">Sent to ESPN</h2><p class="muted">Nothing has been sent yet. Trade ideas and waiver picks are only suggestions until you confirm one; automatic lineup sets will show up here too.</p></div>`;
+  if (!items.length) return `<div class="card"><div class="lg-head">${LUNA("luna md")}<div class="main"><div class="t">Luna's log</div><div class="s">everything sent to ESPN, by Luna or by you</div></div></div><p class="muted">Nothing yet. When Luna sets a lineup, picks someone up or sends an offer, it shows up here with ESPN's answer.</p></div>`;
   const line = (e) => e.kind === "trade" ? `Trade offer to ${esc(e.with)}: ${esc(e.give)} for ${esc(e.get)} <span class="muted">(+${pts(e.my_gain)}/wk for you, ${e.their_gain >= 0 ? "+" : "-"}${Math.abs(e.their_gain).toFixed(1)} for them)</span>`
     : e.kind === "claim" ? `Waiver claim for ${esc(e.add)}${e.drop ? `, dropping ${esc(e.drop)}` : ""}${e.bid ? ` (bid $${e.bid})` : ""}`
     : e.kind === "add" ? `Added ${esc(e.add)}${e.drop ? `, dropped ${esc(e.drop)}` : ""}`
@@ -284,7 +291,7 @@ function activityList(items) {
     : e.kind === "settled" ? `${esc(e.message)} <span class="muted">(${esc(e.give)} for ${esc(e.get)})</span>`
     : e.kind === "auth" || e.kind === "incoming" ? esc(e.message)
     : `Lineup set: ${plural(e.changes, "change")}${e.items ? ` <span class="muted">(${esc(e.items.join(", "))})</span>` : ""}`;
-  return `<div class="card" id="activity"><h2 class="top">Sent to ESPN</h2><div class="group">${items.map((e) => `<div class="row"><div class="main"><div class="t">${line(e)}</div><div class="s">${esc(e.league)}${e.week ? ` · week ${e.week}` : ""} · ${esc(fmtDay(e.at))} ET · ${e.by === "auto" ? "automatic" : e.by === "espn" ? "from ESPN" : "by you"}${e.ok || e.kind === "settled" ? "" : ` · <span class="bad">ESPN refused: ${esc(e.message)}</span>`}</div></div><div class="trail"><span class="tag ${e.kind === "settled" ? (e.ok ? "good" : "") : e.ok ? "good" : "bad"}">${e.kind === "settled" ? esc(e.outcome) : e.ok ? (e.kind === "trade" ? "offered" : e.kind === "claim" ? "pending" : "done") : "failed"}</span></div></div>`).join("")}</div></div>`;
+  return `<div class="card" id="activity"><div class="lg-head">${LUNA("luna md")}<div class="main"><div class="t">Luna's log</div><div class="s">everything sent to ESPN, by Luna or by you</div></div></div><div class="group">${items.map((e) => `<div class="row"><div class="main"><div class="t">${line(e)}</div><div class="s">${esc(e.league)}${e.week ? ` · week ${e.week}` : ""} · ${esc(fmtDay(e.at))} ET · ${e.by === "auto" ? "Luna" : e.by === "espn" ? "from ESPN" : "by you"}${e.ok || e.kind === "settled" ? "" : ` · <span class="bad">ESPN refused: ${esc(e.message)}</span>`}</div></div><div class="trail"><span class="tag ${e.kind === "settled" ? (e.ok ? "good" : "") : e.ok ? "good" : "bad"}">${e.kind === "settled" ? esc(e.outcome) : e.ok ? (e.kind === "trade" ? "offered" : e.kind === "claim" ? "pending" : "done") : "failed"}</span></div></div>`).join("")}</div></div>`;
 }
 
 export function indexPage({ bundles, errors, totalMoves, season, now, csrf = "", hiddenCount = 0, activity = [], automanage = true }) {
@@ -292,10 +299,10 @@ export function indexPage({ bundles, errors, totalMoves, season, now, csrf = "",
   const when = new Date(now).toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York" });
   let top = "";
   if (live.length) {
-    top = `<div class="card hero">${totalMoves
-      ? `<p><strong>${totalMoves}</strong> lineup change${totalMoves !== 1 ? "s" : ""} recommended across your leagues.</p><a class="btn big" href="/lineups">Set all lineups</a>`
-      : `<p>Every lineup already matches the projections. Nothing to change right now.</p><a class="btn ghost big" href="/lineups">Review anyway</a>`}
-<p class="stamp">Data as of ${esc(when)} ET. <a href="/?refresh=1">Refresh from ESPN</a></p></div>`;
+    top = `<div class="card hero luna-hero">${LUNA("luna lg")}<div class="bubble">${totalMoves
+      ? `<p><strong>${totalMoves}</strong> lineup change${totalMoves !== 1 ? "s" : ""} to make across your leagues. Want me to set them?</p><a class="btn big" href="/lineups">Set all lineups</a>`
+      : `<p>Every lineup is already the best one. I'll keep watching for injury news and trade replies.</p><a class="btn ghost big" href="/lineups">Review anyway</a>`}
+<p class="stamp">Checked ${esc(when)} ET. <a href="/?refresh=1">Check ESPN again</a></p></div></div>`;
   }
   const cards = bundles.map((b) => {
     if (!b.started) {
@@ -318,14 +325,14 @@ export function indexPage({ bundles, errors, totalMoves, season, now, csrf = "",
 <a class="row link" href="/league/${b.league_id}#lineup"><div class="main"><div class="t">Best possible lineup</div><div class="s">${d > 0 ? `${pts(d)} more than the lineup as set` : "your lineup is already the best one"}</div></div><div class="trail"><span class="v">${pts(r.recommended_lineup_proj)}</span>${d > 0 ? `<span class="tag good">+${pts(d)}</span>` : `<span class="tag good">set</span>`}${I.chev}</div></a>
 </div>
 ${todo(b)}
-${lastAuto ? `<p class="stamp auto">${I.bolt} Set automatically ${esc(fmtTime(lastAuto.at))} ET (${plural(lastAuto.changes, "change")}).${lastSkip && lastSkip.at > lastAuto.at ? " Later runs left your changes alone." : ""}</p>` : lastSkip ? `<p class="stamp auto">${I.bolt} Automatic set skipped: you changed the lineup on ESPN this week.</p>` : ""}
+${lastAuto ? `<p class="stamp auto">${I.bolt} Luna set this lineup ${esc(fmtTime(lastAuto.at))} ET (${plural(lastAuto.changes, "change")}).${lastSkip && lastSkip.at > lastAuto.at ? " She left your later changes alone." : ""}</p>` : lastSkip ? `<p class="stamp auto">${I.bolt} Luna left the lineup alone: you changed it on ESPN this week.</p>` : ""}
 ${b.analyst ? `<p class="take"><a href="/league/${b.league_id}#analyst">${esc(b.analyst.headline)}</a></p>` : ""}
 <div class="tags">${r.lineup_items.length ? `<span class="tag warn">${plural(r.lineup_items.length, "change")}</span>` : `<span class="tag good">lineup set</span>`}${b.problem_count ? `<span class="tag bad">${plural(b.problem_count, "problem")}</span>` : ""}${b.trades && b.trades.length ? `<span class="tag tint">${plural(b.trades.length, "trade idea")}</span>` : ""}</div>
 ${r.warnings.length ? `<div class="notes">${r.warnings.map(note).join("")}</div>` : ""}
 ${r.moves.length ? `<details class="moves"><summary>${plural(r.moves.length, "lineup change")} recommended</summary>${r.moves.map(move).join("")}</details>` : ""}</div>`;
   });
   const hiddenNote = hiddenCount ? `<p class="stamp">${plural(hiddenCount, "hidden league")}. <a href="/settings">Show again in Settings</a>.</p>` : "";
-  const runNow = `<form method="post" action="/autopilot" class="runnow"><input type="hidden" name="csrf" value="${esc(csrf)}"><button class="btn${automanage ? "" : " ghost"}" type="submit">${I.bolt} Run autopilot now</button><span class="stamp">${automanage ? "Does the scheduled pass immediately: lineups, pickups, offers." : "Automanage is off; turn it on in Settings first."}</span></form>`;
+  const runNow = `<form method="post" action="/autopilot" class="runnow"><input type="hidden" name="csrf" value="${esc(csrf)}"><button class="btn${automanage ? "" : " ghost"}" type="submit">${I.bolt} Let Luna run now</button><span class="stamp">${automanage ? "Lineups, pickups and offers, right now instead of at the next scheduled pass." : "Luna's autopilot is off; turn it on in Settings first."}</span></form>`;
   return layout("Your leagues", `<h1>Your leagues <span class="muted">${esc(season)}</span></h1>${errors.map(flashBox).join("")}${top}<div class="grid">${cards.join("")}</div>${hiddenNote}${runNow}${activityList(activity)}`, { authed: true });
 }
 
@@ -349,9 +356,8 @@ ${Object.entries(r.waivers).map(([pos, picks]) => picks.map((d) => d.error
   const pending = (outgoing.length ? `<h3>Offers out on ESPN</h3><div class="trades">${outgoing.map((t) => pendingCard(r, t)).join("")}</div>` : "")
     + (incoming.length ? `<h3>Offers made to you</h3><div class="trades">${incoming.map((t) => `${pendingCard(r, t)}<form method="post" action="/respond" class="respond"><input type="hidden" name="csrf" value="${esc(b.csrf || "")}"><input type="hidden" name="league" value="${r.league_id}"><input type="hidden" name="tx" value="${esc(String(t.id))}"><button class="btn small" name="action" value="accept" type="submit">Accept</button> <button class="btn ghost small" name="action" value="decline" type="submit">Decline</button><span class="stamp">${t.my_gain == null ? "Not scored." : t.my_gain >= 2 ? "Clearly good for you; the autopilot would accept it." : t.my_gain < 0 ? "Costs you; the autopilot would decline it." : "Marginal; your call."}</span></form>`).join("")}</div>` : "")
     + (r.trades_closed ? `<p class="flash">${I.warn}<span>The trade deadline has passed in this league. No offers can be sent or accepted now; waivers and lineups still work.</span></p>` : r.trade_deadline ? `<p class="stamp">Trade deadline: ${esc(fmtExp(r.trade_deadline))} ET.</p>` : "");
-  const analyst = b.analyst ? `<div class="card analyst" id="analyst"><h2 class="top">Analyst's take</h2><p class="headline">${esc(b.analyst.headline)}</p>
-${b.analyst.paragraphs.map((p) => `<p>${esc(p)}</p>`).join("")}
-<p class="stamp by">${b.analyst.source === "claude" ? "Written by Claude from this week's numbers." : "Built from this week's numbers."}</p></div>` : "";
+  const analyst = b.analyst ? `<div class="card analyst" id="analyst"><div class="lg-head">${LUNA("luna md")}<div class="main"><div class="t">Luna's take</div><div class="s">${b.analyst.source === "claude" ? "Luna, with a little help from Claude, from this week's numbers" : "Luna, from this week's numbers"}</div></div></div><p class="headline">${esc(b.analyst.headline)}</p>
+${b.analyst.paragraphs.map((p) => `<p>${esc(p)}</p>`).join("")}</div>` : "";
   const wp = r.win_prob;
   const matchup = `<div class="matchup">
 <div class="side">${badge(r.team, r.logo, "lg")}<div class="nm">${esc(r.team)}</div><div class="rec">${esc(r.record)}</div><div class="big">${pts(r.projected_finish.me)}</div><div class="sub">projected finish · ${pts(r.score.me)} so far</div><div class="sub">best lineup ${pts(r.recommended_lineup_proj)} · Advisor ${pts(r.advisor?.me)}</div></div>
@@ -362,18 +368,18 @@ ${b.analyst.paragraphs.map((p) => `<p>${esc(p)}</p>`).join("")}
   const sn = b.season || {};
   const strengthRows = Object.entries(sn.strength || {}).sort((a, b) => a[1].rank - b[1].rank).map(([pos, s]) => `<div class="row"><div class="main"><div class="t">${esc(pos)}</div><div class="s">${pts(s.mine)} a week · league average ${pts(s.league_avg)}</div></div><div class="trail"><span class="tag ${s.rank <= 2 ? "good" : s.rank > Math.ceil(s.teams / 2) ? "bad" : ""}">${s.rank} of ${s.teams}</span></div></div>`).join("");
   const outlookRows = (sn.outlook || []).map((g) => `<div class="row">${badge(g.opponent, g.logo, "sm")}<div class="main"><div class="t">Week ${g.week} · ${esc(g.opponent)}</div><div class="s">${pts(g.avg_pf)} a week</div></div><div class="trail"><span class="tag ${g.win_prob >= 60 ? "good" : g.win_prob < 45 ? "bad" : ""}">${g.win_prob}% win chance</span></div></div>`).join("");
-  const plan = sn.plan ? `<div class="card" id="plan"><h2 class="top">Game plan</h2>
+  const plan = sn.plan ? `<div class="card" id="plan"><div class="lg-head">${LUNA("luna md")}<div class="main"><div class="t">Luna's game plan</div><div class="s">how to win this league, or finish as high as it allows</div></div></div>
 <div class="odds"><div class="o"><div class="pct ${sn.odds?.playoff_odds >= 60 ? "good" : sn.odds?.playoff_odds < 25 ? "bad" : ""}">${sn.odds ? `${sn.odds.playoff_odds}%` : "n/a"}</div><div class="s">Playoff odds<br><span class="muted">${sn.spots} of ${r.standings.length} make it</span></div></div><div class="o"><div class="pct">${sn.odds ? `${sn.odds.first_odds}%` : "n/a"}</div><div class="s">Finish first</div></div><div class="o"><div class="pct">${sn.odds ? pts(sn.odds.expected_wins) : "n/a"}</div><div class="s">Expected wins<br><span class="muted">${sn.odds ? plural(sn.odds.games_left, "game") + " left" : ""}</span></div></div><div class="o"><div class="pct mode">${esc(sn.plan.mode)}</div><div class="s">Mode</div></div></div>
 <p class="stamp">Odds come from simulating the remaining schedule 1,500 times using each team's average score${sn.contending ? ". You are in contention, so playoff weeks count extra when valuing players and trades." : "."}</p>
 <h3>The plan</h3><ol class="plan">${sn.plan.bullets.map((x) => `<li>${esc(x)}</li>`).join("")}</ol>
-<p class="stamp by">${sn.plan.source === "claude" ? "Plan written by Claude from this week's numbers." : "Built from this week's numbers."}</p>
+<p class="stamp by">${sn.plan.source === "claude" ? "Luna, with a little help from Claude." : "Luna, from this week's numbers."}</p>
 ${strengthRows ? `<h3>Your starters by position</h3><div class="group">${strengthRows}</div>` : ""}
 ${outlookRows ? `<h3>Remaining schedule</h3><div class="group">${outlookRows}</div>` : ""}
 ${sn.byes_ahead && sn.byes_ahead.length ? `<h3>Byes still to come</h3><div class="group">${sn.byes_ahead.map((x) => `<div class="row"><div class="main"><div class="t">${esc(x.name)}</div><div class="s">${esc(x.pos)}</div></div><div class="trail"><span class="tag">week ${x.week}</span></div></div>`).join("")}</div>` : ""}
 </div>` : "";
   const matchRow = (s) => `${badge(s.team, s.logo, "sm")}<span><strong>${esc(s.team)}</strong> <span class="muted">${esc(s.record)} · ${pts(s.espn_proj)} / ${pts(s.best_lineup_proj)}</span></span>`;
   const body = `<h1>${esc(r.league)} <span class="muted">week ${r.week}</span></h1>
-<div class="seg"><a href="#analyst">Analyst</a><a href="#lineup">Lineup</a><a href="#plan">Plan</a><a href="#opponent">Opponent</a><a href="#waivers">Waivers</a><a href="#trades">Trades</a><a href="#league">League</a><a href="#schedule">Schedule</a><a href="#standings">Standings</a></div>
+<div class="seg"><a href="#analyst">Luna</a><a href="#lineup">Lineup</a><a href="#plan">Plan</a><a href="#opponent">Opponent</a><a href="#waivers">Waivers</a><a href="#trades">Trades</a><a href="#league">League</a><a href="#schedule">Schedule</a><a href="#standings">Standings</a></div>
 ${analyst}
 <div class="card" id="lineup">${matchup}
 ${r.lineup_items.length ? `<p><a class="btn" href="/lineups?league=${r.league_id}">Set this lineup (${plural(r.lineup_items.length, "change")})</a></p>` : `<p><span class="tag good">${I.check.replace("<svg", '<svg style="width:14px;height:14px"')} lineup already set</span></p>`}
@@ -425,14 +431,14 @@ function blitzSimple(b, csrf, plan, flash, allMoves) {
   const n = plan.offers.length;
   const best = plan.offers.reduce((m, t) => Math.max(m, t.my_gain), 0);
   const head = n ? `${plural(n, "offer")} to ${plural(new Set(plan.offers.map((t) => t.with)).size, "manager")}` : "No new offers";
-  return layout("Recommended moves", `<h1>Recommended moves <span class="muted">${esc(r.league)}</span></h1>
+  return layout("Luna's moves", `<h1>Luna's moves <span class="muted">${esc(r.league)}</span></h1>
 ${flash ? flashBox(flash) : ""}
 <div class="card">
 <p class="headline" style="font-size:22px;font-weight:700;letter-spacing:-.02em;margin:0 0 6px">${head}${plan.moves.length ? ` and ${plural(plan.moves.length, "pickup")}` : ""}${plan.withdraw.length ? `, ${plural(plan.withdraw.length, "withdrawal")}` : ""}</p>
 <p class="lede">${n ? `Each offer helps on its own, and the set has been checked for every combination of yes and no: whichever managers accept, your lineup comes out ahead${plan.if_all_accepted != null ? ` (up to +${pts(best)} a week if one lands, about +${pts(plan.if_all_accepted)} if they all do)` : ""}, every slot stays filled and the roster stays within its limit. No player is offered twice and no manager gets two offers.` : "Nothing on the board is both good for you and likely to be accepted right now. Check back after waivers clear or when injuries move values."}</p>
 ${steps.length ? `<div class="group">${steps.map((x, i) => `<div class="row"><div class="badge sm"><i>${i + 1}</i></div><div class="main"><div class="t">${x.t}</div><div class="s">${x.s}</div></div></div>`).join("")}</div>` : ""}
 ${steps.length ? `<form method="post" action="/trades"><input type="hidden" name="csrf" value="${esc(csrf)}"><input type="hidden" name="league" value="${r.league_id}">
-<p style="margin-top:16px"><button class="btn big" type="submit">Do all of this on ESPN</button></p>
+<p style="margin-top:16px"><button class="btn big" type="submit">Let Luna do all of this on ESPN</button></p>
 <p class="stamp">Press once. Offers go to each manager separately; ESPN tells them and they accept or decline there. Claims only go through if you win them.</p></form>` : ""}
 </div>
 <details class="card"><summary style="cursor:pointer;font-weight:600">Adjust</summary>

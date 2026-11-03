@@ -35,7 +35,7 @@ test("dashboard and league page render", async () => {
   assert.match(h, /Test League/); assert.match(h, /Dead League/); assert.match(h, /Not renewed|Not started/);
   assert.match(h, /Set all lineups/); assert.match(h, /lineup change/); assert.match(h, /START RB C/); assert.match(h, /1 problem/);
   const l = await (await app.handle(req("/league/1", { cookie }))).text();
-  for (const s of ["Recommended lineup", "EMPTY", "nobody eligible", "Trade ideas", "Waiver watch", "League injury report", "Remaining schedule", "Standings", "covers D A's bye this week only", "TE FA", "Analyst's take", "/add\\?league=1&amp;player=", "Claim</a>"]) assert.match(l, new RegExp(s));
+  for (const s of ["Recommended lineup", "EMPTY", "nobody eligible", "Trade ideas", "Waiver watch", "League injury report", "Remaining schedule", "Standings", "covers D A's bye this week only", "TE FA", "Luna's take", "/add\\?league=1&amp;player=", "Claim</a>"]) assert.match(l, new RegExp(s));
   assert.match(h, /class="take"/);
   assert.ok(!l.includes("RB FA"));
   const dead = await app.handle(req("/league/2", { cookie }));
@@ -98,7 +98,7 @@ test("warm endpoint needs the key, fills the cache, sets lineups once and respec
   // Dashboard shows the automatic set, and the orphaned league is called out and can be hidden.
   const cookie = await login(app);
   const h = await (await app.handle(req("/", { cookie }))).text();
-  assert.match(h, /Set automatically/); assert.match(h, /never drafted|not renewed/i); assert.match(h, /name="action" value="hide"/);
+  assert.match(h, /Luna set this lineup/); assert.match(h, /never drafted|not renewed/i); assert.match(h, /name="action" value="hide"/);
   const csrf = h.match(/name="csrf" value="([0-9a-f]+)"/)[1];
   const hid = await app.handle(req("/hide", { method: "POST", cookie, body: form({ csrf, league: 2 }) }));
   assert.equal(hid.status, 302);
@@ -120,7 +120,7 @@ test("dashboard and league page carry the win chance, both projections, playoff 
   const h = await (await app.handle(req("/", { cookie }))).text();
   assert.match(h, /Win chance/); assert.match(h, /class="pct[ "]/); assert.match(h, /To do/); assert.match(h, /Review lineup|Set this lineup/);
   const l = await (await app.handle(req("/league/1", { cookie }))).text();
-  for (const s of ["Game plan", "Playoff odds", "Advisor", "Weakest spot|No weak position", "Remaining schedule", "win chance", "What owned means|share of ESPN leagues"]) assert.match(l, new RegExp(s));
+  for (const s of ["Luna's game plan", "Playoff odds", "Advisor", "Weakest spot|No weak position", "Remaining schedule", "win chance", "What owned means|share of ESPN leagues"]) assert.match(l, new RegExp(s));
   const b = await app.bundle(1);
   assert.ok(b.season.odds.playoff_odds >= 0 && b.season.odds.playoff_odds <= 100);
   assert.ok(b.season.plan.bullets.length >= 3); assert.equal(b.season.plan.source, "rules");
@@ -233,7 +233,7 @@ test("everything sent to ESPN is recorded and shown on the dashboard", async () 
   await app.savePrefs({ auto_trades: false, auto_fill_empty: false });
   const cookie = await login(app);
   let h = await (await app.handle(req("/", { cookie }))).text();
-  assert.match(h, /Nothing has been sent yet/);
+  assert.match(h, /Nothing yet\. When Luna/);
   const b = await app.bundle(1);
   const t = b.trades[0];
   const csrf = (await (await app.handle(req(`/trade?league=1&id=${t.id}`, { cookie }))).text()).match(/name="csrf" value="([0-9a-f]+)"/)[1];
@@ -246,7 +246,7 @@ test("everything sent to ESPN is recorded and shown on the dashboard", async () 
   assert.deepEqual(log.map((e) => e.kind), ["lineup", "lineup", "add", "trade"]);
   assert.equal(log[0].by, "auto"); assert.equal(log[1].by, "you"); assert.equal(log[3].with, t.with);
   h = await (await app.handle(req("/", { cookie }))).text();
-  assert.match(h, /Sent to ESPN/); assert.match(h, new RegExp(`Trade offer to ${t.with}`)); assert.match(h, /Added TE FA, dropped/); assert.match(h, /automatic/);
+  assert.match(h, /Luna's log/); assert.match(h, new RegExp(`Trade offer to ${t.with}`)); assert.match(h, /Added TE FA, dropped/); assert.match(h, /· Luna/);
 });
 
 test("recommended moves: one page, one button, sends the plan and logs each piece", async () => {
@@ -254,7 +254,7 @@ test("recommended moves: one page, one button, sends the plan and logs each piec
   const app = makeApp(posts);
   const cookie = await login(app);
   const page = await (await app.handle(req("/trades?league=1", { cookie }))).text();
-  assert.match(page, /Recommended moves/); assert.match(page, /Do all of this on ESPN/); assert.match(page, /checked for every combination/);
+  assert.match(page, /Luna's moves/); assert.match(page, /Let Luna do all of this on ESPN/); assert.match(page, /checked for every combination/);
   assert.match(page, /<summary[^>]*>Adjust<\/summary>/);
   const csrf = page.match(/name="csrf" value="([0-9a-f]+)"/)[1];
   const done = await (await app.handle(req("/trades", { method: "POST", cookie, body: form({ csrf, league: 1 }) }))).text();
@@ -441,7 +441,7 @@ test("per-league autopilot switch, automatic pickups with claims, and Run autopi
   // Run now from the dashboard.
   const cookie = await login(app);
   const h = await (await app.handle(req("/", { cookie }))).text();
-  assert.match(h, /Run autopilot now/);
+  assert.match(h, /Let Luna run now/);
   const csrf = h.match(/name="csrf" value="([0-9a-f]+)"/)[1];
   const r = await app.handle(req("/autopilot", { method: "POST", cookie, body: form({ csrf }) }));
   assert.equal(r.status, 302); assert.match(r.headers.get("location"), /ran=\d/);
