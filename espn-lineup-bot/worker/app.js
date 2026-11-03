@@ -43,7 +43,8 @@ export class App {
     const prefs = (await this.storage.get("prefs")) || {};
     s.automanage = prefs.automanage !== false;            // master switch: on unless switched off
     s.auto_lineup = prefs.auto_lineup !== false;          // on unless switched off
-    s.auto_fill_empty = prefs.auto_fill_empty === true;    // off unless switched on
+    s.auto_fill_empty = prefs.auto_fill_empty !== false;   // on unless switched off (real holes only, never bye cover)
+    s.auto_trades = prefs.auto_trades !== false;           // on unless switched off (robust plan only, with guardrails)
     s.hidden = Array.isArray(prefs.hidden) ? prefs.hidden : [];
     return s;
   }
@@ -205,6 +206,13 @@ export class App {
       const before = seen[t.id];
       if (before === "PENDING" && t.status !== "PENDING") {
         const what = { ACCEPTED: "accepted", EXECUTED: "accepted", REJECTED: "declined", CANCELED: "withdrawn", EXPIRED: "expired" }[t.status] || t.status.toLowerCase();
+        if (t.mine && (what === "declined" || what === "expired")) {
+          // Remember the package and the manager, so the autopilot does not nag.
+          const st = (await this.storage.get(`autotrade:${league.id}`)) || { declined: {}, cooldown: {}, offered: {} };
+          st.declined[[...t.give].sort().join("+") + ">" + [...t.get].sort().join("+")] = this.now();
+          st.cooldown[t.with_team_id] = this.now();
+          await this.storage.put(`autotrade:${league.id}`, st);
+        }
         await this.logActivity({ kind: "settled", league: league.name, league_id: league.id, week: league.currentWeek, ok: ["ACCEPTED", "EXECUTED"].includes(t.status), outcome: what,
           with: t.with, give: names(t.give, mine), get: names(t.get, byTeamId[t.with_team_id] || []), mine: t.mine, by: "espn", message: `${t.mine ? "Your offer to" : "The offer from"} ${t.with} was ${what}.` });
       }
@@ -530,7 +538,7 @@ export class App {
       const form = await request.formData();
       if (!(await this.checkCsrf(request, form))) return html(errorPage("Form expired. Go back and try again.", true), 400);
       if (form.get("prefs") === "1") {
-        await this.savePrefs({ automanage: form.get("automanage") === "1", auto_lineup: form.get("auto_lineup") === "1", auto_fill_empty: form.get("auto_fill_empty") === "1" });
+        await this.savePrefs({ automanage: form.get("automanage") === "1", auto_lineup: form.get("auto_lineup") === "1", auto_fill_empty: form.get("auto_fill_empty") === "1", auto_trades: form.get("auto_trades") === "1" });
         return redirect("/settings?prefs=saved");
       }
       const espn_s2 = (form.get("espn_s2") || "").trim(), swid = (form.get("swid") || "").trim();
@@ -596,8 +604,46 @@ export class App {
         acted = true;
       }
     }
+    if (s.auto_trades) { if (await this.autoTrades(b, s, log)) acted = true; }
     await this.storage.put(key, prev);
     if (acted) { this.mem.delete(`league:${b.league_id}`); await this.storage.delete(`league:${b.league_id}`); }
+    return acted;
+  }
+
+  /**
+   * Autopilot for trades. Withdraws our pending offers the engine now rates as likely declined, then sends the robust
+   * plan's offers, subject to: gain of at least AUTO_MIN_GAIN a week, at most AUTO_MAX_OPEN offers out per league,
+   * a package declined or expired in the last 7 days is not re-sent, and a manager who declined gets 48 hours of quiet.
+   */
+  async autoTrades(b, s, log) {
+    const AUTO_MIN_GAIN = 2.0, AUTO_MAX_OPEN = 3, WEEK = 7 * 86400e3, COOLDOWN = 48 * 3600e3;
+    const stKey = `autotrade:${b.league_id}`;
+    const st = (await this.storage.get(stKey)) || { declined: {}, cooldown: {}, offered: {} };
+    const plan = this.blitzPlan(b);
+    let acted = false, open = (b.pending || []).filter((t) => t.mine).length;
+    for (const p of plan.withdraw) {
+      const result = await this.espn.cancelTrade(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, p.id);
+      await this.logActivity({ kind: "withdraw", league: b.name, league_id: b.league_id, week: b.week, ok: result.ok, message: result.message, with: p.with, give: p.give_names, get: p.get_names, by: "auto" });
+      log({ kind: "withdraw", ok: result.ok, with: p.with, message: result.message });
+      if (result.ok) open--; acted = true;
+    }
+    for (const t of plan.offers) {
+      if (open >= AUTO_MAX_OPEN) break;
+      if (t.my_gain < AUTO_MIN_GAIN) continue;
+      const give = t.give.map((p) => p.player_id), get = t.get.map((p) => p.player_id);
+      if (give.some((x) => x == null) || get.some((x) => x == null)) continue;
+      const pkg = [...give].sort().join("+") + ">" + [...get].sort().join("+");
+      if (st.declined[pkg] && this.now() - st.declined[pkg] < WEEK) continue;
+      if (st.offered[pkg] && this.now() - st.offered[pkg] < WEEK) continue;
+      if (st.cooldown[t.with_team_id] && this.now() - st.cooldown[t.with_team_id] < COOLDOWN) continue;
+      const result = await this.espn.proposeTrade(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, b.week, t.with_team_id, give, get);
+      await this.logActivity({ kind: "trade", league: b.name, league_id: b.league_id, week: b.week, ok: result.ok, message: result.message, with: t.with, give: t.give_names, get: t.get_names, my_gain: t.my_gain, their_gain: t.their_gain, by: "auto" });
+      log({ kind: "trade", ok: result.ok, with: t.with, give: t.give_names, get: t.get_names, message: result.message });
+      st.offered[pkg] = this.now();
+      if (result.ok) open++;
+      acted = true;
+    }
+    await this.storage.put(stKey, st);
     return acted;
   }
 }

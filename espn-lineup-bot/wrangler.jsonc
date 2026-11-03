@@ -13,5 +13,6 @@
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Advisor"] }],
   // Pre-build every league and run automatic lineup management: Thursday, Saturday and Sunday at 12:00 UTC (8am ET),
   // plus a last pass before Thursday night (22:00 UTC, 6pm ET) and before the Sunday 1pm games (16:00 UTC, noon ET).
-  "triggers": { "crons": ["0 12 * * THU,SAT,SUN", "0 22 * * THU", "0 16 * * SUN"] }
+  // Plus every four hours for the autopilot (injury news, trade responses, waivers clearing).
+  "triggers": { "crons": ["0 12 * * THU,SAT,SUN", "0 22 * * THU", "0 16 * * SUN", "0 */4 * * *"] }
 }

@@ -144,6 +144,17 @@ pip install pytest && pytest tests   # Python CLI and Flask app (21 tests)
   week. Off switch in Settings. "Fill empty slots automatically" (off by default) adds the best free
   agent for a slot nobody on the roster can fill and drops the lowest-value bench player; it never
   places waiver claims.
+- **Autopilot (Automanage).** With the master switch on, the cron (every four hours plus the game-day
+  passes) rebuilds every league and then: sets the lineup to the latest recommendation unless you
+  changed it on ESPN this week; fills a real roster hole from free agency (never a claim, never bye
+  cover); withdraws our pending offers the engine now rates as likely declined; and sends the
+  recommended offers. Trade guardrails (`autoTrades` in `worker/app.js`): only the robust plan (safe
+  under every combination of acceptances), gain >= 2.0 a week, acceptable for the other side, star
+  protection, at most 3 offers out per league, a declined or expired package not re-sent for 7 days,
+  48 hours of quiet with a manager who declined. Accept/decline tracking feeds the next run. Each of
+  lineups, pickups and trades has its own sub-switch. Everything lands in the "Sent to ESPN" feed.
+- **Recommended moves** (`/trades?league=ID`): the same plan as a page with one button, "Do all of
+  this on ESPN"; "Adjust" exposes the tick boxes.
 - **Orphaned leagues.** A league that reached the season without a draft is shown as "Not renewed"
   with an explanation and a Hide button; hidden leagues can be shown again from Settings.
 - "Locked" is shown as a small lock, not a warning; byes are grey; amber is only for real uncertainty.

@@ -74,6 +74,7 @@ test("settings saves cookies to storage", async () => {
 test("warm endpoint needs the key, fills the cache, sets lineups once and respects overrides", async () => {
   const posts = [];
   const app = makeApp(posts);
+  await app.savePrefs({ auto_trades: false, auto_fill_empty: false });
   assert.equal((await app.handle(req("/__warm"))).status, 403);
   const warm = () => app.handle(new Request("https://advisor.internal/__warm", { headers: { "x-warm-key": "test-secret" } }));
   assert.equal(await (await warm()).text(), "warmed 2, auto-managed 1");
@@ -85,12 +86,12 @@ test("warm endpoint needs the key, fills the cache, sets lineups once and respec
   assert.equal(posts.filter((p) => p.kind === "lineup").length, 1);
   assert.equal((await app.storage.get("auto:1:9")).events[1].skipped, true);
   // Switched off: nothing is sent.
-  await app.savePrefs({ auto_lineup: false });
+  await app.savePrefs({ auto_lineup: false, auto_trades: false });
   const app2 = new App({ env: { APP_PASSWORD: "open-sesame", SECRET_KEY: "test-secret", ESPN_S2: "s2cookie", SWID: "{abc-123}" }, storage: app.storage, fetchFn: async () => { throw new Error("no network"); }, espn: fakeEspn({ posts }) });
   await app2.clearCache();
   assert.equal(await (await app2.handle(new Request("https://advisor.internal/__warm", { headers: { "x-warm-key": "test-secret" } }))).text(), "warmed 2, auto-managed 0");
   // Opt-in empty-slot fill: D FA is on waivers in the fixture, so nothing is added (claims are never automatic).
-  await app2.savePrefs({ auto_lineup: false, auto_fill_empty: true });
+  await app2.savePrefs({ auto_lineup: false, auto_fill_empty: true, auto_trades: false });
   await app2.handle(new Request("https://advisor.internal/__warm", { headers: { "x-warm-key": "test-secret" } }));
   assert.equal(posts.filter((p) => p.kind === "add").length, 0);
   // Dashboard shows the automatic set, and the orphaned league is called out and can be hidden.
@@ -228,6 +229,7 @@ test("Claude rewrite: counted per day, capped, switchable, and falls back on fai
 test("everything sent to ESPN is recorded and shown on the dashboard", async () => {
   const posts = [];
   const app = makeApp(posts);
+  await app.savePrefs({ auto_trades: false, auto_fill_empty: false });
   const cookie = await login(app);
   let h = await (await app.handle(req("/", { cookie }))).text();
   assert.match(h, /Nothing has been sent yet/);
@@ -332,4 +334,39 @@ test("Automanage master switch stops every automatic action", async () => {
   const cookie = await login(app);
   const sp = await (await app.handle(req("/settings", { cookie }))).text();
   assert.match(sp, /id="automanage" name="automanage" value="1">/); assert.ok(!/id="automanage" name="automanage" value="1" checked/.test(sp));
+});
+
+test("autopilot: withdraws the losing offer, sends the robust set once, backs off after a decline", async () => {
+  const posts = [];
+  const espn = fakeEspn({ posts });
+  let t = Date.UTC(2026, 10, 2, 12, 0, 0);
+  const app = new App({ env: { APP_PASSWORD: "open-sesame", SECRET_KEY: "test-secret", ESPN_S2: "s2cookie", SWID: "{abc-123}" }, storage: new FakeStorage(), fetchFn: async () => { throw new Error("no network"); }, espn, now: () => t });
+  await app.savePrefs({ auto_lineup: false, auto_fill_empty: false });
+  const warm = () => app.handle(new Request("https://advisor.internal/__warm", { headers: { "x-warm-key": "test-secret" } }));
+  await warm();
+  assert.deepEqual(posts.map((p) => p.kind), ["withdraw", "trade"], "withdraw RB B for D W, then offer the robust set");
+  const sent = posts[1]; assert.equal(sent.theirTeamId, 7);
+  const log = await app.activity();
+  assert.ok(log.some((e) => e.kind === "trade" && e.by === "auto") && log.some((e) => e.kind === "withdraw" && e.by === "auto"));
+  // Same day again: the package was already offered, nothing new goes out.
+  t += 3600e3; await warm();
+  assert.equal(posts.length, 2);
+  // The fixture's pending offer (now canceled) is not re-sent; the manager declined nothing, so no cooldown applies yet.
+  const st = await app.storage.get("autotrade:1");
+  assert.equal(Object.keys(st.offered).length, 1);
+  // Simulate the counterparty declining the offer the autopilot sent is not possible with a static fake; simulate a
+  // decline of the original pending offer instead and check the cooldown blocks new offers to that manager.
+  espn.tradeStatus = "PENDING"; // make it reappear...
+  await app.bundle(1, true);
+  espn.tradeStatus = "REJECTED"; // ...and get declined
+  await app.bundle(1, true);
+  const st2 = await app.storage.get("autotrade:1");
+  assert.ok(st2.cooldown[7], "Rival declined: cooldown recorded");
+  const before = posts.length;
+  t += 8 * 86400e3; // a week later the earlier package may be re-sent, but Rival's cooldown is 48h, long past
+  await warm();
+  assert.ok(posts.length > before, "after a week the robust set goes out again");
+  // Master switch off: nothing.
+  await app.savePrefs({ automanage: false });
+  const n = posts.length; t += 86400e3; await warm(); assert.equal(posts.length, n);
 });
