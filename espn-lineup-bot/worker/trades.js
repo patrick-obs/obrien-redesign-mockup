@@ -62,6 +62,8 @@ function slotOf(assignment, name) {
 export function proposeTrades(mine, others, slotCounts, opts = {}) {
   const minMyGain = opts.minMyGain ?? MIN_MY_GAIN, maxTheirLoss = opts.maxTheirLoss ?? MAX_THEIR_LOSS, maxAsk = opts.maxValueAsk ?? MAX_VALUE_ASK;
   const perTeam = opts.perTeam ?? PER_TEAM, perLeague = opts.perLeague ?? PER_LEAGUE;
+  // Star protection: your two most valuable players only leave in a deal that brings back someone at least as good.
+  const protect = new Set(opts.protectIds || mine.filter((p) => p.playerId != null).sort((a, b) => b.proj - a.proj).slice(0, 2).map((p) => p.playerId));
   const myBase = optimize(mine, slotCounts), baseMine = projectedTotal(myBase);
   const myPackages = packages(tradeable(mine));
   const ideas = [];
@@ -78,6 +80,8 @@ export function proposeTrades(mine, others, slotCounts, opts = {}) {
       const giveSum = sum(give), giveBest = Math.max(...give.map((p) => p.proj));
       for (const get of theirPackages) {
         if (!fair(give, get, giveSum, giveBest, maxAsk)) continue;
+        const star = give.find((p) => protect.has(p.playerId));
+        if (star && !get.some((p) => p.proj >= star.proj)) continue;
         const newMine = mine.filter((p) => !give.includes(p)).concat(get);
         const newTheirs = theirs.filter((p) => !get.includes(p)).concat(give);
         const myAfter = optimize(newMine, slotCounts), theirAfter = optimize(newTheirs, slotCounts);
@@ -122,6 +126,23 @@ export function proposeTrades(mine, others, slotCounts, opts = {}) {
   ideas.sort((x, y) => (y.my_gain - x.my_gain) || (y.their_gain - x.their_gain));
   return ideas.slice(0, perLeague);
 }
+
+/**
+ * Playoff strength of schedule for one player: the average rank of his weeks-15-to-17 opponents against his position
+ * (32 = softest). Returns null without data. `ratingsForPos` maps opponent pro-team id to rank.
+ */
+export function playoffSos(proTeamId, playoffWks, allSched, ratingsForPos) {
+  if (!proTeamId || !allSched?.[proTeamId] || !ratingsForPos) return null;
+  const ranks = [];
+  for (const w of playoffWks) {
+    const g = (allSched[proTeamId][String(w)] || [])[0]; if (!g) continue;
+    const opp = g.awayProTeamId === proTeamId ? g.homeProTeamId : g.awayProTeamId;
+    const r = ratingsForPos[String(opp)]; if (r) ranks.push(r);
+  }
+  return ranks.length ? Math.round((ranks.reduce((a, b) => a + b, 0) / ranks.length) * 10) / 10 : null;
+}
+/** Multiplier from playoff schedule, bounded to +/-5%, applied to the playoff share of a player's value. */
+export const sosFactor = (avgRank, playoffShare = 0.3) => avgRank == null ? 1 : 1 + ((avgRank - 16.5) / 16.5) * 0.05 * Math.min(1, playoffShare / 0.3);
 
 /** Score any package by the same lineup math as the board: what each side's best lineup gains per week. */
 export function evaluateTrade(mine, theirs, giveIds, getIds, slotCounts) {

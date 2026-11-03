@@ -2,7 +2,9 @@
 import { makePlayer, isStarting, effectiveProj, canPlay, optimize, diffLineup, warningsFor, projectedTotal, slotCountsFromLineup, NO_PLAY, SHAKY, BENCH_SLOTS } from "./optimizer.js";
 import { SLOT_IDS, FLEX_SLOTS, record, avgPf, standings, gamesPlayed } from "./espn.js";
 import { playerValue } from "./trades.js";
-import { winProbability } from "./season.js";
+import { winProbability, leagueSd } from "./season.js";
+import { contextFactor } from "./vegas.js";
+import { volatility, optimizeCeiling } from "./optimizer.js";
 
 export const SLOT_DISPLAY_ORDER = ["QB", "RB", "WR", "TE", "RB/WR/TE", "RB/WR", "WR/TE", "OP", "D/ST", "K"];
 const TROUBLE = new Set([...NO_PLAY, ...SHAKY]);
@@ -48,13 +50,17 @@ export function advisorProj(p) {
   if (season > 0) { base += 0.4 * season; w += 0.4; }
   base = base / w;
   if (p.oppRank) base *= 1 + ((p.oppRank - 16.5) / 16.5) * 0.08;
+  base *= contextFactor(p.ctx, p.position);
   if (p.status === "DOUBTFUL") base *= 0.25; else if (p.status === "QUESTIONABLE") base *= 0.9;
   return Math.round(base * 10) / 10;
 }
+const r1 = (x) => Math.round(x * 10) / 10;
 
 export function playerJson(p) {
   return { name: p.name, pos: p.position, team: p.proTeam, opp: p.opponent && p.opponent !== "None" ? p.opponent : "bye",
     opp_rank: p.oppRank, proj: p.proj, effective_proj: effectiveProj(p), our_proj: advisorProj(p), season_avg: p.seasonAvg || 0,
+    sd: volatility(p), floor: volatility(p) != null ? Math.max(0, r1(p.proj - volatility(p))) : null, ceiling: volatility(p) != null ? r1(p.proj + volatility(p)) : null,
+    implied: p.ctx?.implied ?? null, spread: p.ctx?.spread ?? null, line: p.ctx?.line || "", weather: p.ctx ? (p.ctx.indoor ? "indoor" : p.ctx.weather) : "", wet: !!p.ctx?.wet, windy: !!p.ctx?.windy,
     status: p.status, bye: p.bye, locked: p.locked, recent_avg: p.recentAvg, slot: p.slot, notes: fmtStatus(p), player_id: p.playerId };
 }
 const advisorTotal = (assignment) => Math.round(Object.values(assignment).flat().reduce((s, p) => s + advisorProj(p), 0) * 10) / 10;
@@ -127,12 +133,16 @@ export function planLineupItems(players, assignment) {
  * @param boxes output of espn.boxScores for `week`
  * @param faByPos {pos: [players]} for the positions from waiverThresholds (or null to skip)
  */
-export function buildReport(league, me, boxes, week, now, faByPos = null) {
+export function buildReport(league, me, boxes, week, now, faByPos = null, ctx = {}) {
   const box = boxes.find((b) => [b.home?.teamId, b.away?.teamId].includes(me.id));
   if (!box) throw new Error(`No matchup found for ${me.name} in week ${week} (bye week or playoffs?).`);
   const home = box.home?.teamId === me.id;
   const mySide = home ? box.home : box.away, oppSide = home ? box.away : box.home;
-  const mine = mySide.lineup.map(toPlayer), theirs = (oppSide?.lineup || []).map(toPlayer);
+  // Attach this week's game context (line, implied total, weather) to every player by pro team.
+  const vegas = ctx.vegas || {};
+  const toP = (bp) => { const p = toPlayer(bp); p.ctx = vegas[p.proTeamId] || null; return p; };
+  const mine = mySide.lineup.map(toP), theirs = (oppSide?.lineup || []).map(toP);
+  const weekSd = ctx.weekSd || leagueSd(league);
   const slotCounts = startingSlotCounts(league, mine);
   const order = slotOrderFor(slotCounts);
   const rec = optimize(mine, slotCounts);
@@ -148,7 +158,10 @@ export function buildReport(league, me, boxes, week, now, faByPos = null) {
   const myFinish = mySide.projected >= 0 ? mySide.projected : projectedTotal(current);
   const oppFinish = oppSide ? (oppSide.projected >= 0 ? oppSide.projected : projectedTotal(oppCurrent)) : null;
   const remaining = myFinish > 0 ? Math.max(0, Math.min(1, 1 - myScore / myFinish)) : 1;
-  const winProb = oppFinish == null ? null : winProbability(myFinish, oppFinish, remaining);
+  const winProb = oppFinish == null ? null : winProbability(myFinish, oppFinish, remaining, weekSd);
+  // Underdog? The ceiling lineup trades a little projection for upside.
+  const ceil = optimizeCeiling(mine, slotCounts);
+  const ceilKey = Object.values(ceil).flat().map((p) => p.name).sort().join("|"), recKey = Object.values(rec).flat().map((p) => p.name).sort().join("|");
 
   const rep = {
     league_id: league.id, league: league.name, season: league.season, week, current_week: league.currentWeek,
@@ -157,7 +170,9 @@ export function buildReport(league, me, boxes, week, now, faByPos = null) {
     opponent: opp ? opp.name : "bye", opponent_record: opp ? record(opp) : "", opponent_logo: opp ? opp.logo || "" : "",
     espn_projection: { me: mySide.projected, opponent: oppSide ? oppSide.projected : -1 },
     score: { me: myScore, opponent: oppScore }, projected_finish: { me: Math.round(myFinish * 10) / 10, opponent: oppFinish == null ? null : Math.round(oppFinish * 10) / 10 },
-    remaining_share: Math.round(remaining * 100) / 100, win_prob: winProb, live: mySide.projected >= 0 && myScore > 0,
+    remaining_share: Math.round(remaining * 100) / 100, win_prob: winProb, live: mySide.projected >= 0 && myScore > 0, week_sd: weekSd,
+    ceiling: { differs: ceilKey !== recKey, lineup_proj: projectedTotal(ceil), items: planLineupItems(mine, ceil), moves: ceilKey !== recKey ? diffLineup(mine, ceil) : [],
+      upside: r1(Object.values(ceil).flat().reduce((s, p) => s + (volatility(p) || 0), 0)), recommended_upside: r1(Object.values(rec).flat().reduce((s, p) => s + (volatility(p) || 0), 0)) },
     current_lineup_proj: projectedTotal(current), recommended_lineup_proj: projectedTotal(rec),
     opponent_current_proj: projectedTotal(oppCurrent),
     advisor: { me: advisorTotal(rec), me_as_set: advisorTotal(current), opponent: advisorTotal(oppRec), opponent_as_set: advisorTotal(oppCurrent) },

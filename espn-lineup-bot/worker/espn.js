@@ -208,6 +208,9 @@ export function parseBoxPlayer(data, season, week, proSched, ratings, now) {
     proTeam: PRO_TEAM[proTeamId] || "", opponent, oppRank, gameDate, recentAvg: recentAverage(stats, week),
     percentOwned: p.ownership?.percentOwned ?? null,
     seasonProjAvg: Number(stats[0]?.projected_avg_points || 0), seasonAvg: Number(stats[0]?.avg_points || 0),
+    // Points in each completed week this season (for volatility: ceiling and floor).
+    history: Object.entries(stats).filter(([wk, s]) => Number(wk) > 0 && Number(wk) < week && "points" in s).map(([, s]) => s.points),
+    proTeamId,
     // "FREEAGENT", "WAIVERS" or "ONTEAM"; decides whether an add is instant or a waiver claim.
     acquisition: data.status || ("lineupSlotId" in data ? "ONTEAM" : "FREEAGENT"),
   };

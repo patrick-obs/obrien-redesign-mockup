@@ -4,7 +4,9 @@ import * as espnMod from "./espn.js";
 import { buildReport, waiverThresholds } from "./report.js";
 import { playerValue, rosterPlayer, proposeTrades, blitzSet, evaluateTrade } from "./trades.js";
 import { analystTake, polishTake } from "./analyst.js";
-import { byeWeeks, horizonWeights, availability, simulateSeason, scheduleOutlook, positionalStrength, gamePlan } from "./season.js";
+import { byeWeeks, horizonWeights, availability, simulateSeason, scheduleOutlook, positionalStrength, gamePlan, leagueSd, playoffWeeks } from "./season.js";
+import { playoffSos, sosFactor } from "./trades.js";
+import { fetchScoreboard } from "./vegas.js";
 import { makeSession, verifySession, csrfFor, parseCookies, sessionCookie, clearSessionCookie, SESSION_COOKIE, timingSafeEqual } from "./auth.js";
 import { loginPage, errorPage, settingsPage, indexPage, leaguePage, lineupsPage, tradePage, addPage, blitzPage } from "./html.js";
 
@@ -97,9 +99,12 @@ export class App {
         this.espn.positionalRatings(f, c, s.season, leagueId, week),
       ]);
       const sched = this.espn.proScheduleForWeek(allSched, week);
+      // Game context for the week from ESPN's public scoreboard (no login). Optional: a failure just means no Vegas tilt.
+      const vegas = await this.cached(`vegas:${s.season}:${week}`, 3600, false, async () => { try { return await fetchScoreboard(f, s.season, week); } catch (e) { console.warn("scoreboard failed", e?.message); return {}; } });
+      const weekSd = leagueSd(league);
       const boxes = await this.espn.boxScores(f, c, league, week, sched, ratings, now);
       // Season context: playoff odds decide how much the playoff weeks count when valuing players.
-      const odds = simulateSeason(league, { sims: 1500, seed: leagueId });
+      const odds = simulateSeason(league, { sims: 1500, seed: leagueId, sd: weekSd });
       const myOdds = odds.by_team[me.id] || null;
       const contending = (myOdds?.playoff_odds ?? 50) >= 35;
       const weights = horizonWeights(league, week, contending);
@@ -107,7 +112,7 @@ export class App {
       const byes = byeWeeks(allSched, week + 1, league.finalScoringPeriod || 17);
       const abbrToId = Object.fromEntries(Object.entries(this.espn.PRO_TEAM || {}).map(([id, ab]) => [ab, Number(id)]));
       const byesFor = (abbr) => byes[abbrToId[abbr]] || [];
-      let rep = buildReport(league, me, boxes, week, now, null);
+      let rep = buildReport(league, me, boxes, week, now, null, { vegas, weekSd });
       // waivers: only the positions worth scanning
       const faByPos = {};
       const positions = Object.keys(rep.waiver_thresholds);
@@ -115,17 +120,21 @@ export class App {
         try { return await this.espn.freeAgents(f, c, league, week, pos, sched, ratings, now); } catch (e) { return { error: e.message }; }
       }));
       positions.forEach((pos, i) => { faByPos[pos] = results[i]; });
-      rep = buildReport(league, me, boxes, week, now, faByPos);
+      rep = buildReport(league, me, boxes, week, now, faByPos, { vegas, weekSd });
       // Trades and roster shape, valued over the rest of the season: weekly value times the share of the weighted
       // remaining weeks the player is available for (bye weeks removed, playoff weeks weighted by contention).
       let trades = [], strength = null, byesAhead = [], pending = [];
       try {
         const rosters = await this.espn.rosters(f, c, league);
+        const POS_ID = { QB: 1, RB: 2, WR: 3, TE: 4, K: 5, "D/ST": 16 };
+        const poWeeks = playoffWeeks(league);
+        const playoffShare = Object.entries(weights).filter(([k]) => poWeeks.includes(Number(k))).reduce((n, [, w]) => n + w, 0) / Math.max(1, Object.values(weights).reduce((a, b) => a + b, 0));
         const conv = (t) => (rosters[t.id] || []).map((p) => {
           const weekly = playerValue(p.seasonProjAvg, p.seasonAvg, this.espn.gamesPlayed(t));
           const pb = byesFor(p.proTeam), avail = availability(weights, pb);
-          const rp = rosterPlayer(p.name, p.position, p.eligible, p.status, Math.round(weekly * avail * 100) / 100, p.playerId, p.proTeam);
-          rp.weekly = weekly; rp.avail = avail; rp.byes = pb;
+          const sos = playoffSos(abbrToId[p.proTeam], poWeeks, allSched, ratings[String(POS_ID[p.position])]);
+          const rp = rosterPlayer(p.name, p.position, p.eligible, p.status, Math.round(weekly * avail * sosFactor(sos, playoffShare) * 100) / 100, p.playerId, p.proTeam);
+          rp.weekly = weekly; rp.avail = avail; rp.byes = pb; rp.playoff_sos = sos;
           return rp;
         });
         const mine = conv(me);
@@ -146,7 +155,7 @@ export class App {
           });
         } catch (e) { console.warn("pending trades failed", e?.message); }
       } catch (e) { console.warn("trades failed", e?.message); }
-      const outlook = scheduleOutlook(league, me);
+      const outlook = scheduleOutlook(league, me, weekSd);
       const plan = gamePlan({ report: rep, odds, outlook, strength, trades, weeksLeft, byesAhead });
       const problem_count = rep.warnings.filter((w) => /No eligible|BYE| is out|injury reserve|suspension/.test(w)).length;
       // The analyst's take: rules first, Claude's rewrite of the same facts when a key is configured and the daily cap allows.
@@ -298,10 +307,13 @@ export class App {
     const s = await this.settings();
     const form = request.method === "POST" ? await request.formData() : null;
     const only = Number((form && form.get("league")) || url.searchParams.get("league") || 0) || null;
+    // mode=ceiling swaps in the high-upside lineup for the chosen league (underdog weeks).
+    const ceiling = ((form && form.get("mode")) || url.searchParams.get("mode")) === "ceiling" && !!only;
     const leagues = (await this.leagues()).filter((lg) => !only || lg.league_id === only);
-    const bundles = (await Promise.all(leagues.map((lg) => this.bundle(lg.league_id)))).filter((b) => b.started);
+    let bundles = (await Promise.all(leagues.map((lg) => this.bundle(lg.league_id)))).filter((b) => b.started);
+    if (ceiling) bundles = bundles.map((b) => ({ ...b, report: { ...b.report, lineup_items: b.report.ceiling?.items || b.report.lineup_items, recommended_lineup_proj: b.report.ceiling?.lineup_proj ?? b.report.recommended_lineup_proj, ceiling_mode: true } }));
     const csrf = await this.csrf(request);
-    if (request.method !== "POST") return html(lineupsPage({ bundles, results: null, only, csrf }));
+    if (request.method !== "POST") return html(lineupsPage({ bundles, results: null, only, csrf, ceiling }));
     if (!(await this.checkCsrf(request, form))) return html(errorPage("Form expired. Go back and try again.", true), 400);
     const results = [];
     for (const b of bundles) {
@@ -422,6 +434,23 @@ export class App {
     return html(errorPage(result.ok ? `Withdrawn: ${p.give_names} for ${p.get_names} to ${p.with}.` : result.message, true), result.ok ? 200 : 502);
   }
 
+  /**
+   * FAAB bid suggestion (see RESEARCH.md): nothing for streaming D/ST or K; otherwise a share of the original budget
+   * from the edge and whether the slot is a real hole, scaled up as the season runs down (unspent budget is worthless),
+   * nudged just above a round number, capped by what is left.
+   */
+  suggestBid(b, pick) {
+    const r = b.report; if (r.budget_left == null) return null;
+    if (["D/ST", "K"].includes(pick.pos)) return 0;
+    const budget = r.acquisition?.budget || 100;
+    let pct = pick.fills_empty_slot && !pick.bye_cover ? 0.12 : Math.min(0.25, 0.04 + (pick.edge || 0) * 0.02);
+    const weeksLeft = b.season?.weeks_left || 8;
+    pct *= 1 + Math.max(0, (14 - weeksLeft) / 14) * 0.6;
+    let bid = Math.round(budget * pct);
+    if (bid > 0 && bid % 5 === 0) bid += 1;
+    return Math.max(0, Math.min(r.budget_left, bid));
+  }
+
   /** Preview, then submit, a free-agent add or waiver claim, dropping someone if the roster is full. */
   async add(request, url) {
     const s = await this.settings();
@@ -435,9 +464,10 @@ export class App {
     const r = b.report, candidates = r.drop_candidates || [];
     const dropId = get("drop") === "" ? (r.open_spots > 0 ? null : candidates[0]?.player_id ?? null) : Number(get("drop"));
     const drop = dropId == null ? null : candidates.find((c) => c.player_id === dropId) || null;
-    const bid = Math.max(0, Math.floor(Number(get("bid")) || 0));
+    const suggested = this.suggestBid(b, pick);
+    const bid = get("bid") === "" || get("bid") == null ? (suggested ?? 0) : Math.max(0, Math.floor(Number(get("bid")) || 0));
     const csrf = await this.csrf(request);
-    const state = { drop, bid, waiver: !!pick.on_waivers };
+    const state = { drop, bid, waiver: !!pick.on_waivers, suggested };
     if (request.method !== "POST") return html(addPage(b, pick, csrf, state));
     if (!(await this.checkCsrf(request, form))) return html(errorPage("Form expired. Go back and try again.", true), 400);
     if (dropId != null && !drop) return html(addPage(b, pick, csrf, { ...state, flash: "Pick a drop from the list." }));

@@ -127,6 +127,8 @@ label.row{cursor:pointer;font-weight:400;margin:0}
 .card.orphan{border:1px dashed var(--line);box-shadow:none;background:transparent}
 .pick{display:flex;gap:12px;align-items:flex-start;cursor:pointer}.pick>input{margin-top:16px;width:22px;height:22px;accent-color:var(--accent);flex:none}.pick .trade{flex:1}
 .pick-row{cursor:pointer}.pick-row>input{width:22px;height:22px;accent-color:var(--accent);flex:none;margin:0}
+.group.ceiling{margin:0 0 14px;background:var(--tint)}.group.ceiling .row{align-items:flex-start}.group.ceiling .move{background:var(--card);margin:6px 0 0}
+td .s{font-size:12px;color:var(--muted);line-height:1.2;margin-top:2px;white-space:nowrap}
 @media (max-width:640px){main{padding:16px 14px 28px}.card{padding:16px;border-radius:16px}h1{font-size:30px}h2{font-size:20px}.hero{padding:20px}.hero p{font-size:24px}.hero .btn.big{flex-basis:100%}header{padding:8px 12px}header .logo{height:32px}header nav a{padding:6px 8px;font-size:14px}.login .logo{height:120px}.swap{grid-template-columns:1fr}.swap .arrow{text-align:center}.swap .arrow svg{transform:rotate(90deg)}.matchup .big{font-size:32px}.seg{top:54px;margin:0 -14px 18px;padding:3px 14px;border-radius:0}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}html{scroll-behavior:auto}}`;
 
@@ -234,15 +236,16 @@ function lineupTable(r, lineup) {
   for (const slot of r.slot_order) {
     for (const p of lineup[slot] || []) {
       const bad = p.bye || ["OUT", "INJURY_RESERVE", "SUSPENSION"].includes(p.status);
-      rows.push(`<tr><td class="slot"><span>${esc(slot)}</span></td><td class="player who">${playerCell(p)}</td><td>${nfl(p.opp)}${rankChip(p.opp_rank)}</td>
-<td class="num proj">${pts(p.proj)}</td><td class="num ours">${p.our_proj != null ? pts(p.our_proj) : ""}</td><td class="num">${p.recent_avg != null ? pts(p.recent_avg) : ""}</td>
+      const game = p.implied != null ? `<div class="s">${p.line ? `${esc(p.line)} · ` : ""}implied ${pts(p.implied)}${p.weather && p.weather !== "indoor" ? ` · ${esc(p.weather)}` : p.weather === "indoor" ? " · dome" : ""}${p.wet || p.windy ? ` <span class="tag warn">weather</span>` : ""}</div>` : "";
+      rows.push(`<tr><td class="slot"><span>${esc(slot)}</span></td><td class="player who">${playerCell(p)}</td><td><div>${nfl(p.opp)}${rankChip(p.opp_rank)}</div>${game}</td>
+<td class="num proj">${pts(p.proj)}</td><td class="num ours">${p.our_proj != null ? pts(p.our_proj) : ""}</td><td class="num">${p.recent_avg != null ? pts(p.recent_avg) : ""}${p.sd != null ? `<div class="s">${pts(p.floor)}–${pts(p.ceiling)}</div>` : ""}</td>
 <td>${statusTag(p)}</td></tr>`);
     }
     for (let i = (lineup[slot] || []).length; i < (r.slot_counts[slot] || 0); i++) {
       rows.push(`<tr><td class="slot"><span>${esc(slot)}</span></td><td class="player bad">EMPTY</td><td></td><td class="num proj">0.0</td><td></td><td></td><td><span class="tag bad">nobody eligible</span></td></tr>`);
     }
   }
-  return `<div class="tablewrap"><table><tr><th>Slot</th><th>Player</th><th>Opponent</th><th class="num" title="ESPN's projection">ESPN</th><th class="num" title="Our projection: ESPN blended with his last three games and season average, adjusted for the opponent">Advisor</th><th class="num">Last 3</th><th>Status</th></tr>${rows.join("")}</table></div>`;
+  return `<div class="tablewrap"><table><tr><th>Slot</th><th>Player</th><th>Opponent</th><th class="num" title="ESPN's projection">ESPN</th><th class="num" title="Our projection: ESPN blended with his last three games and season average, adjusted for the opponent">Advisor</th><th class="num" title="Average of the last three games; the range underneath is projection minus/plus his weekly volatility">Last 3 · range</th><th>Status</th></tr>${rows.join("")}</table></div>`;
 }
 
 const teamRow = (name, logo, sub, trail, href) => `<${href ? `a href="${href}" class="row link"` : 'div class="row"'}>${badge(name, logo)}<div class="main"><div class="t">${esc(name)}</div>${sub ? `<div class="s">${sub}</div>` : ""}</div><div class="trail">${trail || ""}${href ? I.chev : ""}</div></${href ? "a" : "div"}>`;
@@ -363,6 +366,7 @@ ${sn.byes_ahead && sn.byes_ahead.length ? `<h3>Byes still to come</h3><div class
 ${analyst}
 <div class="card" id="lineup">${matchup}
 ${r.lineup_items.length ? `<p><a class="btn" href="/lineups?league=${r.league_id}">Set this lineup (${plural(r.lineup_items.length, "change")})</a></p>` : `<p><span class="tag good">${I.check.replace("<svg", '<svg style="width:14px;height:14px"')} lineup already set</span></p>`}
+${r.ceiling && r.ceiling.differs && r.win_prob != null && r.win_prob < 0.4 ? `<div class="group ceiling"><div class="row"><div class="main"><div class="t">Underdog this week: the ceiling lineup</div><div class="s">Starts the higher-variance players. Projects ${pts(r.ceiling.lineup_proj)} instead of ${pts(r.recommended_lineup_proj)}, but with more upside (${pts(r.ceiling.upside)} vs ${pts(r.ceiling.recommended_upside)} points of weekly swing). When you need to outscore a stronger team, variance is your friend.</div>${r.ceiling.moves.map(move).join("")}</div><div class="trail"><a class="btn ghost small" href="/lineups?league=${r.league_id}&amp;mode=ceiling">Set ceiling lineup</a></div></div></div>` : ""}
 <h2>Recommended lineup</h2>${lineupTable(r, r.recommended)}
 <h2>Changes to make</h2>${r.moves.length ? r.moves.map(move).join("") : `<p class="good">None. Your lineup already matches the projections.</p>`}
 ${r.warnings.length ? `<h2>Watch out</h2>${r.warnings.map(note).join("")}` : ""}
@@ -404,7 +408,7 @@ function pendingCard(r, t, csrf) {
   const give = t.give && typeof t.give[0] === "object" ? t.give : t.give_names.split(" + ").map((name) => ({ name }));
   const get = t.get && typeof t.get[0] === "object" ? t.get : t.get_names.split(" + ").map((name) => ({ name }));
   return `<div class="trade pending"><div class="head">${badge(t.with, t.with_logo, "sm")}<span class="nm">${esc(t.with)}</span><span class="tag tint">${t.mine ? "your offer" : "their offer"}</span><span class="tag">${esc(t.kind)}</span>
-<span class="gain">${t.my_gain != null ? `<span class="tag ${t.my_gain > 0 ? "good" : "bad"}">you ${t.my_gain >= 0 ? "+" : ""}${pts(Math.abs(t.my_gain)) === "n/a" ? "" : (t.my_gain >= 0 ? "+" : "-") + Math.abs(t.my_gain).toFixed(1)}/wk</span><span class="tag ${t.their_gain >= 0 ? "good" : "warn"}">them ${t.their_gain >= 0 ? "+" : "-"}${Math.abs(t.their_gain).toFixed(1)}/wk</span>` : `<span class="tag">not scored</span>`}</span></div>
+<span class="gain">${t.my_gain != null ? `<span class="tag ${t.my_gain > 0 ? "good" : "bad"}">you ${t.my_gain >= 0 ? "+" : "-"}${Math.abs(t.my_gain).toFixed(1)}/wk</span><span class="tag ${t.their_gain >= 0 ? "good" : "warn"}">them ${t.their_gain >= 0 ? "+" : "-"}${Math.abs(t.their_gain).toFixed(1)}/wk</span>` : `<span class="tag">not scored</span>`}</span></div>
 <div class="swap">${side("You send", give)}<div class="arrow">${I.swap}</div>${side("You get", get)}</div>
 <p class="stamp">${t.expires_at ? `Expires ${esc(fmtExp(t.expires_at))} ET.` : "Pending on ESPN."}${t.mine ? ` Withdraw it from the trade blitz page, or on ESPN.` : " Accept or decline it on ESPN."}</p></div>`;
 }
@@ -463,7 +467,7 @@ ${tradeCard(r, t, false)}
 
 // ------------------------------------------------------------------ add / claim
 
-export function addPage(b, pick, csrf, { drop = null, bid = 0, waiver = false, flash = null, result = null } = {}) {
+export function addPage(b, pick, csrf, { drop = null, bid = 0, waiver = false, flash = null, result = null, suggested = null } = {}) {
   const r = b.report;
   const who = `<strong>${esc(pick.name)}</strong> <span class="muted">${esc(pick.pos)} ${esc(pick.team)}, ${pts(pick.proj)} proj this week</span>`;
   const pickRow = `<div class="group"><div class="row">${avatar(pick)}<div class="main"><div class="t">${esc(pick.name)}</div><div class="s">${esc(pick.pos)} · ${esc(pick.team)}${pick.opp ? ` · vs ${esc(pick.opp)}` : ""}${pick.owned != null ? ` · owned in ${Math.round(pick.owned)}% of leagues` : ""}</div></div><div class="trail"><span class="v">${pts(pick.proj)}</span><span class="m">proj</span></div></div>
@@ -488,7 +492,7 @@ ${waiver ? ` He is on waivers, so this is a claim: ESPN processes it on the leag
 ${pickRow}
 <form method="post" action="/add"><input type="hidden" name="csrf" value="${esc(csrf)}"><input type="hidden" name="league" value="${r.league_id}"><input type="hidden" name="player" value="${pick.player_id}">
 <label for="drop">Drop${needDrop ? " (your roster is full)" : ""}</label><select id="drop" name="drop" onchange="this.form.requestSubmit?this.form.submit():0">${options}</select>
-${waiver && r.budget_left != null ? `<label for="bid">Bid (you have $${r.budget_left} left)</label><input type="text" id="bid" name="bid" value="${bid}" inputmode="numeric" pattern="[0-9]*">` : ""}
+${waiver && r.budget_left != null ? `<label for="bid">Bid (you have $${r.budget_left} left)</label><input type="text" id="bid" name="bid" value="${bid}" inputmode="numeric" pattern="[0-9]*">${suggested != null ? `<p class="stamp">Suggested: $${suggested}. ${["D/ST", "K"].includes(pick.pos) ? "Never spend budget on a streaming defense or kicker; $0 or wait for free agency." : "Priced by how much he adds and how much season is left; unspent budget scores nothing, so bids rise as the season runs down. Just above a round number beats the crowd."}</p>` : ""}` : ""}
 <p><button class="btn big" type="submit">${waiver ? "Submit claim" : "Add"}${drop ? ` and drop ${esc(drop.name)}` : ""}</button></p></form>
 <p class="stamp">Press once. Dropping a player sends him to waivers on ESPN; there is no undo from here.</p></div>
 <p><a class="btn ghost" href="/league/${r.league_id}#waivers">Back</a></p>`, { authed: true });
@@ -496,15 +500,15 @@ ${waiver && r.budget_left != null ? `<label for="bid">Bid (you have $${r.budget_
 
 // ------------------------------------------------------------------ lineups
 
-export function lineupsPage({ bundles, results, only, csrf }) {
+export function lineupsPage({ bundles, results, only, csrf, ceiling = false }) {
   if (!results) {
     const any = bundles.reduce((n, b) => n + b.report.lineup_items.length, 0);
-    const body = `<h1>Set ${only ? "this lineup" : "all lineups"}</h1>
+    const body = `<h1>Set ${ceiling ? "the ceiling lineup" : only ? "this lineup" : "all lineups"}</h1>${ceiling ? `<p class="lede">High-upside version for an underdog week: a little less projection, more chance of a big score.</p>` : ""}
 <p class="lede">This is exactly what will be sent to ESPN. Only slot changes: nobody is added or dropped, locked players are left alone, and IR is never touched.</p>
 ${bundles.map((b) => `<div class="card"><div class="lg-head">${badge(b.report.team, b.report.logo)}<div class="main"><div class="t">${esc(b.name)}</div><div class="s">week ${b.week}</div></div></div>
 ${b.report.lineup_items.length ? `<div class="group">${b.report.lineup_items.map((it) => `<div class="row">${avatar({ name: it.name, player_id: it.playerId, pos: "", team: "" }, "sm")}<div class="main"><div class="t">${esc(it.name)}</div></div><div class="trail"><span class="m">${esc(it.from)}</span>${I.chev}<span class="v">${esc(it.to)}</span></div></div>`).join("")}</div>
 <p class="stamp">Projected: ${pts(b.report.current_lineup_proj)} &rarr; <strong>${pts(b.report.recommended_lineup_proj)}</strong></p>` : `<p class="good">Already set. No changes.</p>`}</div>`).join("")}
-${any ? `<form method="post" action="/lineups"><input type="hidden" name="csrf" value="${esc(csrf)}">${only ? `<input type="hidden" name="league" value="${esc(only)}">` : ""}
+${any ? `<form method="post" action="/lineups"><input type="hidden" name="csrf" value="${esc(csrf)}">${only ? `<input type="hidden" name="league" value="${esc(only)}">` : ""}${ceiling ? `<input type="hidden" name="mode" value="ceiling">` : ""}
 <button class="btn big" type="submit">Confirm and send to ESPN</button></form>
 <p class="stamp">Press once. ESPN has no undo for this; if you change your mind, change the lineup back on ESPN or re-run after projections move.</p>` : `<p><a class="btn ghost" href="/">Back</a></p>`}`;
     return layout("Set lineups", body, { authed: true });

@@ -11,16 +11,29 @@ export const erf = (x) => {
 };
 export const normalCdf = (z) => 0.5 * (1 + erf(z / Math.SQRT2));
 
-/** Weekly fantasy scores vary by roughly this many points around their projection. */
+/** Weekly fantasy scores vary by roughly this many points around their projection (fallback when a league has too few games). */
 export const WEEK_SD = 24;
+
+/** This league's own weekly scoring spread: pooled standard deviation of every team's scores around its mean, clamped to a sane range. */
+export function leagueSd(league) {
+  let ss = 0, n = 0;
+  for (const t of league.teams || []) {
+    const sc = (t.scores || []).filter((x, i) => ["W", "L", "T"].includes((t.outcomes || [])[i]) && x > 0);
+    if (sc.length < 3) continue;
+    const m = sc.reduce((a, b) => a + b, 0) / sc.length;
+    for (const x of sc) ss += (x - m) ** 2; n += sc.length - 1;
+  }
+  if (n < 8) return WEEK_SD;
+  return Math.round(Math.max(14, Math.min(30, Math.sqrt(ss / n))) * 10) / 10;
+}
 
 /**
  * Chance of winning this matchup given both sides' projected finals and how much of the week is still to be played
  * (1 before kickoff, 0 when every game is final). Returns 0..1.
  */
-export function winProbability(myProj, oppProj, remainingShare = 1) {
+export function winProbability(myProj, oppProj, remainingShare = 1, weekSd = WEEK_SD) {
   if (!(myProj >= 0) || !(oppProj >= 0)) return null;
-  const sd = Math.max(1.5, WEEK_SD * Math.sqrt(Math.max(0, Math.min(1, remainingShare))));
+  const sd = Math.max(1.5, weekSd * Math.sqrt(Math.max(0, Math.min(1, remainingShare))));
   return Math.round(normalCdf((myProj - oppProj) / sd) * 1000) / 1000;
 }
 

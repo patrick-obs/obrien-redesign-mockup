@@ -13,6 +13,7 @@ export function makePlayer(p) {
     proTeam: p.proTeam || "", opponent: p.opponent || "", oppRank: p.oppRank || 0,
     recentAvg: p.recentAvg ?? null, percentOwned: p.percentOwned ?? null, playerId: p.playerId ?? null,
     seasonProjAvg: Number(p.seasonProjAvg || 0), seasonAvg: Number(p.seasonAvg || 0), acquisition: p.acquisition || "",
+    history: Array.isArray(p.history) ? p.history : [], proTeamId: p.proTeamId || 0, ctx: p.ctx || null,
   };
 }
 
@@ -88,6 +89,22 @@ export function warningsFor(players, assignment, slotCounts) {
     else if (SHAKY.has(p.status)) out.push(`${p.name} (${slot}) is ${p.status.toLowerCase()}. Check status before kickoff.`);
   }
   return out;
+}
+
+/** Sample standard deviation of a player's weekly points; null with fewer than three games. */
+export function volatility(p) {
+  const h = (p.history || []).filter((x) => typeof x === "number");
+  if (h.length < 3) return null;
+  const m = h.reduce((a, b) => a + b, 0) / h.length;
+  return Math.round(Math.sqrt(h.reduce((a, b) => a + (b - m) ** 2, 0) / (h.length - 1)) * 10) / 10;
+}
+/** The lineup that maximises upside: projection plus a share of each player's volatility. Used when you are the underdog. */
+export function optimizeCeiling(players, slotCounts, k = 0.6) {
+  const boosted = players.map((p) => { const sd = volatility(p); return sd == null || !canPlay(p) ? p : { ...p, proj: Math.round((p.proj + k * sd) * 10) / 10 }; });
+  const a = optimize(boosted, slotCounts);
+  // Map back to the original player objects so callers compare by identity/name.
+  const byName = Object.fromEntries(players.map((p) => [p.name, p]));
+  return Object.fromEntries(Object.entries(a).map(([s, ps]) => [s, ps.map((p) => byName[p.name])]));
 }
 
 export function projectedTotal(assignment) {
