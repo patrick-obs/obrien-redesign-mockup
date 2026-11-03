@@ -160,7 +160,10 @@ export class App {
       // Players in any pending offer must never be dropped (it would void the offer).
       let protectedIds = [];
       try { if (this.espn.tradeTransactions) protectedIds = (await this.espn.tradeTransactions(f, c, league, me.id)).filter((t) => t.status === "PENDING").flatMap((t) => [...t.give, ...t.get]); } catch (e) { console.warn("protected ids failed", e?.message); }
-      const ctx = { vegas, weekSd, protectedIds, rosterLineup };
+      // Ownership share per player (the matchup view carries none): a player rostered nearly everywhere is never a drop.
+      let rosters = null, ownership = {};
+      try { rosters = await this.espn.rosters(f, c, league); for (const ps of Object.values(rosters)) for (const p of ps) if (p.percentOwned != null) ownership[p.playerId] = p.percentOwned; } catch (e) { console.warn("rosters failed", e?.message); }
+      const ctx = { vegas, weekSd, protectedIds, rosterLineup, ownership };
       let rep = buildReport(league, me, boxes, week, now, null, ctx);
       // waivers: only the positions worth scanning
       const faByPos = {};
@@ -177,7 +180,7 @@ export class App {
       // remaining weeks the player is available for (bye weeks removed, playoff weeks weighted by contention).
       let trades = [], strength = null, byesAhead = [], pending = [], rosterPlayers = null;
       try {
-        const rosters = await this.espn.rosters(f, c, league);
+        if (!rosters) rosters = await this.espn.rosters(f, c, league);
         const POS_ID = { QB: 1, RB: 2, WR: 3, TE: 4, K: 5, "D/ST": 16 };
         const poWeeks = playoffWeeks(league);
         const playoffShare = Object.entries(weights).filter(([k]) => poWeeks.includes(Number(k))).reduce((n, [, w]) => n + w, 0) / Math.max(1, Object.values(weights).reduce((a, b) => a + b, 0));

@@ -567,6 +567,11 @@ test("drops never touch a core asset: a player rostered everywhere, or a top res
   const assignment = { WR: lineup.filter((p) => p.name === "WR A") };
   const withStar = lineup.map((p) => p.name === "TE B" ? { ...p, percentOwned: 99.5 } : p);
   const out = dropCandidates(withStar, assignment, 8);
+  // ownership can also arrive from the roster view, and an injured starter-calibre player is a hold
+  const viaMap = dropCandidates(lineup.map((p) => p.name === "TE B" ? { ...p, percentOwned: null } : p), assignment, 8, new Set(), { [lineup.find((p) => p.name === "TE B").playerId]: 97 });
+  assert.equal(viaMap.find((c) => c.name === "TE B").core, true);
+  const hurt = dropCandidates(lineup.map((p) => p.name === "TE B" ? { ...p, status: "OUT", seasonProjAvg: 14, seasonAvg: 3 } : p), assignment, 8);
+  assert.equal(hurt.find((c) => c.name === "TE B").safe, false); assert.match(hurt.find((c) => c.name === "TE B").reason, /14-a-week player when healthy, out/);
   const teb = out.find((c) => c.name === "TE B");
   assert.equal(teb.core, true); assert.equal(teb.safe, false); assert.match(teb.reason, /rostered in 100% of leagues|rostered in 99% of leagues/);
   assert.ok(out.findIndex((c) => c.name === "TE B") > out.findIndex((c) => c.safe), "safe drops come first");

@@ -104,7 +104,7 @@ export function waiverWatch(thresholds, mine, faByPos) {
  * Who to drop to make room for an add: cheapest rest-of-season value first, never IR, never a locked player.
  * Recommended starters are listed last and flagged, so the default pick is always a bench player.
  */
-export function dropCandidates(players, assignment, games, protectedIds = new Set()) {
+export function dropCandidates(players, assignment, games, protectedIds = new Set(), ownership = {}) {
   const starters = new Set(Object.values(assignment).flat().map((p) => p.name));
   const starterCount = Object.values(assignment).flat().length;
   // Core assets: a player nearly every league rosters, or one of your most valuable players for the rest of the season.
@@ -112,13 +112,17 @@ export function dropCandidates(players, assignment, games, protectedIds = new Se
   const val = (p) => playerValue(p.seasonProjAvg, p.seasonAvg, games);
   const values = players.filter((p) => p.slot !== "IR").map(val).sort((a, b) => b - a);
   const cut = values[starterCount] ?? 0; // the (starters + 1)th best value: anyone strictly above it is core
-  const core = (p) => (p.percentOwned ?? 0) >= 95 || (val(p) >= 10 && val(p) > cut); // starter-calibre and among your best
+  const owned = (p) => p.percentOwned ?? ownership[p.playerId] ?? null;
+  // Three ways to be core: rostered nearly everywhere; starter-calibre and among your best; or an injured player whose
+  // healthy projection is starter-calibre (his season average collapsed because he missed games, not because he is bad).
+  const hurt = (p) => ["OUT", "DOUBTFUL", "INJURY_RESERVE"].includes(p.status) && Number(p.seasonProjAvg || 0) >= 10;
+  const core = (p) => (owned(p) ?? 0) >= 95 || (val(p) >= 10 && val(p) > cut) || hurt(p);
   return players
     .filter((p) => p.slot !== "IR" && !p.locked && p.playerId != null && !protectedIds.has(p.playerId))
     .map((p) => ({ player_id: p.playerId, name: p.name, pos: p.position, team: p.proTeam, slot: p.slot, starter: starters.has(p.name), core: core(p),
-      safe: !starters.has(p.name) && !core(p), owned: p.percentOwned ?? null,
+      safe: !starters.has(p.name) && !core(p), owned: owned(p),
       value: playerValue(p.seasonProjAvg, p.seasonAvg, games), notes: fmtStatus(p),
-      reason: starters.has(p.name) ? "recommended starter" : core(p) ? `${(p.percentOwned ?? 0) >= 95 ? `rostered in ${Math.round(p.percentOwned)}% of leagues` : "one of your most valuable players"}${!canPlay(p) ? `, ${p.bye ? "on bye" : p.status.replace(/_/g, " ").toLowerCase()}` : ""}: hold, do not drop`
+      reason: starters.has(p.name) ? "recommended starter" : core(p) ? `${(owned(p) ?? 0) >= 95 ? `rostered in ${Math.round(owned(p))}% of leagues` : hurt(p) ? `a ${Number(p.seasonProjAvg).toFixed(0)}-a-week player when healthy` : "one of your most valuable players"}${!canPlay(p) || p.status === "DOUBTFUL" ? `, ${p.bye ? "on bye" : p.status.replace(/_/g, " ").toLowerCase()}` : ""}: hold, do not drop`
         : !canPlay(p) ? (p.bye ? "on bye this week" : p.status.replace(/_/g, " ").toLowerCase()) : "lowest rest-of-season value on your bench" }))
     .sort((a, b) => (a.starter - b.starter) || (a.core - b.core) || (a.value - b.value));
 }
@@ -198,7 +202,7 @@ export function buildReport(league, me, boxes, week, now, faByPos = null, ctx = 
     opponent_lineup: Object.fromEntries(order.map((s) => [s, (oppRec[s] || []).map(playerJson)])),
     opponent_best_proj: projectedTotal(oppRec), opponent_issues: lineupProblems(theirs, slotCounts),
     waiver_thresholds: thresholds, waivers: faByPos ? waiverWatch(thresholds, mine, faByPos) : {},
-    drop_candidates: dropCandidates(mine, rec, gamesPlayed(me), new Set(ctx.protectedIds || [])),
+    drop_candidates: dropCandidates(mine, rec, gamesPlayed(me), new Set(ctx.protectedIds || []), ctx.ownership || {}),
     no_matchup: noMatchup,
     // A healthy player parked in IR makes ESPN refuse every other move until he is taken off.
     ir_blockers: mine.filter((p) => p.slot === "IR" && !["INJURY_RESERVE", "OUT", "SUSPENSION", "DOUBTFUL"].includes(p.status)).map((p) => ({ name: p.name, player_id: p.playerId, status: p.status })),

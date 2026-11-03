@@ -288,7 +288,8 @@ export async function rosters(fetchFn, cookies, league) {
         if (s.statSourceId === 0) avg = s.appliedAverage || 0; else projAvg = s.appliedAverage || 0;
       }
       return { playerId: p.id, name: p.fullName, position: playerPosition(p), eligible: (p.eligibleSlots || []).map((s) => SLOT_LABEL[s]).filter(Boolean),
-        status: normStatus(p.injuryStatus || e.injuryStatus), proTeam: PRO_TEAM[p.proTeamId] || "", seasonProjAvg: projAvg, seasonAvg: avg };
+        status: normStatus(p.injuryStatus || e.injuryStatus), proTeam: PRO_TEAM[p.proTeamId] || "", seasonProjAvg: projAvg, seasonAvg: avg,
+        percentOwned: p.ownership?.percentOwned ?? null };
     });
   }
   return out;
