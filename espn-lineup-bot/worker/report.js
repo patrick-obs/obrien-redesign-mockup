@@ -116,7 +116,7 @@ export function dropCandidates(players, assignment, games, protectedIds = new Se
   // Three ways to be core: rostered nearly everywhere; starter-calibre and among your best; or an injured player whose
   // healthy projection is starter-calibre (his season average collapsed because he missed games, not because he is bad).
   const hurt = (p) => ["OUT", "DOUBTFUL", "INJURY_RESERVE"].includes(p.status) && Number(p.seasonProjAvg || 0) >= 10;
-  const core = (p) => (owned(p) ?? 0) >= 95 || (val(p) >= 10 && val(p) > cut) || hurt(p);
+  const core = (p) => (owned(p) ?? 0) >= 90 || (val(p) >= 10 && val(p) > cut) || hurt(p);
   return players
     .filter((p) => p.slot !== "IR" && !p.locked && p.playerId != null && !protectedIds.has(p.playerId))
     .map((p) => ({ player_id: p.playerId, name: p.name, pos: p.position, team: p.proTeam, slot: p.slot, starter: starters.has(p.name), core: core(p),

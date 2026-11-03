@@ -161,8 +161,17 @@ export class App {
       let protectedIds = [];
       try { if (this.espn.tradeTransactions) protectedIds = (await this.espn.tradeTransactions(f, c, league, me.id)).filter((t) => t.status === "PENDING").flatMap((t) => [...t.give, ...t.get]); } catch (e) { console.warn("protected ids failed", e?.message); }
       // Ownership share per player (the matchup view carries none): a player rostered nearly everywhere is never a drop.
+      // The matchup view carries no season averages or ownership, so every rest-of-season value guard would compare
+      // zeros; take them from the roster view and attach them to the box-score players before the report is built.
       let rosters = null, ownership = {};
-      try { rosters = await this.espn.rosters(f, c, league); for (const ps of Object.values(rosters)) for (const p of ps) if (p.percentOwned != null) ownership[p.playerId] = p.percentOwned; } catch (e) { console.warn("rosters failed", e?.message); }
+      try {
+        rosters = await this.espn.rosters(f, c, league);
+        const info = {};
+        for (const ps of Object.values(rosters)) for (const p of ps) { info[p.playerId] = p; if (p.percentOwned != null) ownership[p.playerId] = p.percentOwned; }
+        const enrich = (p) => { const i = info[p.playerId]; if (!i) return; if (!(p.seasonProjAvg > 0)) p.seasonProjAvg = i.seasonProjAvg || 0; if (!(p.seasonAvg > 0)) p.seasonAvg = i.seasonAvg || 0; if (p.percentOwned == null) p.percentOwned = i.percentOwned; };
+        for (const bx of boxes) for (const side of [bx.home, bx.away]) for (const p of side?.lineup || []) enrich(p);
+        for (const p of rosterLineup) enrich(p);
+      } catch (e) { console.warn("rosters failed", e?.message); }
       const ctx = { vegas, weekSd, protectedIds, rosterLineup, ownership };
       let rep = buildReport(league, me, boxes, week, now, null, ctx);
       // waivers: only the positions worth scanning
