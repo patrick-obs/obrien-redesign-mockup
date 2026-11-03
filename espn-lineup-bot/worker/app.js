@@ -722,8 +722,9 @@ export class App {
     if (!drop && r.open_spots <= 0) return html(addPage(b, pick, csrf, { ...state, flash: "Your roster is full, so you have to drop someone to add him." }));
     if (r.budget_left != null && bid > r.budget_left) return html(addPage(b, pick, csrf, { ...state, flash: `You only have $${r.budget_left} of waiver budget left.` }));
     const result = await this.espn.addPlayer(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, b.current_week,
-      { addId: pick.player_id, dropId: drop ? drop.player_id : null, waiver: !!pick.on_waivers, bid });
-    await this.logActivity({ kind: pick.on_waivers ? "claim" : "add", league: b.name, league_id: b.league_id, week: b.week, ok: result.ok, message: result.message, add: pick.name, drop: drop ? drop.name : null, bid: pick.on_waivers ? bid : null, by: "you" });
+      { addId: pick.player_id, dropId: drop ? drop.player_id : null, waiver: !!pick.on_waivers, bid, fallbackBid: suggested ?? 0 });
+    const kind = pick.on_waivers || result.claimed ? "claim" : "add";
+    await this.logActivity({ kind, league: b.name, league_id: b.league_id, week: b.week, ok: result.ok, message: result.message, add: pick.name, drop: drop ? drop.name : null, bid: kind === "claim" ? (result.claimed ? suggested ?? 0 : bid) : null, by: "you" });
     await this.clearCache();
     return html(addPage(b, pick, csrf, { ...state, result }));
   }
@@ -833,13 +834,14 @@ export class App {
         if (claimed.has(m.player_id) || (prev.failed?.[m.player_id] || 0) >= 3) continue;
         if (!m.drop && r.open_spots <= 0) continue;
         if (m.drop && inOffers.has(m.drop.player_id)) continue; // never drop a player who is in an offer
-        const bid = m.on_waivers ? (this.suggestBid(b, m) ?? 0) : 0;
-        const result = await this.espn.addPlayer(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, b.current_week, { addId: m.player_id, dropId: m.drop ? m.drop.player_id : null, waiver: !!m.on_waivers, bid });
+        const suggested = this.suggestBid(b, m) ?? 0, bid = m.on_waivers ? suggested : 0;
+        const result = await this.espn.addPlayer(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, b.current_week, { addId: m.player_id, dropId: m.drop ? m.drop.player_id : null, waiver: !!m.on_waivers, bid, fallbackBid: suggested });
+        const kind = m.on_waivers || result.claimed ? "claim" : "add", bidUsed = result.claimed ? suggested : bid;
         // A refused add is not "done": it may be tried again next pass, but not forever.
         if (result.ok) claimed.add(m.player_id); else { prev.failed = prev.failed || {}; prev.failed[m.player_id] = (prev.failed[m.player_id] || 0) + 1; }
         made++;
-        log({ kind: m.on_waivers ? "claim" : "add", ok: result.ok, message: result.message, add: m.name, drop: m.drop ? m.drop.name : null });
-        await this.logActivity({ kind: m.on_waivers ? "claim" : "add", league: b.name, league_id: b.league_id, week: b.week, ok: result.ok, message: result.message, add: m.name, drop: m.drop ? m.drop.name : null, bid: m.on_waivers ? bid : null, by: "auto" });
+        log({ kind, ok: result.ok, message: result.message, add: m.name, drop: m.drop ? m.drop.name : null });
+        await this.logActivity({ kind, league: b.name, league_id: b.league_id, week: b.week, ok: result.ok, message: result.message, add: m.name, drop: m.drop ? m.drop.name : null, bid: kind === "claim" ? bidUsed : null, by: "auto" });
         acted = true;
       }
       prev.claimed = [...claimed];

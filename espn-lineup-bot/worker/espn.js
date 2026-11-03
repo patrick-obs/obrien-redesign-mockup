@@ -412,7 +412,7 @@ export async function addPlayer(fetchFn, cookies, season, leagueId, teamId, week
   // Early in the week ESPN holds recently dropped players (and, in many leagues, the whole pool) on waivers: an add
   // comes back "is not a free agent". Then the right move is the same add as a claim.
   if (!r.ok && !opts.waiver && /not a free agent/i.test(r.message || "")) {
-    const c = await postTransaction(fetchFn, cookies, season, leagueId, buildAddTransaction(teamId, cookies.swid, week, { ...opts, waiver: true }), claimMsg + " (He was on waivers, so this went in as a claim.)");
+    const c = await postTransaction(fetchFn, cookies, season, leagueId, buildAddTransaction(teamId, cookies.swid, week, { ...opts, waiver: true, bid: opts.fallbackBid ?? opts.bid ?? 0 }), claimMsg + " (He was on waivers, so this went in as a claim.)");
     return c.ok ? { ...c, claimed: true } : { ...c, message: `${r.message}; as a claim: ${c.message}` };
   }
   return r;

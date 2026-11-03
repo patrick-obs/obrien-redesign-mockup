@@ -92,6 +92,20 @@ Sources: [RotoBaller playoff schedules](https://www.rotoballer.com/best-fantasy-
   next week. Late in the week, think about next week. (`bye_cover`)
 - A trade that leaves one quarterback should say which week that quarterback's bye is.
 - Never auto-add via a waiver claim; never auto-drop a recommended starter.
+- Never drop a core asset for a streamer: a player rostered in 90%+ of leagues, one of your best by rest-of-season
+  value, or an injured player whose healthy projection is starter-calibre (his season average collapsed because he
+  missed games). On 2026-11-03 the engine tried to drop an out-injured A.J. Brown (95% rostered, 15.8 a game when
+  healthy) for a waiver running back because the matchup view carries no season values and every guard compared zeros.
+- A drop must be worth less for the rest of the season than the add.
+- Star protection works on raw weekly value, both ways: a bye or a hard playoff schedule never turns your best player
+  into a bargain, and the other manager's two best starters are not asked for without an equal player or a clear
+  overpay in depth.
+- An offer that leaves the other manager behind on paper is not sent automatically, and never crowds a sendable one
+  out of the recommended set.
+- Early in the week ESPN holds recently dropped players on waivers: an add refused as "not a free agent" goes in again
+  as a claim.
+- A refused add is not "done for the week"; it is tried again next pass (up to three times).
+- An offer cancelled by hand on ESPN means "not this one": package memory and manager cooldown apply as for a decline.
 
 ## Writes: the shapes ESPN's own client sends
 
