@@ -298,16 +298,37 @@ export async function rosters(fetchFn, cookies, league) {
 export async function tradeTransactions(fetchFn, cookies, league, teamId) {
   const d = await getJson(fetchFn, `${leagueUrl(league.season, league.id)}?view=mTransactions2`, cookies);
   const out = [];
-  for (const t of d.transactions || []) {
-    if (t.type !== "TRADE_PROPOSAL") continue;
+  const rows = d.transactions || [];
+  // ESPN never changes a proposal's own row: a withdrawal is a second TRADE_PROPOSAL row with executionType CANCEL, a
+  // decline is a TRADE_DECLINE row, an acceptance a TRADE_ACCEPT row (and a PROCESS one when the players move), each
+  // naming the proposal through relatedTransactionId. Fold those into one status per proposal.
+  const verdict = {};
+  const raise = (id, st) => { if ((STATUS_RANK[st] ?? 0) > (STATUS_RANK[verdict[id]] ?? 0)) verdict[id] = st; };
+  for (const t of rows) {
+    const rel = t.relatedTransactionId; if (!rel) continue;
+    if (t.type === "TRADE_PROPOSAL" && t.executionType === "CANCEL") raise(rel, "CANCELED");
+    else if (t.type === "TRADE_DECLINE") raise(rel, "REJECTED");
+    else if (t.type === "TRADE_ACCEPT") raise(rel, t.executionType === "PROCESS" || t.status === "EXECUTED" ? "EXECUTED" : "ACCEPTED");
+    else if (t.type === "TRADE_VETO" && t.status === "EXECUTED") raise(rel, "VETOED");
+  }
+  const now = Date.now();
+  for (const t of rows) {
+    if (t.type !== "TRADE_PROPOSAL" || t.executionType === "CANCEL") continue;
     const items = (t.items || []).filter((i) => i.type === "TRADE");
     if (!items.some((i) => i.fromTeamId === teamId || i.toTeamId === teamId)) continue;
     const otherId = items.map((i) => (i.fromTeamId === teamId ? i.toTeamId : i.fromTeamId)).find((x) => x !== teamId);
     out.push({ id: t.id, proposed_by: t.teamId, mine: t.teamId === teamId, with_team_id: otherId, with: league.byId[otherId]?.name || `Team ${otherId}`, with_logo: league.byId[otherId]?.logo || "",
       give: items.filter((i) => i.fromTeamId === teamId).map((i) => i.playerId), get: items.filter((i) => i.toTeamId === teamId).map((i) => i.playerId),
-      proposed_at: t.proposedDate || null, expires_at: t.expirationDate || null, status: t.status || "PENDING" });
+      proposed_at: t.proposedDate || null, expires_at: t.expirationDate || null, status: foldStatus(t, verdict[t.id], now) });
   }
   return out;
+}
+const STATUS_RANK = { PENDING: 0, ACCEPTED: 1, REJECTED: 2, CANCELED: 2, EXPIRED: 2, VETOED: 3, EXECUTED: 4 };
+function foldStatus(t, related, now) {
+  const own = t.status || "PENDING";
+  let st = (STATUS_RANK[related] ?? -1) > (STATUS_RANK[own] ?? 0) ? related : own;
+  if (st === "PENDING" && t.expirationDate && Number(t.expirationDate) < now) st = "EXPIRED";
+  return st;
 }
 /** Just the pending ones. */
 export async function pendingTrades(fetchFn, cookies, league, teamId) {
@@ -315,57 +336,32 @@ export async function pendingTrades(fetchFn, cookies, league, teamId) {
 }
 
 /**
- * Withdraw (cancel) a trade proposal. ESPN's own client updates the transaction with status CANCELED; the exact shape is
- * unofficial, so the response is returned verbatim for the page to show.
+ * Trade actions, in the shapes ESPN's own web client sends (read from its bundle and confirmed by a live capture of a
+ * withdrawal; see RESEARCH.md "Writes"). Every one is a POST to the transactions collection that names the offer through
+ * relatedTransactionId; scoringPeriodId must be ESPN's current period or it answers 409.
  */
-/** Accept or decline an offer another manager sent us. Same unofficial shape as withdrawing; the reply is shown verbatim. */
-/**
- * ESPN's shape for changing a trade proposal is unofficial and undocumented; try the plausible calls in turn and
- * report which one worked (or every status seen) so the next run and the activity feed are honest about it.
- */
-async function tradeAction(fetchFn, cookies, season, leagueId, teamId, txId, attempts, okMessage) {
-  const base = `${WRITE}${season}/segments/0/leagues/${leagueId}/transactions`;
-  const headers = { Cookie: cookieHeader(cookies), "User-Agent": UA, "Content-Type": "application/json" };
-  const seen = [];
-  for (const a of attempts) {
-    const r = await fetchFn(base + a.path, { method: a.method, headers, body: a.body ? JSON.stringify(a.body) : undefined });
-    const text = await r.text(); let resp; try { resp = JSON.parse(text); } catch { resp = text.slice(0, 300); }
-    if (r.status >= 200 && r.status < 300) return { ok: true, status: r.status, message: `${okMessage} (${a.method} ${a.path || "/"})`, response: resp, used: a };
-    seen.push(`${a.method} ${a.path || "/"} → ${r.status}`);
-    if (![404, 405, 400].includes(r.status)) return { ok: false, status: r.status, message: errorMessage(resp, r.status) + ` [${seen.join("; ")}]`, response: resp };
-  }
-  return { ok: false, status: 405, message: `ESPN accepted none of the known calls for this [${seen.join("; ")}]. Do it on ESPN by hand.` };
+export function buildCancelTransaction(teamId, swid, week, txId) {
+  return { isLeagueManager: false, teamId, type: "TRADE_PROPOSAL", memberId: swid, scoringPeriodId: week, executionType: "CANCEL", relatedTransactionId: txId };
 }
-
-// On 2026-11-02 ESPN answered the POST-to-collection shape with a 409 "can only be executed in the current scoring
-// period" once DELETE (405) and /cancel (404) had failed, so that shape goes first and carries the current week.
-export async function respondTrade(fetchFn, cookies, season, leagueId, teamId, txId, accept, week = null) {
-  const status = accept ? "ACCEPTED" : "REJECTED", exec = accept ? "ACCEPT" : "REJECT";
-  const body = { isLeagueManager: false, id: txId, teamId, type: "TRADE_PROPOSAL", executionType: exec, memberId: cookies.swid, relatedTransactionId: txId };
-  if (week) body.scoringPeriodId = week;
-  return tradeAction(fetchFn, cookies, season, leagueId, teamId, txId, [
-    { method: "POST", path: "", body },
-    { method: "POST", path: `/${txId}/${accept ? "accept" : "reject"}`, body: { teamId, memberId: cookies.swid, scoringPeriodId: week || undefined } },
-    { method: "PUT", path: `/${txId}`, body: { id: txId, teamId, status, memberId: cookies.swid } },
-    { method: "PATCH", path: `/${txId}`, body: { status } },
-  ], accept ? "Offer accepted." : "Offer declined.");
+export function buildRespondTransaction(teamId, swid, week, txId, accept, dropIds = []) {
+  const tx = { isLeagueManager: false, teamId, type: accept ? "TRADE_ACCEPT" : "TRADE_DECLINE", memberId: swid, scoringPeriodId: week, executionType: "EXECUTE", relatedTransactionId: txId };
+  if (accept && dropIds.length) tx.items = dropIds.map((playerId) => ({ playerId, type: "DROP", fromTeamId: teamId }));
+  return tx;
 }
-
-export async function cancelTrade(fetchFn, cookies, season, leagueId, teamId, txId, week = null) {
-  const body = { isLeagueManager: false, id: txId, teamId, type: "TRADE_PROPOSAL", executionType: "CANCEL", memberId: cookies.swid, relatedTransactionId: txId };
-  if (week) body.scoringPeriodId = week;
-  return tradeAction(fetchFn, cookies, season, leagueId, teamId, txId, [
-    { method: "POST", path: "", body },
-    { method: "DELETE", path: `/${txId}` },
-    { method: "POST", path: `/${txId}/cancel`, body: { teamId, memberId: cookies.swid, scoringPeriodId: week || undefined } },
-    { method: "PATCH", path: `/${txId}`, body: { status: "CANCELED" } },
-  ], "Offer withdrawn.");
+export async function respondTrade(fetchFn, cookies, season, leagueId, teamId, txId, accept, week) {
+  if (!week) return { ok: false, status: 0, message: "Cannot answer the offer without the league's current week." };
+  return postTransaction(fetchFn, cookies, season, leagueId, buildRespondTransaction(teamId, cookies.swid, week, txId, accept),
+    accept ? "Offer accepted. ESPN runs its review period before the players move." : "Offer declined.");
+}
+export async function cancelTrade(fetchFn, cookies, season, leagueId, teamId, txId, week) {
+  if (!week) return { ok: false, status: 0, message: "Cannot withdraw the offer without the league's current week." };
+  return postTransaction(fetchFn, cookies, season, leagueId, buildCancelTransaction(teamId, cookies.swid, week, txId), "Offer withdrawn.");
 }
 
 // ------------------------------------------------------------------ writes
 
-export function buildLineupTransaction(teamId, swid, week, items) {
-  return { isLeagueManager: false, teamId, type: "ROSTER", memberId: swid, scoringPeriodId: week, executionType: "EXECUTE",
+export function buildLineupTransaction(teamId, swid, week, items, future = false) {
+  return { isLeagueManager: false, teamId, type: future ? "FUTURE_ROSTER" : "ROSTER", memberId: swid, scoringPeriodId: week, executionType: "EXECUTE",
     items: items.map((it) => ({ playerId: it.playerId, type: "LINEUP", fromLineupSlotId: it.fromLineupSlotId, toLineupSlotId: it.toLineupSlotId })) };
 }
 
@@ -396,9 +392,11 @@ async function postTransaction(fetchFn, cookies, season, leagueId, body, okMessa
   return { ok, status: r.status, message: ok ? okMessage : errorMessage(resp, r.status), response: resp };
 }
 
-export async function applyLineup(fetchFn, cookies, season, leagueId, teamId, week, items) {
+/** `currentWeek` is ESPN's current scoring period; a lineup for a later week goes as FUTURE_ROSTER, as ESPN's client sends it. */
+export async function applyLineup(fetchFn, cookies, season, leagueId, teamId, week, items, currentWeek = null) {
   if (!items.length) return { ok: true, status: 0, message: "No changes needed." };
-  return postTransaction(fetchFn, cookies, season, leagueId, buildLineupTransaction(teamId, cookies.swid, week, items), "Lineup set.");
+  const future = !!currentWeek && week > currentWeek;
+  return postTransaction(fetchFn, cookies, season, leagueId, buildLineupTransaction(teamId, cookies.swid, week, items, future), future ? `Lineup set for week ${week}.` : "Lineup set.");
 }
 
 export async function proposeTrade(fetchFn, cookies, season, leagueId, myTeamId, week, theirTeamId, giveIds, getIds) {

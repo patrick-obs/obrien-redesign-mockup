@@ -92,3 +92,32 @@ Sources: [RotoBaller playoff schedules](https://www.rotoballer.com/best-fantasy-
   next week. Late in the week, think about next week. (`bye_cover`)
 - A trade that leaves one quarterback should say which week that quarterback's bye is.
 - Never auto-add via a waiver claim; never auto-drop a recommended starter.
+
+## Writes: the shapes ESPN's own client sends
+
+Every roster, waiver and trade action is one `POST` to
+`lm-api-writes.fantasy.espn.com/apis/v3/games/ffl/seasons/{season}/segments/0/leagues/{id}/transactions/` with the
+envelope `{ isLeagueManager: false, teamId, type, memberId: SWID, scoringPeriodId, executionType, items?, relatedTransactionId? }`.
+`scoringPeriodId` must be the league's current period (`status.latestScoringPeriod`) or ESPN answers 409
+"Transaction type can only be executed in the current scoring period"; the one exception is `FUTURE_ROSTER`, where it is
+the target week.
+
+| Action | `type` | `executionType` | Notes | Status |
+|---|---|---|---|---|
+| Lineup, this week | `ROSTER` | `EXECUTE` | `LINEUP` items with from/to slot ids | confirmed live (ours) |
+| Lineup, a later week | `FUTURE_ROSTER` | `EXECUTE` | same items, `scoringPeriodId` = that week | bundle + live records (benchboss) |
+| Add / claim | `FREEAGENT` / `WAIVER` | `EXECUTE` | `ADD` and `DROP` items, `bidAmount` on claims | confirmed live (ours) |
+| Propose a trade | `TRADE_PROPOSAL` | `EXECUTE` | `TRADE` items with fromTeamId/toTeamId | confirmed live (ours) |
+| Withdraw my offer | `TRADE_PROPOSAL` | `CANCEL` | `relatedTransactionId` = the offer, no items | live capture, 200 (jwulff) |
+| Accept an offer | `TRADE_ACCEPT` | `EXECUTE` | `relatedTransactionId`; `DROP` items only to make room | bundle + live records |
+| Decline an offer | `TRADE_DECLINE` | `EXECUTE` | `relatedTransactionId`, optional `comment` | bundle + live records |
+
+What the log (`mTransactions2`) then shows: the proposal's own row stays `PENDING`; the withdrawal, decline and
+acceptance are separate rows that point at it through `relatedTransactionId` (acceptance twice: the manager's
+`TRADE_ACCEPT`, then the server's `TRADE_ACCEPT` with `executionType: PROCESS` when the players move). `espn.js`
+`tradeTransactions` folds those into one status per offer. Calls ESPN does not accept: `DELETE /transactions/{id}` (405),
+`POST /transactions/{id}/cancel` (404), `PUT`/`PATCH /transactions/{id}` (405).
+
+Sources: [jwulff/fantasy-sports, brief 07 and the captured t2-cancel request](https://github.com/jwulff/fantasy-sports/blob/main/docs/research/07-espn-trade-surface.md),
+[ValeQRamos/benchboss, writes reconstructed from ESPN's kona bundle](https://github.com/ValeQRamos/benchboss/blob/main/docs/api/04-writes-transactions.md),
+[jessie-red/ff-manager, captured proposal and bundle-read acceptTrade](https://github.com/jessie-red/ff-manager/blob/main/src/espn/transactions.ts).

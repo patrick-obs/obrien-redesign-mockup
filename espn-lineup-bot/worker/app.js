@@ -414,7 +414,7 @@ export class App {
     const results = [];
     for (const b of bundles) {
       const items = b.report.lineup_items;
-      const result = await this.espn.applyLineup(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, b.week, items);
+      const result = await this.espn.applyLineup(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, b.week, items, b.current_week);
       results.push({ name: b.name, items, result });
       if (items.length) await this.logActivity({ kind: "lineup", league: b.name, league_id: b.league_id, week: b.week, ok: result.ok, message: result.message, changes: items.length, items: items.map((it) => `${it.name} ${it.from}→${it.to}`), by: "you" });
     }
@@ -764,7 +764,7 @@ export class App {
       const overridden = prev.target && Object.entries(prev.target).some(([name, slot]) => name in slots && slots[name] !== slot);
       if (overridden) log({ kind: "lineup", skipped: true, message: "Left alone: the lineup was changed on ESPN after the last automatic set." });
       else {
-        const result = await this.espn.applyLineup(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, b.week, r.lineup_items);
+        const result = await this.espn.applyLineup(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, b.week, r.lineup_items, b.current_week);
         prev.target = { ...slots }; for (const it of r.lineup_items) prev.target[it.name] = it.to;
         log({ kind: "lineup", ok: result.ok, changes: r.lineup_items.length, message: result.message, items: r.lineup_items.map((it) => `${it.name} ${it.from}→${it.to}`) });
         await this.logActivity({ kind: "lineup", league: b.name, league_id: b.league_id, week: b.week, ok: result.ok, message: result.message, changes: r.lineup_items.length, items: r.lineup_items.map((it) => `${it.name} ${it.from}→${it.to}`), by: "auto" });
