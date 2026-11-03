@@ -405,8 +405,16 @@ export async function proposeTrade(fetchFn, cookies, season, leagueId, myTeamId,
 }
 
 export async function addPlayer(fetchFn, cookies, season, leagueId, teamId, week, opts) {
-  const msg = opts.waiver ? "Waiver claim submitted. ESPN processes claims on the league's waiver schedule; check ESPN for the result." : "Player added to your roster.";
-  return postTransaction(fetchFn, cookies, season, leagueId, buildAddTransaction(teamId, cookies.swid, week, opts), msg);
+  const claimMsg = "Waiver claim submitted. ESPN processes claims on the league's waiver schedule; check ESPN for the result.";
+  const msg = opts.waiver ? claimMsg : "Player added to your roster.";
+  const r = await postTransaction(fetchFn, cookies, season, leagueId, buildAddTransaction(teamId, cookies.swid, week, opts), msg);
+  // Early in the week ESPN holds recently dropped players (and, in many leagues, the whole pool) on waivers: an add
+  // comes back "is not a free agent". Then the right move is the same add as a claim.
+  if (!r.ok && !opts.waiver && /not a free agent/i.test(r.message || "")) {
+    const c = await postTransaction(fetchFn, cookies, season, leagueId, buildAddTransaction(teamId, cookies.swid, week, { ...opts, waiver: true }), claimMsg + " (He was on waivers, so this went in as a claim.)");
+    return c.ok ? { ...c, claimed: true } : { ...c, message: `${r.message}; as a claim: ${c.message}` };
+  }
+  return r;
 }
 
 function errorMessage(body, status) {

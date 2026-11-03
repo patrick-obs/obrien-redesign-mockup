@@ -106,12 +106,21 @@ export function waiverWatch(thresholds, mine, faByPos) {
  */
 export function dropCandidates(players, assignment, games, protectedIds = new Set()) {
   const starters = new Set(Object.values(assignment).flat().map((p) => p.name));
+  const starterCount = Object.values(assignment).flat().length;
+  // Core assets: a player nearly every league rosters, or one of your most valuable players for the rest of the season.
+  // An injured one belongs on IR or on the bench, never on waivers for a streamer; a seasoned manager holds him.
+  const val = (p) => playerValue(p.seasonProjAvg, p.seasonAvg, games);
+  const values = players.filter((p) => p.slot !== "IR").map(val).sort((a, b) => b - a);
+  const cut = values[starterCount] ?? 0; // the (starters + 1)th best value: anyone strictly above it is core
+  const core = (p) => (p.percentOwned ?? 0) >= 95 || (val(p) >= 10 && val(p) > cut); // starter-calibre and among your best
   return players
     .filter((p) => p.slot !== "IR" && !p.locked && p.playerId != null && !protectedIds.has(p.playerId))
-    .map((p) => ({ player_id: p.playerId, name: p.name, pos: p.position, team: p.proTeam, slot: p.slot, starter: starters.has(p.name),
+    .map((p) => ({ player_id: p.playerId, name: p.name, pos: p.position, team: p.proTeam, slot: p.slot, starter: starters.has(p.name), core: core(p),
+      safe: !starters.has(p.name) && !core(p), owned: p.percentOwned ?? null,
       value: playerValue(p.seasonProjAvg, p.seasonAvg, games), notes: fmtStatus(p),
-      reason: !canPlay(p) ? (p.bye ? "on bye this week" : p.status.replace(/_/g, " ").toLowerCase()) : starters.has(p.name) ? "recommended starter" : "lowest rest-of-season value on your bench" }))
-    .sort((a, b) => (a.starter - b.starter) || (a.value - b.value));
+      reason: starters.has(p.name) ? "recommended starter" : core(p) ? `${(p.percentOwned ?? 0) >= 95 ? `rostered in ${Math.round(p.percentOwned)}% of leagues` : "one of your most valuable players"}${!canPlay(p) ? `, ${p.bye ? "on bye" : p.status.replace(/_/g, " ").toLowerCase()}` : ""}: hold, do not drop`
+        : !canPlay(p) ? (p.bye ? "on bye this week" : p.status.replace(/_/g, " ").toLowerCase()) : "lowest rest-of-season value on your bench" }))
+    .sort((a, b) => (a.starter - b.starter) || (a.core - b.core) || (a.value - b.value));
 }
 
 /** Slot moves that turn the current lineup into the recommended one. Never locked players, never IR, never add/drop. */

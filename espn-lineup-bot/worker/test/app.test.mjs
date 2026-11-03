@@ -553,3 +553,42 @@ test("the lineups page still reviews a lineup that is already set", async () => 
   const page = await (await app.handle(req("/lineups?league=1", { cookie }))).text();
   assert.match(page, /Already set/); assert.match(page, /win chance/); assert.match(page, /Bench:/); assert.match(page, /QB A/);
 });
+
+test("drops never touch a core asset: a player rostered everywhere, or a top rest-of-season value, is held even when out", async () => {
+  const espn = fakeEspn();
+  const app = new App({ env: { APP_PASSWORD: "open-sesame", SECRET_KEY: "test-secret", ESPN_S2: "s2cookie", SWID: "{abc-123}" }, storage: new FakeStorage(), fetchFn: async () => { throw new Error("no network"); }, espn, now: () => NOW });
+  const b = await app.bundle(1);
+  const cands = b.report.drop_candidates;
+  assert.ok(cands.length);
+  for (const c of cands) { assert.equal(typeof c.safe, "boolean"); if (c.starter) assert.equal(c.safe, false); }
+  // a bench player everybody rosters is flagged core and sorted after the safe ones
+  const lineup = fakeBoxes(fakeLeague(1))[0].away.lineup;
+  const { dropCandidates } = await import("../report.js");
+  const assignment = { WR: lineup.filter((p) => p.name === "WR A") };
+  const withStar = lineup.map((p) => p.name === "TE B" ? { ...p, percentOwned: 99.5 } : p);
+  const out = dropCandidates(withStar, assignment, 8);
+  const teb = out.find((c) => c.name === "TE B");
+  assert.equal(teb.core, true); assert.equal(teb.safe, false); assert.match(teb.reason, /rostered in 100% of leagues|rostered in 99% of leagues/);
+  assert.ok(out.findIndex((c) => c.name === "TE B") > out.findIndex((c) => c.safe), "safe drops come first");
+});
+
+test("autopilot never offers a trade that leaves the other manager behind on paper", async () => {
+  const posts = [];
+  const espn = fakeEspn({ posts });
+  const app = new App({ env: { APP_PASSWORD: "open-sesame", SECRET_KEY: "test-secret", ESPN_S2: "s2cookie", SWID: "{abc-123}" }, storage: new FakeStorage(), fetchFn: async () => { throw new Error("no network"); }, espn, now: () => NOW });
+  await app.savePrefs({ automanage: true, auto_trades: true, auto_lineup: false, auto_fill_empty: false });
+  const s = await app.settings();
+  const b = await app.bundle(1);
+  const plan = app.blitzPlan(b);
+  app.blitzPlan = () => ({ ...plan, withdraw: [], moves: [], offers: plan.offers.map((t) => ({ ...t, my_gain: 5, their_gain: -0.3 })) });
+  await app.autoTrades(b, s, () => {});
+  assert.equal(posts.filter((p) => p.kind === "trade").length, 0, "nothing sent when they come out behind");
+});
+
+test("an add refused as 'not a free agent' is resent as a waiver claim", async () => {
+  const { addPlayer } = await import("../espn.js");
+  const posts = [];
+  const fetchFn = async (url, init) => { const body = JSON.parse(init.body); posts.push(body); const ok = body.type === "WAIVER"; return { status: ok ? 200 : 409, text: async () => ok ? "{}" : JSON.stringify({ messages: ["Ollie Gordon II is not a free agent"] }), json: async () => ({}), headers: { get: () => null } }; };
+  const r = await addPlayer(fetchFn, { swid: "{A}", espn_s2: "x" }, 2026, 1, 3, 9, { addId: 77, dropId: 5, waiver: false, bid: 0 });
+  assert.equal(r.ok, true); assert.equal(r.claimed, true); assert.deepEqual(posts.map((p) => p.type), ["FREEAGENT", "WAIVER"]);
+});

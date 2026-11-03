@@ -230,9 +230,18 @@ export class App {
   }
 
   /** Notice when an offer we have seen stops being pending, and log what happened to it. */
+  /** Offers withdrawn through this app (by Luna or by you here), so a cancellation made on ESPN itself can be told apart. */
+  async noteWithdrawn(leagueId, txId) {
+    const key = `withdrawn:${leagueId}`, w = (await this.storage.get(key)) || {};
+    w[String(txId)] = this.now();
+    for (const [id, at] of Object.entries(w)) if (this.now() - at > 30 * 86400e3) delete w[id];
+    await this.storage.put(key, w);
+  }
+
   async trackTrades(league, myId, all, mine, byTeamId) {
     const key = `trades:${league.id}`;
     const seen = (await this.storage.get(key)) || {};
+    const appWithdrew = (await this.storage.get(`withdrawn:${league.id}`)) || {};
     const names = (ids, pool) => ids.map((id) => pool.find((p) => p.playerId === id)?.name || `#${id}`).join(" + ");
     const next = {};
     for (const t of all) {
@@ -240,8 +249,9 @@ export class App {
       const before = seen[t.id];
       if (before === "PENDING" && t.status !== "PENDING") {
         const what = { ACCEPTED: "accepted", EXECUTED: "accepted", REJECTED: "declined", CANCELED: "withdrawn", EXPIRED: "expired" }[t.status] || t.status.toLowerCase();
-        if (t.mine && (what === "declined" || what === "expired")) {
-          // Remember the package and the manager, so the autopilot does not nag.
+        if (t.mine && (what === "declined" || what === "expired" || (what === "withdrawn" && !appWithdrew[String(t.id)]))) {
+          // Remember the package and the manager, so the autopilot does not nag. A withdrawal made on ESPN by hand
+          // counts too: it means "not this one".
           const st = (await this.storage.get(`autotrade:${league.id}`)) || { declined: {}, cooldown: {}, offered: {} };
           st.declined[[...t.give].sort().join("+") + ">" + [...t.get].sort().join("+")] = this.now();
           st.cooldown[t.with_team_id] = this.now();
@@ -565,6 +575,7 @@ export class App {
       const p = (b.pending || []).find((t) => String(t.id) === id);
       if (!p || !p.mine) continue;
       const result = await this.espn.cancelTrade(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, p.id, b.current_week);
+      if (result.ok) await this.noteWithdrawn(b.league_id, p.id);
       await this.logActivity({ kind: "withdraw", league: b.name, league_id: b.league_id, week: b.week, ok: result.ok, message: result.message, with: p.with, give: p.give_names, get: p.get_names, by: "you" });
       results.push({ trade: p, result, withdrawn: true });
       if (!result.ok) for (const x of [...p.give_ids, ...p.get_ids]) stillBusy.add(x);
@@ -622,13 +633,19 @@ export class App {
 
   /** The top waiver move per position, each with its drop chosen the same way the add page would: cheapest non-starter first. */
   waiverMoves(b) {
-    const r = b.report, cands = (r.drop_candidates || []).filter((c) => !c.starter);
+    const r = b.report, cands = (r.drop_candidates || []).filter((c) => c.safe);
     const out = []; const used = new Set();
     for (const [pos, picks] of Object.entries(r.waivers || {})) {
       const p = picks.find((x) => !x.error && x.player_id != null);
       if (!p) continue;
       let drop = null;
-      if (r.open_spots - out.filter((m) => !m.drop).length <= 0) { drop = cands.find((c) => !used.has(c.player_id)) || null; if (!drop) continue; used.add(drop.player_id); }
+      if (r.open_spots - out.filter((m) => !m.drop).length <= 0) {
+        // The drop must be worth less for the rest of the season than the add (this week's projection counts for a breakout).
+        // Filling an empty starting slot is worth a few points on its own, so it may cost a slightly better bench piece.
+        const room = p.fills_empty_slot ? 3 : 0.5;
+        drop = cands.find((c) => !used.has(c.player_id) && c.value <= Math.max(p.value || 0, p.proj || 0) + room) || null;
+        if (!drop) continue; used.add(drop.player_id);
+      }
       out.push({ ...p, pos: p.pos || pos, drop });
     }
     return out.sort((a, b) => ((b.fills_empty_slot && !b.bye_cover) - (a.fills_empty_slot && !a.bye_cover)) || (b.edge - a.edge));
@@ -644,6 +661,7 @@ export class App {
     const p = (b.pending || []).find((t) => String(t.id) === txId && t.mine);
     if (!p) return html(errorPage("That offer is not one of yours, or it is no longer pending.", true), 404);
     const result = await this.espn.cancelTrade(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, p.id, b.current_week);
+    if (result.ok) await this.noteWithdrawn(b.league_id, p.id);
     await this.logActivity({ kind: "withdraw", league: b.name, league_id: b.league_id, week: b.week, ok: result.ok, message: result.message, with: p.with, give: p.give_names, get: p.get_names, by: "you" });
     await this.clearCache();
     return html(errorPage(result.ok ? `Withdrawn: ${p.give_names} for ${p.get_names} to ${p.with}.` : result.message, true), result.ok ? 200 : 502);
@@ -708,6 +726,11 @@ export class App {
     if (request.method === "POST") {
       const form = await request.formData();
       if (!(await this.checkCsrf(request, form))) return html(errorPage("Form expired. Go back and try again.", true), 400);
+      if (form.get("forget_trades") === "1") {
+        for (const lg of s.auto_leagues || []) await this.storage.delete(`autotrade:${lg.id}`);
+        await this.logActivity({ kind: "memory", league: "all leagues", league_id: null, week: null, ok: true, message: "Luna's trade memory was cleared: recently offered, declined and withdrawn packages can be sent again.", by: "you" });
+        return redirect("/settings?prefs=saved");
+      }
       if (form.get("prefs") === "1") {
         const league_auto = {};
         for (const [k, v] of form.entries()) { const m = /^league_auto_(\d+)$/.exec(k); if (m) league_auto[m[1]] = v === "1"; }
@@ -773,7 +796,7 @@ export class App {
     }
     if (s.auto_fill_empty && !prev.filled) {
       const pick = Object.values(r.waivers).flat().find((p) => !p.error && p.fills_empty_slot && !p.bye_cover && p.player_id != null && !p.on_waivers);
-      const drop = r.open_spots > 0 ? null : (r.drop_candidates || []).find((c) => !c.starter) || null;
+      const drop = !pick || r.open_spots > 0 ? null : (r.drop_candidates || []).find((c) => c.safe && c.value <= Math.max(pick.value || 0, pick.proj || 0) + 3) || null;
       if (pick && (drop || r.open_spots > 0)) {
         const result = await this.espn.addPlayer(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, b.current_week, { addId: pick.player_id, dropId: drop ? drop.player_id : null, waiver: false, bid: 0 });
         prev.filled = true;
@@ -826,6 +849,7 @@ export class App {
     const stillBusy = new Set(), stillWith = new Set();
     for (const p of plan.withdraw) {
       const result = await this.espn.cancelTrade(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, p.id, b.current_week);
+      if (result.ok) await this.noteWithdrawn(b.league_id, p.id);
       await this.logActivity({ kind: "withdraw", league: b.name, league_id: b.league_id, week: b.week, ok: result.ok, message: result.message, with: p.with, give: p.give_names, get: p.get_names, by: "auto" });
       log({ kind: "withdraw", ok: result.ok, with: p.with, message: result.message });
       if (result.ok) open--; else { for (const id of [...p.give_ids, ...p.get_ids]) stillBusy.add(id); stillWith.add(p.with_team_id); }
@@ -837,6 +861,7 @@ export class App {
       if (open >= AUTO_MAX_OPEN) break;
       if (stillWith.has(t.with_team_id) || [...t.give, ...t.get].some((p) => stillBusy.has(p.player_id))) continue;
       if (t.my_gain < AUTO_MIN_GAIN) continue;
+      if ((t.their_gain ?? -1) < 0) continue; // an offer that costs the other manager anything on paper only annoys the league
       const give = t.give.map((p) => p.player_id), get = t.get.map((p) => p.player_id);
       if (give.some((x) => x == null) || get.some((x) => x == null)) continue;
       const pkg = [...give].sort().join("+") + ">" + [...get].sort().join("+");
