@@ -136,6 +136,8 @@ td .s{font-size:12px;color:var(--muted);line-height:1.2;margin-top:2px;white-spa
 .luna-hero .bubble::before{content:"";position:absolute;left:-10px;top:52px;width:20px;height:20px;background:var(--soft);transform:rotate(45deg);border-radius:4px}
 .luna-hero .bubble p{font-size:24px;line-height:1.2;margin:0 0 12px;font-weight:700;letter-spacing:-.02em;color:var(--head)}.luna-hero .bubble p strong{color:var(--accent)}
 .luna-hero .bubble .btn.big{width:auto;display:inline-flex}.luna-hero .bubble p.stamp{font-size:14px;font-weight:400;letter-spacing:0;color:var(--muted);margin:10px 0 0}
+.pose{height:150px;width:auto;flex:none;filter:drop-shadow(0 8px 14px rgba(214,51,108,.18))}.pose.sm{height:64px;margin:-8px 0}.pose.sm.wide{height:56px}.hero-pose{height:170px}
+@media (max-width:640px){.hero-pose{height:110px}.pose.sm{height:52px}}
 @media (max-width:640px){.luna.lg{width:88px;height:88px}.luna-hero .bubble::before{display:none}}
 @media (max-width:640px){main{padding:16px 14px 28px}.card{padding:16px;border-radius:16px}h1{font-size:30px}h2{font-size:20px}.hero{padding:20px}.hero p{font-size:24px}.hero .btn.big{flex-basis:100%}header{padding:8px 12px}header .logo{height:32px}header nav a{padding:6px 8px;font-size:14px}.login .logo{height:120px}.swap{grid-template-columns:1fr}.swap .arrow{text-align:center}.swap .arrow svg{transform:rotate(90deg)}.matchup .big{font-size:32px}.seg{top:54px;margin:0 -14px 18px;padding:3px 14px;border-radius:0}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}html{scroll-behavior:auto}}`;
@@ -145,6 +147,8 @@ td .s{font-size:12px;color:var(--muted);line-height:1.2;margin-top:2px;white-spa
 // The mascot (public/logo.png, served as a static asset) in the header and on the login card.
 export const LOGO = `<img class="logo" src="/logo.png" alt="" width="355" height="640">`;
 export const LUNA = (cls = "luna") => `<img class="${cls}" src="/luna-face.png" alt="Luna" width="512" height="512">`;
+/** Full-body Luna in a pose: celebrate, think, warn, sleep, football. */
+export const POSE = (pose, cls = "pose") => `<img class="${cls}" src="/luna-${pose}.png" alt="Luna ${pose}" loading="lazy">`;
 const HEAD = `<link rel="icon" href="/favicon.png" type="image/png"><link rel="apple-touch-icon" href="/apple-touch-icon.png">`;
 
 // SF Symbols-style glyphs, inline so pages stay a single request.
@@ -214,7 +218,7 @@ ${configured ? "" : `<p class="bad">APP_PASSWORD is not set on the server, so no
 <input type="password" id="password" name="password" autofocus autocomplete="current-password">
 <p><button class="btn big" type="submit">Enter</button></p></form></div>`, { flash });
 
-export const errorPage = (message, authed) => layout("Problem", `<h1>Hmm.</h1><div class="card"><div class="lg-head">${LUNA("luna md")}<div class="main"><div class="t">Luna hit a snag</div></div></div><p>${esc(message)}</p>
+export const errorPage = (message, authed) => layout("Problem", `<h1>Hmm.</h1><div class="card"><div class="lg-head">${POSE("warn", "pose sm")}<div class="main"><div class="t">Luna hit a snag</div></div></div><p>${esc(message)}</p>
 <p class="muted">If this mentions a 401 or cookies, the ESPN login expired. Update the cookies under Settings.</p>
 <p><a class="btn ghost" href="/">Back</a></p></div>`, { authed });
 
@@ -283,7 +287,7 @@ function todo(b) {
 const fmtDay = (ts) => new Date(ts).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York" });
 /** "Sent to ESPN": the app's own record of every write, so "what did we send" has an answer. */
 function activityList(items) {
-  if (!items.length) return `<div class="card"><div class="lg-head">${LUNA("luna md")}<div class="main"><div class="t">Luna's log</div><div class="s">everything sent to ESPN, by Luna or by you</div></div></div><p class="muted">Nothing yet. When Luna sets a lineup, picks someone up or sends an offer, it shows up here with ESPN's answer.</p></div>`;
+  if (!items.length) return `<div class="card"><div class="lg-head">${POSE("sleep", "pose sm wide")}<div class="main"><div class="t">Luna's log</div><div class="s">everything sent to ESPN, by Luna or by you</div></div></div><p class="muted">Nothing yet. When Luna sets a lineup, picks someone up or sends an offer, it shows up here with ESPN's answer.</p></div>`;
   const line = (e) => e.kind === "trade" ? `Trade offer to ${esc(e.with)}: ${esc(e.give)} for ${esc(e.get)} <span class="muted">(+${pts(e.my_gain)}/wk for you, ${e.their_gain >= 0 ? "+" : "-"}${Math.abs(e.their_gain).toFixed(1)} for them)</span>`
     : e.kind === "claim" ? `Waiver claim for ${esc(e.add)}${e.drop ? `, dropping ${esc(e.drop)}` : ""}${e.bid ? ` (bid $${e.bid})` : ""}`
     : e.kind === "add" ? `Added ${esc(e.add)}${e.drop ? `, dropped ${esc(e.drop)}` : ""}`
@@ -299,8 +303,12 @@ export function indexPage({ bundles, errors, totalMoves, season, now, csrf = "",
   const when = new Date(now).toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York" });
   let top = "";
   if (live.length) {
-    top = `<div class="card hero luna-hero">${LUNA("luna lg")}<div class="bubble">${totalMoves
+    const leading = live.some((b) => b.report?.live && (b.report.win_prob ?? 0) >= 0.6), trouble = live.some((b) => b.problem_count > 0) || errors.some((e) => /rejecting the cookies/.test(e));
+    const pose = trouble ? "warn" : totalMoves ? "football" : leading ? "celebrate" : "think";
+    top = `<div class="card hero luna-hero">${POSE(pose, "pose hero-pose")}<div class="bubble">${totalMoves
       ? `<p><strong>${totalMoves}</strong> lineup change${totalMoves !== 1 ? "s" : ""} to make across your leagues. Want me to set them?</p><a class="btn big" href="/lineups">Set all lineups</a>`
+      : trouble ? `<p>Lineups are set, but something needs a look. The flags are on the cards below.</p><a class="btn ghost big" href="/lineups">Review lineups</a>`
+      : leading ? `<p>Lineups are set and you're ahead. I'll keep watching the scores and the injury news.</p><a class="btn ghost big" href="/lineups">Review anyway</a>`
       : `<p>Every lineup is already the best one. I'll keep watching for injury news and trade replies.</p><a class="btn ghost big" href="/lineups">Review anyway</a>`}
 <p class="stamp">Checked ${esc(when)} ET. <a href="/?refresh=1">Check ESPN again</a></p></div></div>`;
   }
@@ -356,7 +364,7 @@ ${Object.entries(r.waivers).map(([pos, picks]) => picks.map((d) => d.error
   const pending = (outgoing.length ? `<h3>Offers out on ESPN</h3><div class="trades">${outgoing.map((t) => pendingCard(r, t)).join("")}</div>` : "")
     + (incoming.length ? `<h3>Offers made to you</h3><div class="trades">${incoming.map((t) => `${pendingCard(r, t)}<form method="post" action="/respond" class="respond"><input type="hidden" name="csrf" value="${esc(b.csrf || "")}"><input type="hidden" name="league" value="${r.league_id}"><input type="hidden" name="tx" value="${esc(String(t.id))}"><button class="btn small" name="action" value="accept" type="submit">Accept</button> <button class="btn ghost small" name="action" value="decline" type="submit">Decline</button><span class="stamp">${t.my_gain == null ? "Not scored." : t.my_gain >= 2 ? "Clearly good for you; the autopilot would accept it." : t.my_gain < 0 ? "Costs you; the autopilot would decline it." : "Marginal; your call."}</span></form>`).join("")}</div>` : "")
     + (r.trades_closed ? `<p class="flash">${I.warn}<span>The trade deadline has passed in this league. No offers can be sent or accepted now; waivers and lineups still work.</span></p>` : r.trade_deadline ? `<p class="stamp">Trade deadline: ${esc(fmtExp(r.trade_deadline))} ET.</p>` : "");
-  const analyst = b.analyst ? `<div class="card analyst" id="analyst"><div class="lg-head">${LUNA("luna md")}<div class="main"><div class="t">Luna's take</div><div class="s">${b.analyst.source === "claude" ? "Luna, with a little help from Claude, from this week's numbers" : "Luna, from this week's numbers"}</div></div></div><p class="headline">${esc(b.analyst.headline)}</p>
+  const analyst = b.analyst ? `<div class="card analyst" id="analyst"><div class="lg-head">${POSE("think", "pose sm")}<div class="main"><div class="t">Luna's take</div><div class="s">${b.analyst.source === "claude" ? "Luna, with a little help from Claude, from this week's numbers" : "Luna, from this week's numbers"}</div></div></div><p class="headline">${esc(b.analyst.headline)}</p>
 ${b.analyst.paragraphs.map((p) => `<p>${esc(p)}</p>`).join("")}</div>` : "";
   const wp = r.win_prob;
   const matchup = `<div class="matchup">
@@ -368,7 +376,7 @@ ${b.analyst.paragraphs.map((p) => `<p>${esc(p)}</p>`).join("")}</div>` : "";
   const sn = b.season || {};
   const strengthRows = Object.entries(sn.strength || {}).sort((a, b) => a[1].rank - b[1].rank).map(([pos, s]) => `<div class="row"><div class="main"><div class="t">${esc(pos)}</div><div class="s">${pts(s.mine)} a week · league average ${pts(s.league_avg)}</div></div><div class="trail"><span class="tag ${s.rank <= 2 ? "good" : s.rank > Math.ceil(s.teams / 2) ? "bad" : ""}">${s.rank} of ${s.teams}</span></div></div>`).join("");
   const outlookRows = (sn.outlook || []).map((g) => `<div class="row">${badge(g.opponent, g.logo, "sm")}<div class="main"><div class="t">Week ${g.week} · ${esc(g.opponent)}</div><div class="s">${pts(g.avg_pf)} a week</div></div><div class="trail"><span class="tag ${g.win_prob >= 60 ? "good" : g.win_prob < 45 ? "bad" : ""}">${g.win_prob}% win chance</span></div></div>`).join("");
-  const plan = sn.plan ? `<div class="card" id="plan"><div class="lg-head">${LUNA("luna md")}<div class="main"><div class="t">Luna's game plan</div><div class="s">how to win this league, or finish as high as it allows</div></div></div>
+  const plan = sn.plan ? `<div class="card" id="plan"><div class="lg-head">${POSE("football", "pose sm")}<div class="main"><div class="t">Luna's game plan</div><div class="s">how to win this league, or finish as high as it allows</div></div></div>
 <div class="odds"><div class="o"><div class="pct ${sn.odds?.playoff_odds >= 60 ? "good" : sn.odds?.playoff_odds < 25 ? "bad" : ""}">${sn.odds ? `${sn.odds.playoff_odds}%` : "n/a"}</div><div class="s">Playoff odds<br><span class="muted">${sn.spots} of ${r.standings.length} make it</span></div></div><div class="o"><div class="pct">${sn.odds ? `${sn.odds.first_odds}%` : "n/a"}</div><div class="s">Finish first</div></div><div class="o"><div class="pct">${sn.odds ? pts(sn.odds.expected_wins) : "n/a"}</div><div class="s">Expected wins<br><span class="muted">${sn.odds ? plural(sn.odds.games_left, "game") + " left" : ""}</span></div></div><div class="o"><div class="pct mode">${esc(sn.plan.mode)}</div><div class="s">Mode</div></div></div>
 <p class="stamp">Odds come from simulating the remaining schedule 1,500 times using each team's average score${sn.contending ? ". You are in contention, so playoff weeks count extra when valuing players and trades." : "."}</p>
 <h3>The plan</h3><ol class="plan">${sn.plan.bullets.map((x) => `<li>${esc(x)}</li>`).join("")}</ol>
@@ -433,7 +441,7 @@ function blitzSimple(b, csrf, plan, flash, allMoves) {
   const head = n ? `${plural(n, "offer")} to ${plural(new Set(plan.offers.map((t) => t.with)).size, "manager")}` : "No new offers";
   return layout("Luna's moves", `<h1>Luna's moves <span class="muted">${esc(r.league)}</span></h1>
 ${flash ? flashBox(flash) : ""}
-<div class="card">
+<div class="card"><div class="lg-head">${POSE(n || plan.moves.length ? "football" : "sleep", "pose sm wide")}<div class="main"><div class="t">${n || plan.moves.length ? "Here's what I'd do" : "Nothing to do right now"}</div></div></div>
 <p class="headline" style="font-size:22px;font-weight:700;letter-spacing:-.02em;margin:0 0 6px">${head}${plan.moves.length ? ` and ${plural(plan.moves.length, "pickup")}` : ""}${plan.withdraw.length ? `, ${plural(plan.withdraw.length, "withdrawal")}` : ""}</p>
 <p class="lede">${n ? `Each offer helps on its own, and the set has been checked for every combination of yes and no: whichever managers accept, your lineup comes out ahead${plan.if_all_accepted != null ? ` (up to +${pts(best)} a week if one lands, about +${pts(plan.if_all_accepted)} if they all do)` : ""}, every slot stays filled and the roster stays within its limit. No player is offered twice and no manager gets two offers.` : "Nothing on the board is both good for you and likely to be accepted right now. Check back after waivers clear or when injuries move values."}</p>
 ${steps.length ? `<div class="group">${steps.map((x, i) => `<div class="row"><div class="badge sm"><i>${i + 1}</i></div><div class="main"><div class="t">${x.t}</div><div class="s">${x.s}</div></div></div>`).join("")}</div>` : ""}
