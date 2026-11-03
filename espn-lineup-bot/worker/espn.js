@@ -331,6 +331,17 @@ function foldStatus(t, related, now) {
   if (st === "PENDING" && t.expirationDate && Number(t.expirationDate) < now) st = "EXPIRED";
   return st;
 }
+/**
+ * My waiver claims and adds still waiting on ESPN (the queue view; the key is absent when nothing is queued).
+ * Verified live 2026-11-03: `pendingTransactions[]` rows of type WAIVER with ADD/DROP items and a bidAmount.
+ */
+export async function pendingClaims(fetchFn, cookies, league, teamId) {
+  const d = await getJson(fetchFn, `${leagueUrl(league.season, league.id)}?view=mPendingTransactions`, cookies);
+  return (d.pendingTransactions || [])
+    .filter((t) => t.teamId === teamId && ["WAIVER", "FREEAGENT"].includes(t.type) && (t.status || "PENDING") === "PENDING")
+    .map((t) => ({ id: t.id, add_id: (t.items || []).find((i) => i.type === "ADD")?.playerId ?? null, drop_id: (t.items || []).find((i) => i.type === "DROP")?.playerId ?? null, bid: t.bidAmount || 0, week: t.scoringPeriodId || null }));
+}
+
 /** Just the pending ones. */
 export async function pendingTrades(fetchFn, cookies, league, teamId) {
   return (await tradeTransactions(fetchFn, cookies, league, teamId)).filter((t) => t.status === "PENDING");

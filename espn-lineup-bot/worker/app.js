@@ -172,7 +172,11 @@ export class App {
         for (const bx of boxes) for (const side of [bx.home, bx.away]) for (const p of side?.lineup || []) enrich(p);
         for (const p of rosterLineup) enrich(p);
       } catch (e) { console.warn("rosters failed", e?.message); }
-      const ctx = { vegas, weekSd, protectedIds, rosterLineup, ownership };
+      // Claims already queued on ESPN: their adds are not recommended again and their drops are spoken for.
+      let claims = [];
+      try { if (this.espn.pendingClaims) claims = await this.espn.pendingClaims(f, c, league, me.id); } catch (e) { console.warn("pending claims failed", e?.message); }
+      for (const cl of claims) if (cl.drop_id != null) protectedIds.push(cl.drop_id);
+      const ctx = { vegas, weekSd, protectedIds, rosterLineup, ownership, claimIds: claims.map((cl) => cl.add_id).filter((x) => x != null) };
       let rep = buildReport(league, me, boxes, week, now, null, ctx);
       // waivers: only the positions worth scanning
       const faByPos = {};
@@ -237,7 +241,10 @@ export class App {
       } catch (e) { console.warn("analyst failed", e?.message); }
       const season = { odds: myOdds, spots: odds.spots, outlook, strength, plan: { ...plan, bullets: analyst?.plan?.length ? analyst.plan : plan.bullets, source: analyst?.source === "claude" && analyst.plan?.length ? "claude" : "rules" }, weeks_left: weeksLeft, contending, byes_ahead: byesAhead,
         standings_odds: Object.fromEntries(Object.entries(odds.by_team).map(([id, o]) => [id, o.playoff_odds])) };
-      return { ...b, report: rep, trades, pending, rosters: rosterPlayers, analyst, season, team_id: me.id, week, problem_count };
+      // Names for the queued claims, for the pages.
+      const nameOf = (id) => Object.values(rep.waivers).flat().find((p) => p.player_id === id)?.name || (rosters?.[me.id] || []).find((p) => p.playerId === id)?.name || `#${id}`;
+      const claimsNamed = claims.map((cl) => ({ ...cl, add_name: cl.add_id != null ? nameOf(cl.add_id) : null, drop_name: cl.drop_id != null ? nameOf(cl.drop_id) : null }));
+      return { ...b, report: rep, trades, pending, claims: claimsNamed, rosters: rosterPlayers, analyst, season, team_id: me.id, week, problem_count };
     });
   }
 
@@ -396,7 +403,7 @@ export class App {
       if (s.hidden.includes(lg.league_id)) continue;
       try {
         const b = await this.bundle(lg.league_id, force);
-        if (b.started) b.auto = await this.storage.get(`auto:${b.league_id}:${b.week}`);
+        if (b.started) { b.auto = await this.storage.get(`auto:${b.league_id}:${b.week}`); b.auto_on = this.autoFor(s, b.league_id); try { b.plan = this.blitzPlan(b); } catch (e) { console.warn("plan failed", e?.message); } }
         bundles.push(b);
         await this.noteAuth(true);
       } catch (e) {
@@ -642,7 +649,7 @@ export class App {
     }
     // Never burn a roster spot on one-week bye cover automatically; real holes and clear upgrades only.
     const inOffers = new Set([...set.offers.flatMap((t) => t.give.map((p) => p.player_id)), ...keep.flatMap((t) => t.give_ids || [])]);
-    const moves = this.waiverMoves(b).filter((m) => !m.bye_cover && (m.fills_empty_slot || m.edge >= 2) && !(m.drop && inOffers.has(m.drop.player_id)));
+    const moves = this.waiverMoves(b).filter((m) => !m.claim_pending && !m.bye_cover && (m.fills_empty_slot || m.edge >= 2) && !(m.drop && inOffers.has(m.drop.player_id)));
     return { withdraw, offers: set.offers, if_all_accepted: set.if_all_accepted, robust: set.robust, moves, why };
   }
 
@@ -651,7 +658,7 @@ export class App {
     const r = b.report, cands = (r.drop_candidates || []).filter((c) => c.safe);
     const out = []; const used = new Set();
     for (const [pos, picks] of Object.entries(r.waivers || {})) {
-      const p = picks.find((x) => !x.error && x.player_id != null);
+      const p = picks.find((x) => !x.error && x.player_id != null && !x.claim_pending);
       if (!p) continue;
       let drop = null;
       if (r.open_spots - out.filter((m) => !m.drop).length <= 0) {

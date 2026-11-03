@@ -615,3 +615,20 @@ test("a refused pickup is retried on a later pass, and a blocked offer never cro
   const plan = app.blitzPlan(b);
   assert.ok(plan.offers.every((t) => t.their_gain >= 0), "the recommended set never includes an offer that costs the other side");
 });
+
+test("a claim already queued on ESPN is shown as pending, not recommended again, and its drop is protected", async () => {
+  const espn = fakeEspn();
+  espn.claims = [{ id: "w1", add_id: ids.get("TE FA"), drop_id: ids.get("TE B"), bid: 0, week: 9 }];
+  const app = new App({ env: { APP_PASSWORD: "open-sesame", SECRET_KEY: "test-secret", ESPN_S2: "s2cookie", SWID: "{abc-123}" }, storage: new FakeStorage(), fetchFn: async () => { throw new Error("no network"); }, espn, now: () => NOW });
+  const b = await app.bundle(1);
+  const te = b.report.waivers.TE.find((p) => p.name === "TE FA");
+  assert.equal(te.claim_pending, true);
+  assert.deepEqual(b.claims.map((c) => [c.add_name, c.drop_name]), [["TE FA", "TE B"]]);
+  assert.ok(!b.report.drop_candidates.some((c) => c.name === "TE B"), "the claim's drop is spoken for");
+  assert.ok(!app.blitzPlan(b).moves.some((m) => m.name === "TE FA"));
+  const cookie = await login(app);
+  const h = await (await app.handle(req("/", { cookie }))).text();
+  assert.match(h, /Claim pending: TE FA/); assert.doesNotMatch(h, /Add TE FA/);
+  const l = await (await app.handle(req("/league/1", { cookie }))).text();
+  assert.match(l, /claim pending/);
+});

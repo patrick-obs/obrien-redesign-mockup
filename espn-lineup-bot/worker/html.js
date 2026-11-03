@@ -282,9 +282,14 @@ function todo(b) {
   const r = b.report, items = [];
   if (r.lineup_items.length) items.push({ href: `/lineups?league=${b.league_id}`, text: `Set this lineup`, sub: `${plural(r.lineup_items.length, "change")}, +${pts(r.recommended_lineup_proj - r.current_lineup_proj)} points`, primary: true });
   else items.push({ href: `/league/${b.league_id}#lineup`, text: "Review lineup", sub: "Already optimal; see who starts and why" });
-  const picks = Object.entries(r.waivers).flatMap(([pos, ps]) => ps.filter((p) => !p.error && p.player_id != null).map((p) => ({ ...p, pos: p.pos || pos }))).sort((a, b) => ((b.fills_empty_slot && !b.bye_cover) - (a.fills_empty_slot && !a.bye_cover)) || (b.edge - a.edge));
+  for (const cl of b.claims || []) items.push({ href: `/league/${b.league_id}#waivers`, text: `Claim pending: ${esc(cl.add_name || "player")}`, sub: `${cl.drop_name ? `dropping ${esc(cl.drop_name)} if it wins; ` : ""}ESPN runs waivers on its own schedule, usually Wednesday morning` });
+  for (const t of (b.pending || []).filter((t) => t.mine)) items.push({ href: `/league/${b.league_id}#trades`, text: `Offer out to ${esc(t.with)}`, sub: `${esc(t.give_names)} for ${esc(t.get_names)}; waiting on them` });
+  const picks = Object.entries(r.waivers).flatMap(([pos, ps]) => ps.filter((p) => !p.error && p.player_id != null && !p.claim_pending).map((p) => ({ ...p, pos: p.pos || pos }))).sort((a, b) => ((b.fills_empty_slot && !b.bye_cover) - (a.fills_empty_slot && !a.bye_cover)) || (b.edge - a.edge));
   if (picks[0]) items.push({ href: `/add?league=${b.league_id}&amp;player=${picks[0].player_id}`, text: `${picks[0].on_waivers ? "Claim" : "Add"} ${picks[0].name}`, sub: picks[0].fills_empty_slot ? (picks[0].bye_cover ? `your ${picks[0].pos} slot is empty this week only (${picks[0].returning} is on bye); optional` : `fills your empty ${picks[0].pos} slot`) : `+${pts(picks[0].edge)} over your weakest ${picks[0].pos}`, primary: picks[0].fills_empty_slot && !picks[0].bye_cover });
-  if (b.trades && b.trades[0]) items.push({ href: `/trade?league=${b.league_id}&amp;id=${esc(b.trades[0].id)}`, text: `Propose ${b.trades[0].kind} trade to ${b.trades[0].with}`, sub: `+${pts(b.trades[0].my_gain)} a week, ${b.trades[0].their_gain >= 0 ? "they gain too" : "costs them little"}` });
+  // The offer the engine would actually send: fair for them and not overlapping an offer already out. In autopilot it
+  // goes on the next pass, so say so rather than ask for a click.
+  const next = (b.plan?.offers || [])[0] || (b.trades || []).find((t) => (t.their_gain ?? -1) >= 0 && !(b.pending || []).some((p) => p.mine && [...t.give, ...t.get].some((x) => [...(p.give_ids || []), ...(p.get_ids || [])].includes(x.player_id))));
+  if (next) items.push({ href: `/trade?league=${b.league_id}&amp;id=${esc(next.id)}`, text: `${b.auto_on ? "Luna's next offer: " : "Propose "}${next.kind} trade to ${next.with}`, sub: `+${pts(next.my_gain)} a week, ${next.their_gain > 0 ? "they gain too" : "level for them"}${b.auto_on ? "; goes out on the next pass" : ""}` });
   if (b.trades && b.trades.length > 1) items.push({ href: `/trades?league=${b.league_id}`, text: "Luna's moves", sub: "the offers and pickups to make, one button" });
   items.push({ href: `/league/${b.league_id}#plan`, text: "Luna's game plan", sub: b.season?.odds ? `${b.season.odds.playoff_odds}% playoff odds` : "season strategy" });
   return `<div class="todo"><div class="lbl">To do</div><div class="group">${items.map((it) => `<a class="row link${it.primary ? " primary" : ""}" href="${it.href}"><div class="main"><div class="t">${it.text}</div><div class="s">${it.sub}</div></div><div class="trail">${I.chev}</div></a>`).join("")}</div></div>`;
@@ -367,7 +372,7 @@ ${Object.entries(r.waivers).map(([pos, picks]) => picks.map((d) => d.error
         : `<tr><td class="slot"><span>${esc(pos)}</span></td><td class="player who">${playerCell({ ...d, pos: d.pos || pos }, `${d.pos || pos}${d.team ? ` · ${d.team}` : ""}${d.on_waivers ? " · on waivers" : ""}`)}</td><td>${nfl(d.opp)}</td><td class="num proj">${pts(d.proj)}</td>
 <td>${d.fills_empty_slot ? (d.bye_cover ? `<span class="tag">covers ${esc(d.returning)}'s bye this week only</span>` : `<span class="tag bad">fills your EMPTY slot</span>`) : `<span class="tag good">+${pts(d.edge)} over your worst starter</span>`}</td>
 <td class="num">${d.owned != null ? Math.round(d.owned) + "%" : ""}</td>
-<td>${d.player_id != null ? `<a class="btn small" href="/add?league=${r.league_id}&amp;player=${d.player_id}">${d.on_waivers ? "Claim" : "Add"}</a>` : ""}</td></tr>`).join("")).join("")}</table></div>`
+<td>${d.claim_pending ? `<span class="tag">claim pending</span>` : d.player_id != null ? `<a class="btn small" href="/add?league=${r.league_id}&amp;player=${d.player_id}">${d.on_waivers ? "Claim" : "Add"}</a>` : ""}</td></tr>`).join("")).join("")}</table></div>`
     : `<p class="good">No free agent out-projects your starters this week.</p>`;
   const trades = b.trades && b.trades.length
     ? `<div class="trades">${b.trades.map((t) => tradeCard(r, t, true)).join("")}</div>`
@@ -590,10 +595,13 @@ export function movesPage(items, csrf) {
     for (const t of plan.withdraw || []) steps.push(`Withdraw the offer to ${esc(t.with)}`);
     for (const t of plan.offers || []) steps.push(`Offer ${esc(t.give_names)} to ${esc(t.with)} for ${esc(t.get_names)} (+${pts(t.my_gain)}/wk)`);
     for (const m of plan.moves || []) steps.push(`${m.on_waivers ? "Claim" : "Add"} ${esc(m.name)}${m.drop ? `, drop ${esc(m.drop.name)}` : ""}`);
+    const waiting = [...(b.claims || []).map((cl) => `Claim pending: ${esc(cl.add_name || "player")}${cl.drop_name ? `, dropping ${esc(cl.drop_name)} if it wins` : ""} (ESPN runs waivers, usually Wednesday morning)`),
+      ...(b.pending || []).filter((t) => t.mine).map((t) => `Offer out to ${esc(t.with)}: ${esc(t.give_names)} for ${esc(t.get_names)}, waiting on them`)];
     const none = !steps.length, sendable = (plan.offers || []).length + (plan.moves || []).length + (plan.withdraw || []).length > 0;
     return `<div class="card"><div class="lg-head">${badge(r.team, r.logo)}<div class="main"><div class="t"><a href="/league/${r.league_id}">${esc(b.name)}</a></div><div class="s">week ${r.week} · ${esc(r.record)}${b.season?.odds ? ` · ${b.season.odds.playoff_odds}% playoff odds` : ""}${r.trades_closed ? " · trade deadline passed" : ""}</div></div>${POSE(none ? "pajamas" : "football", "pose sm")}</div>
 ${b.analyst?.headline ? `<p class="take">${esc(b.analyst.headline)}</p>` : ""}
-${none ? `<p class="muted">Nothing to do here right now. Lineup set, no trade worth sending, nobody worth adding.</p>` : `<ol class="plan">${steps.map((x) => `<li>${x}</li>`).join("")}</ol>
+${waiting.length ? `<ul class="plan muted">${waiting.map((x) => `<li>${x}</li>`).join("")}</ul>` : ""}
+${none ? `<p class="muted">${waiting.length ? "Nothing more to do until ESPN answers." : "Nothing to do here right now. Lineup set, no trade worth sending, nobody worth adding."}</p>` : `<ol class="plan">${steps.map((x) => `<li>${x}</li>`).join("")}</ol>
 <div class="runnow">${r.lineup_items.length ? `<a class="btn${sendable ? " ghost" : ""}" href="/lineups?league=${r.league_id}">Set lineup</a>` : ""}${sendable ? `<a class="btn" href="/trades?league=${r.league_id}">Let Luna do the rest</a>` : ""}</div>`}</div>`;
   });
   return layout("Recommendations", `<h1>Recommendations <span class="muted">all leagues</span></h1><p class="lede">What Luna would do in each league right now. Nothing here goes to ESPN until you press a button.</p>${cards.join("") || `<div class="card"><p class="muted">No active leagues.</p></div>`}`, { authed: true });

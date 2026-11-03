@@ -59,6 +59,7 @@ export function fakeEspn({ posts = [] } = {}) {
     proSchedule: async () => ({}), proScheduleForWeek: () => ({}), positionalRatings: async () => ({}),
     boxScores: async (f, c, league) => fakeBoxes(league),
     freeAgents: async (f, c, league, week, pos) => FA[pos] || [],
+    pendingClaims: async function () { return this.claims || []; },
     rosters: async (f, c, league) => Object.fromEntries(league.teams.map((t) => [t.id, (t.id === 3 ? MINE() : t.id === 7 ? THEIRS() : OTHERS())])),
     gamesPlayed: (t) => t.wins + t.losses + t.ties,
     PRO_TEAM: { 12: "KC", 2: "BUF" },
