@@ -19,7 +19,7 @@ header nav{display:flex;align-items:center;gap:2px;flex-wrap:wrap}
 header nav a{color:var(--accent);padding:7px 10px;border-radius:9px;font-size:15px;font-weight:500}header nav a:hover{background:var(--tint);text-decoration:none}
 header form{margin:0 0 0 6px}header .btn{padding:6px 12px;font-size:14px}
 main{width:100%;max-width:1080px;margin:0 auto;padding:24px 20px 40px;flex:1}
-.card{background:var(--card);border-radius:18px;padding:20px;margin-bottom:18px;box-shadow:var(--shadow);scroll-margin-top:118px}
+.card{background:var(--card);border-radius:20px;padding:22px;margin-bottom:20px;box-shadow:var(--shadow);scroll-margin-top:118px}
 @media (prefers-color-scheme:dark){.card{border:1px solid var(--line)}}
 .card>h2.top a{color:var(--head)}
 .lede{color:var(--muted);font-size:17px;margin:-8px 0 18px;max-width:70ch}
@@ -62,7 +62,7 @@ td.player{font-weight:600}td.who{padding-top:6px;padding-bottom:6px}
 .rank.ez{color:var(--good);background:var(--goodbg)}.rank.hard{color:var(--bad);background:var(--badbg)}
 tr.me td{font-weight:700;color:var(--head);background:var(--tint)}
 ul.plain{list-style:none;padding:0;margin:0}ul.plain li{padding:10px 0;border-bottom:1px solid var(--line)}ul.plain li:last-child{border:0}
-.grid{display:grid;gap:18px;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));align-items:start}
+.grid{display:grid;gap:20px;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));align-items:start}
 .kv{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:9px 0;border-bottom:1px solid var(--line)}.kv:last-of-type{border-bottom:0}.kv>span:first-child{color:var(--muted)}
 .flash{display:flex;gap:10px;align-items:flex-start;background:var(--warnbg);color:var(--warn);border-radius:14px;padding:12px 14px;margin-bottom:14px;font-weight:500}
 .flash svg{width:18px;height:18px;flex:none;margin-top:2px}
@@ -137,6 +137,8 @@ td .s{font-size:12px;color:var(--muted);line-height:1.2;margin-top:2px;white-spa
 .luna-hero .bubble p{font-size:24px;line-height:1.2;margin:0 0 12px;font-weight:700;letter-spacing:-.02em;color:var(--head)}.luna-hero .bubble p strong{color:var(--accent)}
 .luna-hero .bubble .btn.big{width:auto;display:inline-flex}.luna-hero .bubble p.stamp{font-size:14px;font-weight:400;letter-spacing:0;color:var(--muted);margin:10px 0 0}
 .pose{height:150px;width:auto;flex:none;filter:drop-shadow(0 8px 14px rgba(214,51,108,.18))}.pose.sm{height:64px;margin:-8px 0}.pose.sm.wide{height:56px}.hero-pose{height:170px}
+.narrow{max-width:720px;margin:0 auto}.notes.hurt{display:flex;gap:12px;align-items:flex-start}.notes.hurt>div{flex:1}.pose.xs{height:72px;margin-top:2px}
+h1{margin-bottom:22px}.lede{margin-bottom:20px}
 @media (max-width:640px){.hero-pose{height:110px}.pose.sm{height:52px}}
 @media (max-width:640px){.luna.lg{width:88px;height:88px}.luna-hero .bubble::before{display:none}}
 @media (max-width:640px){main{padding:16px 14px 28px}.card{padding:16px;border-radius:16px}h1{font-size:30px}h2{font-size:20px}.hero{padding:20px}.hero p{font-size:24px}.hero .btn.big{flex-basis:100%}header{padding:8px 12px}header .logo{height:32px}header nav a{padding:6px 8px;font-size:14px}.login .logo{height:120px}.swap{grid-template-columns:1fr}.swap .arrow{text-align:center}.swap .arrow svg{transform:rotate(90deg)}.matchup .big{font-size:32px}.seg{top:54px;margin:0 -14px 18px;padding:3px 14px;border-radius:0}}
@@ -223,13 +225,13 @@ export const errorPage = (message, authed) => layout("Problem", `<h1>Hmm.</h1><d
 <p><a class="btn ghost" href="/">Back</a></p></div>`, { authed });
 
 export const settingsPage = (s, csrf, flash = []) => layout("Settings", `
-<h1>ESPN connection</h1><div class="card" style="max-width:640px">
+<div class="narrow"><h1>ESPN connection</h1><div class="card">
 <p class="muted">These two cookies let the app read your leagues and set your lineups. Get them from fantasy.espn.com while logged in: press F12, open Application, then Cookies, then https://fantasy.espn.com. SWID never changes. espn_s2 normally lasts about a year, but dies if you log out of ESPN on that device or change the password; the dashboard shows a banner the moment ESPN stops accepting it, and nothing is sent to ESPN until you paste a fresh one here.</p>
 <form method="post"><input type="hidden" name="csrf" value="${esc(csrf)}">
 <label for="swid">SWID (keep the curly braces)</label><input type="text" id="swid" name="swid" value="${esc(s.swid)}" autocomplete="off">
 <label for="espn_s2">espn_s2</label><textarea id="espn_s2" name="espn_s2" rows="4" autocomplete="off">${esc(s.espn_s2)}</textarea>
 <p class="muted">Season: ${esc(s.season)}</p><p><button class="btn" type="submit">Save and test</button></p></form></div>
-<h2>Automation</h2><div class="card" style="max-width:640px"><form method="post"><input type="hidden" name="csrf" value="${esc(csrf)}"><input type="hidden" name="prefs" value="1">
+<h2>Automation</h2><div class="card"><form method="post"><input type="hidden" name="csrf" value="${esc(csrf)}"><input type="hidden" name="prefs" value="1">
 <div class="group">
 <label class="row" for="automanage"><div class="main"><div class="t">Luna's autopilot</div><div class="s">The autopilot. On, it runs every four hours and before every slate: sets lineups to the latest recommendation (injury news included), fills real roster holes, sends the recommended offers, withdraws stale ones, watches for acceptances and declines, and moves on to the next-best offer after a no. Off, nothing is sent to ESPN without you pressing a button.</div></div><div class="trail"><input type="hidden" name="automanage" value="0"><input type="checkbox" class="switch" id="automanage" name="automanage" value="1"${s.automanage ? " checked" : ""}></div></label>
 <label class="row" for="auto_lineup"><div class="main"><div class="t">Set lineups automatically</div><div class="s">Thursday, Saturday and Sunday at 8am ET, again Thursday at 6pm and Sunday at noon ET, the advisor sets each lineup to the recommendation. The first run of the week sets it; later runs only touch it if the lineup still matches what the advisor set. If you move anyone on ESPN, it leaves that week alone.</div></div><div class="trail"><input type="hidden" name="auto_lineup" value="0"><input type="checkbox" class="switch" id="auto_lineup" name="auto_lineup" value="1"${s.auto_lineup ? " checked" : ""}></div></label>
@@ -239,10 +241,10 @@ export const settingsPage = (s, csrf, flash = []) => layout("Settings", `
 ${s.auto_leagues && s.auto_leagues.length ? `<h3>Per league</h3><div class="group">${s.auto_leagues.map((lg) => `<label class="row" for="league_auto_${lg.id}"><div class="main"><div class="t">${esc(lg.name)}</div><div class="s">Autopilot for this league only. The master switch above still has to be on.</div></div><div class="trail"><input type="hidden" name="league_auto_${lg.id}" value="0"><input type="checkbox" class="switch" id="league_auto_${lg.id}" name="league_auto_${lg.id}" value="1"${lg.on ? " checked" : ""}></div></label>`).join("")}</div>` : ""}
 <p><button class="btn" type="submit">Save preferences</button></p></form>
 ${s.hidden_leagues && s.hidden_leagues.length ? `<h3>Hidden leagues</h3><div class="group">${s.hidden_leagues.map((lg) => `<div class="row"><div class="main"><div class="t">${esc(lg.name)}</div></div><div class="trail"><form method="post" action="/hide"><input type="hidden" name="csrf" value="${esc(csrf)}"><input type="hidden" name="league" value="${lg.id}"><input type="hidden" name="action" value="show"><button class="btn ghost small" type="submit">Show again</button></form></div></div>`).join("")}</div>` : ""}</div>
-${s.claude ? `<h2>Analyst</h2><div class="card" style="max-width:640px"><div class="group">
+${s.claude ? `<h2>Luna's writing</h2><div class="card"><div class="group">
 <div class="row"><div class="main"><div class="t">Claude rewrite</div><div class="s">${s.claude.hasKey ? (s.claude.enabled ? "On. Claude rewrites each league's take when the report is rebuilt." : "Off (ANALYST_ENABLED is 0). The rules-based take is shown.") : "No ANTHROPIC_API_KEY secret on the Worker, so the rules-based take is shown."}</div></div><div class="trail"><span class="tag ${s.claude.enabled ? "good" : ""}">${s.claude.enabled ? "on" : "off"}</span></div></div>
 <div class="row"><div class="main"><div class="t">Calls today</div><div class="s">Resets at midnight UTC. Each league rebuild is one short call; pages are cached for ${Math.round((s.cacheSeconds || 600) / 60)} minutes.</div></div><div class="trail"><span class="v">${s.claude.today}</span><span class="m">/ ${s.claude.cap}</span></div></div>
-</div><p class="stamp">Change the cap with the ANALYST_DAILY_CAP variable on the Worker; set ANALYST_ENABLED to 0 to switch Claude off without removing the key.</p></div>` : ""}`, { authed: true, flash });
+</div><p class="stamp">Change the cap with the ANALYST_DAILY_CAP variable on the Worker; set ANALYST_ENABLED to 0 to switch Claude off without removing the key.</p></div>` : ""}</div>`, { authed: true, flash });
 
 // ------------------------------------------------------------------ shared blocks
 
@@ -287,7 +289,7 @@ function todo(b) {
 const fmtDay = (ts) => new Date(ts).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York" });
 /** "Sent to ESPN": the app's own record of every write, so "what did we send" has an answer. */
 function activityList(items) {
-  if (!items.length) return `<div class="card"><div class="lg-head">${POSE("sleep", "pose sm wide")}<div class="main"><div class="t">Luna's log</div><div class="s">everything sent to ESPN, by Luna or by you</div></div></div><p class="muted">Nothing yet. When Luna sets a lineup, picks someone up or sends an offer, it shows up here with ESPN's answer.</p></div>`;
+  if (!items.length) return `<div class="card"><div class="lg-head">${POSE("pajamas", "pose sm wide")}<div class="main"><div class="t">Luna's log</div><div class="s">everything sent to ESPN, by Luna or by you</div></div></div><p class="muted">Nothing yet. When Luna sets a lineup, picks someone up or sends an offer, it shows up here with ESPN's answer.</p></div>`;
   const line = (e) => e.kind === "trade" ? `Trade offer to ${esc(e.with)}: ${esc(e.give)} for ${esc(e.get)} <span class="muted">(+${pts(e.my_gain)}/wk for you, ${e.their_gain >= 0 ? "+" : "-"}${Math.abs(e.their_gain).toFixed(1)} for them)</span>`
     : e.kind === "claim" ? `Waiver claim for ${esc(e.add)}${e.drop ? `, dropping ${esc(e.drop)}` : ""}${e.bid ? ` (bid $${e.bid})` : ""}`
     : e.kind === "add" ? `Added ${esc(e.add)}${e.drop ? `, dropped ${esc(e.drop)}` : ""}`
@@ -304,10 +306,14 @@ export function indexPage({ bundles, errors, totalMoves, season, now, csrf = "",
   let top = "";
   if (live.length) {
     const leading = live.some((b) => b.report?.live && (b.report.win_prob ?? 0) >= 0.6), trouble = live.some((b) => b.problem_count > 0) || errors.some((e) => /rejecting the cookies/.test(e));
-    const pose = trouble ? "warn" : totalMoves ? "football" : leading ? "celebrate" : "think";
+    const lostWeek = live.length > 0 && live.every((b) => b.report?.live && b.report.remaining_share <= 0.05 && (b.report.win_prob ?? 1) <= 0.05);
+    const locked = live.some((b) => b.season?.plan?.mode === "lock");
+    const pose = trouble ? "warn" : totalMoves ? "football" : lostWeek ? "sad" : leading ? "celebrate" : locked ? "trophy" : "think";
     top = `<div class="card hero luna-hero">${POSE(pose, "pose hero-pose")}<div class="bubble">${totalMoves
       ? `<p><strong>${totalMoves}</strong> lineup change${totalMoves !== 1 ? "s" : ""} to make across your leagues. Want me to set them?</p><a class="btn big" href="/lineups">Set all lineups</a>`
       : trouble ? `<p>Lineups are set, but something needs a look. The flags are on the cards below.</p><a class="btn ghost big" href="/lineups">Review lineups</a>`
+      : lostWeek ? `<p>Tough week. Next week is already on my list: waivers clear Wednesday and I'll have the lineup ready.</p><a class="btn ghost big" href="/lineups">Review lineups</a>`
+      : locked ? `<p>Playoff spot is close to locked. Now we play for seeding and the playoff weeks.</p><a class="btn ghost big" href="/lineups">Review anyway</a>`
       : leading ? `<p>Lineups are set and you're ahead. I'll keep watching the scores and the injury news.</p><a class="btn ghost big" href="/lineups">Review anyway</a>`
       : `<p>Every lineup is already the best one. I'll keep watching for injury news and trade replies.</p><a class="btn ghost big" href="/lineups">Review anyway</a>`}
 <p class="stamp">Checked ${esc(when)} ET. <a href="/?refresh=1">Check ESPN again</a></p></div></div>`;
@@ -336,7 +342,7 @@ ${todo(b)}
 ${lastAuto ? `<p class="stamp auto">${I.bolt} Luna set this lineup ${esc(fmtTime(lastAuto.at))} ET (${plural(lastAuto.changes, "change")}).${lastSkip && lastSkip.at > lastAuto.at ? " She left your later changes alone." : ""}</p>` : lastSkip ? `<p class="stamp auto">${I.bolt} Luna left the lineup alone: you changed it on ESPN this week.</p>` : ""}
 ${b.analyst ? `<p class="take"><a href="/league/${b.league_id}#analyst">${esc(b.analyst.headline)}</a></p>` : ""}
 <div class="tags">${r.lineup_items.length ? `<span class="tag warn">${plural(r.lineup_items.length, "change")}</span>` : `<span class="tag good">lineup set</span>`}${b.problem_count ? `<span class="tag bad">${plural(b.problem_count, "problem")}</span>` : ""}${b.trades && b.trades.length ? `<span class="tag tint">${plural(b.trades.length, "trade idea")}</span>` : ""}</div>
-${r.warnings.length ? `<div class="notes">${r.warnings.map(note).join("")}</div>` : ""}
+${r.warnings.length ? `<div class="notes${r.warnings.some((w) => / is out|injury reserve|doubtful|in IR/i.test(w)) ? " hurt" : ""}">${r.warnings.some((w) => / is out|injury reserve|doubtful|in IR/i.test(w)) ? POSE("cone", "pose xs") : ""}<div>${r.warnings.map(note).join("")}</div></div>` : ""}
 ${r.moves.length ? `<details class="moves"><summary>${plural(r.moves.length, "lineup change")} recommended</summary>${r.moves.map(move).join("")}</details>` : ""}</div>`;
   });
   const hiddenNote = hiddenCount ? `<p class="stamp">${plural(hiddenCount, "hidden league")}. <a href="/settings">Show again in Settings</a>.</p>` : "";
@@ -376,7 +382,7 @@ ${b.analyst.paragraphs.map((p) => `<p>${esc(p)}</p>`).join("")}</div>` : "";
   const sn = b.season || {};
   const strengthRows = Object.entries(sn.strength || {}).sort((a, b) => a[1].rank - b[1].rank).map(([pos, s]) => `<div class="row"><div class="main"><div class="t">${esc(pos)}</div><div class="s">${pts(s.mine)} a week · league average ${pts(s.league_avg)}</div></div><div class="trail"><span class="tag ${s.rank <= 2 ? "good" : s.rank > Math.ceil(s.teams / 2) ? "bad" : ""}">${s.rank} of ${s.teams}</span></div></div>`).join("");
   const outlookRows = (sn.outlook || []).map((g) => `<div class="row">${badge(g.opponent, g.logo, "sm")}<div class="main"><div class="t">Week ${g.week} · ${esc(g.opponent)}</div><div class="s">${pts(g.avg_pf)} a week</div></div><div class="trail"><span class="tag ${g.win_prob >= 60 ? "good" : g.win_prob < 45 ? "bad" : ""}">${g.win_prob}% win chance</span></div></div>`).join("");
-  const plan = sn.plan ? `<div class="card" id="plan"><div class="lg-head">${POSE("football", "pose sm")}<div class="main"><div class="t">Luna's game plan</div><div class="s">how to win this league, or finish as high as it allows</div></div></div>
+  const plan = sn.plan ? `<div class="card" id="plan"><div class="lg-head">${POSE(sn.plan.mode === "lock" ? "trophy" : "football", "pose sm")}<div class="main"><div class="t">Luna's game plan</div><div class="s">how to win this league, or finish as high as it allows</div></div></div>
 <div class="odds"><div class="o"><div class="pct ${sn.odds?.playoff_odds >= 60 ? "good" : sn.odds?.playoff_odds < 25 ? "bad" : ""}">${sn.odds ? `${sn.odds.playoff_odds}%` : "n/a"}</div><div class="s">Playoff odds<br><span class="muted">${sn.spots} of ${r.standings.length} make it</span></div></div><div class="o"><div class="pct">${sn.odds ? `${sn.odds.first_odds}%` : "n/a"}</div><div class="s">Finish first</div></div><div class="o"><div class="pct">${sn.odds ? pts(sn.odds.expected_wins) : "n/a"}</div><div class="s">Expected wins<br><span class="muted">${sn.odds ? plural(sn.odds.games_left, "game") + " left" : ""}</span></div></div><div class="o"><div class="pct mode">${esc(sn.plan.mode)}</div><div class="s">Mode</div></div></div>
 <p class="stamp">Odds come from simulating the remaining schedule 1,500 times using each team's average score${sn.contending ? ". You are in contention, so playoff weeks count extra when valuing players and trades." : "."}</p>
 <h3>The plan</h3><ol class="plan">${sn.plan.bullets.map((x) => `<li>${esc(x)}</li>`).join("")}</ol>
@@ -441,7 +447,7 @@ function blitzSimple(b, csrf, plan, flash, allMoves) {
   const head = n ? `${plural(n, "offer")} to ${plural(new Set(plan.offers.map((t) => t.with)).size, "manager")}` : "No new offers";
   return layout("Luna's moves", `<h1>Luna's moves <span class="muted">${esc(r.league)}</span></h1>
 ${flash ? flashBox(flash) : ""}
-<div class="card"><div class="lg-head">${POSE(n || plan.moves.length ? "football" : "sleep", "pose sm wide")}<div class="main"><div class="t">${n || plan.moves.length ? "Here's what I'd do" : "Nothing to do right now"}</div></div></div>
+<div class="card"><div class="lg-head">${POSE(n || plan.moves.length ? "football" : "pajamas", "pose sm wide")}<div class="main"><div class="t">${n || plan.moves.length ? "Here's what I'd do" : "Nothing to do right now"}</div></div></div>
 <p class="headline" style="font-size:22px;font-weight:700;letter-spacing:-.02em;margin:0 0 6px">${head}${plan.moves.length ? ` and ${plural(plan.moves.length, "pickup")}` : ""}${plan.withdraw.length ? `, ${plural(plan.withdraw.length, "withdrawal")}` : ""}</p>
 <p class="lede">${n ? `Each offer helps on its own, and the set has been checked for every combination of yes and no: whichever managers accept, your lineup comes out ahead${plan.if_all_accepted != null ? ` (up to +${pts(best)} a week if one lands, about +${pts(plan.if_all_accepted)} if they all do)` : ""}, every slot stays filled and the roster stays within its limit. No player is offered twice and no manager gets two offers.` : "Nothing on the board is both good for you and likely to be accepted right now. Check back after waivers clear or when injuries move values."}</p>
 ${steps.length ? `<div class="group">${steps.map((x, i) => `<div class="row"><div class="badge sm"><i>${i + 1}</i></div><div class="main"><div class="t">${x.t}</div><div class="s">${x.s}</div></div></div>`).join("")}</div>` : ""}
