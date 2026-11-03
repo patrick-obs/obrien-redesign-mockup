@@ -2,7 +2,7 @@
 // Runs inside one Durable Object. Pure enough to test in Node with fakes.
 import * as espnMod from "./espn.js";
 import { buildReport, waiverThresholds } from "./report.js";
-import { playerValue, rosterPlayer, proposeTrades, blitzSet } from "./trades.js";
+import { playerValue, rosterPlayer, proposeTrades, blitzSet, evaluateTrade } from "./trades.js";
 import { analystTake, polishTake } from "./analyst.js";
 import { byeWeeks, horizonWeights, availability, simulateSeason, scheduleOutlook, positionalStrength, gamePlan } from "./season.js";
 import { makeSession, verifySession, csrfFor, parseCookies, sessionCookie, clearSessionCookie, SESSION_COOKIE, timingSafeEqual } from "./auth.js";
@@ -118,7 +118,7 @@ export class App {
       rep = buildReport(league, me, boxes, week, now, faByPos);
       // Trades and roster shape, valued over the rest of the season: weekly value times the share of the weighted
       // remaining weeks the player is available for (bye weeks removed, playoff weeks weighted by contention).
-      let trades = [], strength = null, byesAhead = [];
+      let trades = [], strength = null, byesAhead = [], pending = [];
       try {
         const rosters = await this.espn.rosters(f, c, league);
         const conv = (t) => (rosters[t.id] || []).map((p) => {
@@ -134,6 +134,17 @@ export class App {
         strength = positionalStrength({ [me.id]: mine, ...Object.fromEntries(Object.values(others).map((o) => [o.id, o.players])) }, me.id, rep.slot_counts);
         const starters = new Set(Object.values(rep.recommended).flat().map((p) => p.name));
         byesAhead = mine.filter((p) => starters.has(p.name) && p.byes.length).map((p) => ({ name: p.name, pos: p.position, week: p.byes[0] })).sort((a, b) => a.week - b.week);
+        // Offers already out on ESPN, scored by the same math so they can be compared with the board.
+        try {
+          const byTeamId = Object.fromEntries(Object.values(others).map((o) => [o.id, o.players]));
+          const all = this.espn.tradeTransactions ? await this.espn.tradeTransactions(f, c, league, me.id) : await this.espn.pendingTrades(f, c, league, me.id);
+          await this.trackTrades(league, me.id, all, mine, byTeamId);
+          pending = all.filter((t) => t.status === "PENDING").map((t) => {
+            const ev = evaluateTrade(mine, byTeamId[t.with_team_id] || [], t.give, t.get, rep.slot_counts);
+            const names = (ids, pool) => ids.map((id) => pool.find((p) => p.playerId === id)?.name || `#${id}`);
+            return { ...t, ...(ev || { give_names: names(t.give, mine).join(" + "), get_names: names(t.get, byTeamId[t.with_team_id] || []).join(" + "), my_gain: null, their_gain: null, kind: `${t.give.length}-for-${t.get.length}` }), give_ids: t.give, get_ids: t.get };
+          });
+        } catch (e) { console.warn("pending trades failed", e?.message); }
       } catch (e) { console.warn("trades failed", e?.message); }
       const outlook = scheduleOutlook(league, me);
       const plan = gamePlan({ report: rep, odds, outlook, strength, trades, weeksLeft, byesAhead });
@@ -150,8 +161,26 @@ export class App {
       } catch (e) { console.warn("analyst failed", e?.message); }
       const season = { odds: myOdds, spots: odds.spots, outlook, strength, plan: { ...plan, bullets: analyst?.plan?.length ? analyst.plan : plan.bullets, source: analyst?.source === "claude" && analyst.plan?.length ? "claude" : "rules" }, weeks_left: weeksLeft, contending, byes_ahead: byesAhead,
         standings_odds: Object.fromEntries(Object.entries(odds.by_team).map(([id, o]) => [id, o.playoff_odds])) };
-      return { ...b, report: rep, trades, analyst, season, team_id: me.id, week, problem_count };
+      return { ...b, report: rep, trades, pending, analyst, season, team_id: me.id, week, problem_count };
     });
+  }
+
+  /** Notice when an offer we have seen stops being pending, and log what happened to it. */
+  async trackTrades(league, myId, all, mine, byTeamId) {
+    const key = `trades:${league.id}`;
+    const seen = (await this.storage.get(key)) || {};
+    const names = (ids, pool) => ids.map((id) => pool.find((p) => p.playerId === id)?.name || `#${id}`).join(" + ");
+    const next = {};
+    for (const t of all) {
+      next[t.id] = t.status;
+      const before = seen[t.id];
+      if (before === "PENDING" && t.status !== "PENDING") {
+        const what = { ACCEPTED: "accepted", EXECUTED: "accepted", REJECTED: "declined", CANCELED: "withdrawn", EXPIRED: "expired" }[t.status] || t.status.toLowerCase();
+        await this.logActivity({ kind: "settled", league: league.name, league_id: league.id, week: league.currentWeek, ok: ["ACCEPTED", "EXECUTED"].includes(t.status), outcome: what,
+          with: t.with, give: names(t.give, mine), get: names(t.get, byTeamId[t.with_team_id] || []), mine: t.mine, by: "espn", message: `${t.mine ? "Your offer to" : "The offer from"} ${t.with} was ${what}.` });
+      }
+    }
+    await this.storage.put(key, next);
   }
 
   // ------------------------------------------------------------ activity log
@@ -209,6 +238,7 @@ export class App {
       if (path === "/lineups") return this.lineups(request, url);
       if (path === "/trade") return this.trade(request, url);
       if (path === "/trades") return this.blitz(request, url);
+      if (path === "/withdraw" && request.method === "POST") return this.withdraw(request);
       if (path === "/add") return this.add(request, url);
       if (path === "/hide" && request.method === "POST") return this.hide(request);
       if (path === "/settings") return this.settingsPage(request);
@@ -326,14 +356,31 @@ export class App {
     if (!leagueId) return html(errorPage("Pick a league first.", true), 404);
     const b = await this.bundle(leagueId);
     if (!b.started) return html(errorPage(`${b.name} has not started this season.`, true));
-    const picks = blitzSet(b.trades || []);
+    // Players already in a pending offer stay out of new offers unless that offer is withdrawn first.
+    const keep = form ? new Set(form.getAll("withdraw")) : new Set();
+    const busy = new Set((b.pending || []).filter((t) => !keep.has(String(t.id))).flatMap((t) => [...t.give_ids, ...t.get_ids]));
+    const picks = blitzSet(b.trades || [], { busy });
     const csrf = await this.csrf(request);
-    if (request.method !== "POST") return html(blitzPage(b, picks, csrf));
+    if (request.method !== "POST") return html(blitzPage(b, blitzSet(b.trades || [], { busy: new Set((b.pending || []).flatMap((t) => [...t.give_ids, ...t.get_ids])) }), csrf, { freed: blitzSet(b.trades || []), moves: this.waiverMoves(b) }));
     if (!(await this.checkCsrf(request, form))) return html(errorPage("Form expired. Go back and try again.", true), 400);
     const chosen = new Set(form.getAll("id"));
     const toSend = picks.filter((t) => chosen.has(t.id));
-    if (!toSend.length) return html(blitzPage(b, picks, csrf, { flash: "Tick at least one offer to send." }));
+    const moves = this.waiverMoves(b).filter((m) => form.getAll("move").includes(String(m.player_id)));
+    if (!toSend.length && !moves.length && !keep.size) return html(blitzPage(b, picks, csrf, { flash: "Tick at least one offer or waiver move to send.", moves: this.waiverMoves(b) }));
     const results = [];
+    for (const m of moves) {
+      const result = await this.espn.addPlayer(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, b.week, { addId: m.player_id, dropId: m.drop ? m.drop.player_id : null, waiver: m.on_waivers, bid: 0 });
+      await this.logActivity({ kind: m.on_waivers ? "claim" : "add", league: b.name, league_id: b.league_id, week: b.week, ok: result.ok, message: result.message, add: m.name, drop: m.drop ? m.drop.name : null, bid: m.on_waivers ? 0 : null, by: "you" });
+      results.push({ move: m, result });
+    }
+    // Withdraw first, so the replacements are not blocked by the offers they replace.
+    for (const id of keep) {
+      const p = (b.pending || []).find((t) => String(t.id) === id);
+      if (!p || !p.mine) continue;
+      const result = await this.espn.cancelTrade(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, p.id);
+      await this.logActivity({ kind: "withdraw", league: b.name, league_id: b.league_id, week: b.week, ok: result.ok, message: result.message, with: p.with, give: p.give_names, get: p.get_names, by: "you" });
+      results.push({ trade: p, result, withdrawn: true });
+    }
     for (const t of toSend) {
       const give = t.give.map((p) => p.player_id), get = t.get.map((p) => p.player_id);
       let result;
@@ -344,6 +391,35 @@ export class App {
     }
     await this.clearCache();
     return html(blitzPage(b, picks, csrf, { results }));
+  }
+
+  /** The top waiver move per position, each with its drop chosen the same way the add page would: cheapest non-starter first. */
+  waiverMoves(b) {
+    const r = b.report, cands = (r.drop_candidates || []).filter((c) => !c.starter);
+    const out = []; const used = new Set();
+    for (const [pos, picks] of Object.entries(r.waivers || {})) {
+      const p = picks.find((x) => !x.error && x.player_id != null);
+      if (!p) continue;
+      let drop = null;
+      if (r.open_spots - out.filter((m) => !m.drop).length <= 0) { drop = cands.find((c) => !used.has(c.player_id)) || null; if (!drop) continue; used.add(drop.player_id); }
+      out.push({ ...p, pos: p.pos || pos, drop });
+    }
+    return out.sort((a, b) => (b.fills_empty_slot - a.fills_empty_slot) || (b.edge - a.edge));
+  }
+
+  /** Withdraw one pending offer of yours. */
+  async withdraw(request) {
+    const s = await this.settings();
+    const form = await request.formData();
+    if (!(await this.checkCsrf(request, form))) return html(errorPage("Form expired. Go back and try again.", true), 400);
+    const leagueId = Number(form.get("league") || 0), txId = String(form.get("tx") || "");
+    const b = await this.bundle(leagueId);
+    const p = (b.pending || []).find((t) => String(t.id) === txId && t.mine);
+    if (!p) return html(errorPage("That offer is not one of yours, or it is no longer pending.", true), 404);
+    const result = await this.espn.cancelTrade(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, p.id);
+    await this.logActivity({ kind: "withdraw", league: b.name, league_id: b.league_id, week: b.week, ok: result.ok, message: result.message, with: p.with, give: p.give_names, get: p.get_names, by: "you" });
+    await this.clearCache();
+    return html(errorPage(result.ok ? `Withdrawn: ${p.give_names} for ${p.get_names} to ${p.with}.` : result.message, true), result.ok ? 200 : 502);
   }
 
   /** Preview, then submit, a free-agent add or waiver claim, dropping someone if the roster is full. */

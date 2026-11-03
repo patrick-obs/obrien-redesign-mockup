@@ -260,6 +260,41 @@ export async function rosters(fetchFn, cookies, league) {
   return out;
 }
 
+/** Every trade proposal that involves `teamId`, with its status (PENDING, ACCEPTED, REJECTED, CANCELED, EXPIRED, EXECUTED...). */
+export async function tradeTransactions(fetchFn, cookies, league, teamId) {
+  const d = await getJson(fetchFn, `${leagueUrl(league.season, league.id)}?view=mTransactions2`, cookies);
+  const out = [];
+  for (const t of d.transactions || []) {
+    if (t.type !== "TRADE_PROPOSAL") continue;
+    const items = (t.items || []).filter((i) => i.type === "TRADE");
+    if (!items.some((i) => i.fromTeamId === teamId || i.toTeamId === teamId)) continue;
+    const otherId = items.map((i) => (i.fromTeamId === teamId ? i.toTeamId : i.fromTeamId)).find((x) => x !== teamId);
+    out.push({ id: t.id, proposed_by: t.teamId, mine: t.teamId === teamId, with_team_id: otherId, with: league.byId[otherId]?.name || `Team ${otherId}`, with_logo: league.byId[otherId]?.logo || "",
+      give: items.filter((i) => i.fromTeamId === teamId).map((i) => i.playerId), get: items.filter((i) => i.toTeamId === teamId).map((i) => i.playerId),
+      proposed_at: t.proposedDate || null, expires_at: t.expirationDate || null, status: t.status || "PENDING" });
+  }
+  return out;
+}
+/** Just the pending ones. */
+export async function pendingTrades(fetchFn, cookies, league, teamId) {
+  return (await tradeTransactions(fetchFn, cookies, league, teamId)).filter((t) => t.status === "PENDING");
+}
+
+/**
+ * Withdraw (cancel) a trade proposal. ESPN's own client updates the transaction with status CANCELED; the exact shape is
+ * unofficial, so the response is returned verbatim for the page to show.
+ */
+export async function cancelTrade(fetchFn, cookies, season, leagueId, teamId, txId) {
+  const url = `${WRITE}${season}/segments/0/leagues/${leagueId}/transactions/${txId}`;
+  const headers = { Cookie: cookieHeader(cookies), "User-Agent": UA, "Content-Type": "application/json" };
+  let r = await fetchFn(url, { method: "PUT", headers, body: JSON.stringify({ id: txId, teamId, status: "CANCELED", memberId: cookies.swid }) });
+  if (r.status === 404 || r.status === 405) r = await fetchFn(url, { method: "POST", headers, body: JSON.stringify({ id: txId, teamId, type: "TRADE_PROPOSAL", executionType: "CANCEL", memberId: cookies.swid }) });
+  const ok = r.status >= 200 && r.status < 300;
+  let resp; const text = await r.text();
+  try { resp = JSON.parse(text); } catch { resp = text.slice(0, 500); }
+  return { ok, status: r.status, message: ok ? "Offer withdrawn." : errorMessage(resp, r.status), response: resp };
+}
+
 // ------------------------------------------------------------------ writes
 
 export function buildLineupTransaction(teamId, swid, week, items) {

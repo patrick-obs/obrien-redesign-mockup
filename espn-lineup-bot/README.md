@@ -176,6 +176,15 @@ pip install pytest && pytest tests   # Python CLI and Flask app (21 tests)
   for you (lowest rest-of-season value on the bench, never IR, never a locked player, starters
   listed last) and lets you change it. Players on waivers become a waiver claim with a bid field in
   FAAB leagues; free agents are added immediately. Drops only happen as part of an add.
+- **Trade blitz** (`/trades?league=ID`). The best set of offers that can all be out at once (no player in
+  two offers, one offer per manager), plus the top waiver move per position with its drop chosen, all
+  tickable and sent in one submit. **Offers already out on ESPN** are read from the transactions view,
+  scored by the same lineup math, and listed on the league page and the blitz page; tick one to
+  withdraw it and the board frees its players for replacements in the same submit. Every rebuild diffs
+  trade statuses and logs accepted / declined / expired / withdrawn into the dashboard's "Sent to ESPN"
+  feed, so outcomes show up on their own (cron runs rebuild three mornings a week plus two evening
+  passes). Withdrawing uses an unofficial ESPN call (PUT status CANCELED, POST fallback); the first
+  real use confirms it and any ESPN reply is shown verbatim.
 - These writes use the same unofficial ESPN transactions endpoint as "Set lineups" (types
   `TRADE_PROPOSAL`, `FREEAGENT`, `WAIVER`). Any ESPN rejection is shown verbatim on the result page.
 - The older Flask version in `app.py`/`templates/` shares the theme but does not have these features.

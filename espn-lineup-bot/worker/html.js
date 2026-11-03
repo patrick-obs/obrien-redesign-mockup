@@ -126,6 +126,7 @@ label.row{cursor:pointer;font-weight:400;margin:0}
 .switch:checked{background:var(--good)}.switch:checked::after{transform:translateX(20px)}
 .card.orphan{border:1px dashed var(--line);box-shadow:none;background:transparent}
 .pick{display:flex;gap:12px;align-items:flex-start;cursor:pointer}.pick>input{margin-top:16px;width:22px;height:22px;accent-color:var(--accent);flex:none}.pick .trade{flex:1}
+.pick-row{cursor:pointer}.pick-row>input{width:22px;height:22px;accent-color:var(--accent);flex:none;margin:0}
 @media (max-width:640px){main{padding:16px 14px 28px}.card{padding:16px;border-radius:16px}h1{font-size:30px}h2{font-size:20px}.hero{padding:20px}.hero p{font-size:24px}.hero .btn.big{flex-basis:100%}header{padding:8px 12px}header .logo{height:32px}header nav a{padding:6px 8px;font-size:14px}.login .logo{height:120px}.swap{grid-template-columns:1fr}.swap .arrow{text-align:center}.swap .arrow svg{transform:rotate(90deg)}.matchup .big{font-size:32px}.seg{top:54px;margin:0 -14px 18px;padding:3px 14px;border-radius:0}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}html{scroll-behavior:auto}}`;
 
@@ -270,8 +271,10 @@ function activityList(items) {
   const line = (e) => e.kind === "trade" ? `Trade offer to ${esc(e.with)}: ${esc(e.give)} for ${esc(e.get)} <span class="muted">(+${pts(e.my_gain)}/wk for you, ${e.their_gain >= 0 ? "+" : "-"}${Math.abs(e.their_gain).toFixed(1)} for them)</span>`
     : e.kind === "claim" ? `Waiver claim for ${esc(e.add)}${e.drop ? `, dropping ${esc(e.drop)}` : ""}${e.bid ? ` (bid $${e.bid})` : ""}`
     : e.kind === "add" ? `Added ${esc(e.add)}${e.drop ? `, dropped ${esc(e.drop)}` : ""}`
+    : e.kind === "withdraw" ? `Withdrew offer to ${esc(e.with)}: ${esc(e.give)} for ${esc(e.get)}`
+    : e.kind === "settled" ? `${esc(e.message)} <span class="muted">(${esc(e.give)} for ${esc(e.get)})</span>`
     : `Lineup set: ${plural(e.changes, "change")}${e.items ? ` <span class="muted">(${esc(e.items.join(", "))})</span>` : ""}`;
-  return `<div class="card" id="activity"><h2 class="top">Sent to ESPN</h2><div class="group">${items.map((e) => `<div class="row"><div class="main"><div class="t">${line(e)}</div><div class="s">${esc(e.league)} · week ${e.week} · ${esc(fmtDay(e.at))} ET · ${e.by === "auto" ? "automatic" : "by you"}${e.ok ? "" : ` · <span class="bad">ESPN refused: ${esc(e.message)}</span>`}</div></div><div class="trail"><span class="tag ${e.ok ? "good" : "bad"}">${e.ok ? (e.kind === "trade" ? "offered" : e.kind === "claim" ? "pending" : "done") : "failed"}</span></div></div>`).join("")}</div></div>`;
+  return `<div class="card" id="activity"><h2 class="top">Sent to ESPN</h2><div class="group">${items.map((e) => `<div class="row"><div class="main"><div class="t">${line(e)}</div><div class="s">${esc(e.league)} · week ${e.week} · ${esc(fmtDay(e.at))} ET · ${e.by === "auto" ? "automatic" : e.by === "espn" ? "from ESPN" : "by you"}${e.ok || e.kind === "settled" ? "" : ` · <span class="bad">ESPN refused: ${esc(e.message)}</span>`}</div></div><div class="trail"><span class="tag ${e.kind === "settled" ? (e.ok ? "good" : "") : e.ok ? "good" : "bad"}">${e.kind === "settled" ? esc(e.outcome) : e.ok ? (e.kind === "trade" ? "offered" : e.kind === "claim" ? "pending" : "done") : "failed"}</span></div></div>`).join("")}</div></div>`;
 }
 
 export function indexPage({ bundles, errors, totalMoves, season, now, csrf = "", hiddenCount = 0, activity = [] }) {
@@ -331,6 +334,7 @@ ${Object.entries(r.waivers).map(([pos, picks]) => picks.map((d) => d.error
   const trades = b.trades && b.trades.length
     ? `<div class="trades">${b.trades.map((t) => tradeCard(r, t, true)).join("")}</div>`
     : `<p class="muted">Nothing that clearly helps you without hurting the other side. Check back as injuries change things.</p>`;
+  const pending = b.pending && b.pending.length ? `<h3>Offers out on ESPN</h3><div class="trades">${b.pending.map((t) => pendingCard(r, t, csrfFor(b))).join("")}</div>` : "";
   const analyst = b.analyst ? `<div class="card analyst" id="analyst"><h2 class="top">Analyst's take</h2><p class="headline">${esc(b.analyst.headline)}</p>
 ${b.analyst.paragraphs.map((p) => `<p>${esc(p)}</p>`).join("")}
 <p class="stamp by">${b.analyst.source === "claude" ? "Written by Claude from this week's numbers." : "Built from this week's numbers."}</p></div>` : "";
@@ -368,7 +372,7 @@ ${plan}
 ${lineupTable(r, r.opponent_lineup)}${r.opponent_issues.length ? note(`Their problems as set: ${r.opponent_issues.join("; ")}`) : ""}</div>
 <div class="card" id="waivers"><h2 class="top">Waiver watch</h2><p class="lede">Free agents projected above your weakest starter at that position this week. Add is immediate; Claim goes through your league's waiver process. What owned means: the share of ESPN leagues that roster the player, so a low number next to a high projection is a bargain nobody has noticed yet.</p>${waivers}</div>
 <div class="card" id="trades"><h2 class="top">Trade ideas</h2><p class="lede">Packages of one to three players a side, ranked by what your best lineup gains per week for the rest of the season and filtered to offers the other side could reasonably accept. Proposing sends the offer through ESPN; the other manager still has to accept.</p>
-${b.trades && b.trades.length ? `<p><a class="btn" href="/trades?league=${r.league_id}">Trade blitz: send several offers at once</a></p>` : ""}${trades}</div>
+${pending}${b.trades && b.trades.length ? `<p><a class="btn" href="/trades?league=${r.league_id}">Trade blitz: send several offers at once</a></p>` : ""}${trades}</div>
 <div class="card" id="league"><h2 class="top">All matchups, week ${r.week}</h2><p class="lede">ESPN projection / best possible from each roster.</p>
 <div class="group">${r.matchups.map((s) => `<div class="row" style="flex-wrap:wrap">${s.length === 2 ? `<span class="tm" style="flex:1 1 260px">${matchRow(s[0])}</span><span class="muted" style="font-weight:700;font-size:12px">VS</span><span class="tm" style="flex:1 1 260px">${matchRow(s[1])}</span>${[s[0].team_id, s[1].team_id].includes(r.team_id) ? `<span class="tag tint">you</span>` : ""}` : s.length ? `${badge(s[0].team, s[0].logo, "sm")}<span>${esc(s[0].team)} has a bye</span>` : ""}
 ${s.filter((x) => x.problems.length).map((x) => `<div class="note small" style="flex-basis:100%">${I.warn}<span>${esc(x.team)}: ${esc(x.problems.join("; "))}</span></div>`).join("")}</div>`).join("")}</div>
@@ -392,23 +396,49 @@ function tradeCard(r, t, withButton) {
 ${withButton ? `<p class="act"><a class="btn" href="/trade?league=${r.league_id}&amp;id=${esc(t.id)}">Propose this trade on ESPN</a></p>` : ""}</div>`;
 }
 
-export function blitzPage(b, picks, csrf, { flash = null, results = null } = {}) {
+// The league page is cached HTML without a session, so withdraw forms carry no CSRF and route through the blitz page instead.
+const csrfFor = () => null;
+const fmtExp = (ts) => ts ? new Date(ts).toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) : "";
+function pendingCard(r, t, csrf) {
+  const side = (label, ps) => `<div class="side"><div class="lbl">${label}</div>${ps.map((p) => `<div class="p">${avatar(p, "sm")}<div><div class="t">${esc(p.name)}</div><div class="s">${esc(p.pos || "")}${p.team ? ` · ${esc(p.team)}` : ""}${p.value != null ? ` · ${pts(p.value)}/wk` : ""}</div></div></div>`).join("")}</div>`;
+  const give = t.give && typeof t.give[0] === "object" ? t.give : t.give_names.split(" + ").map((name) => ({ name }));
+  const get = t.get && typeof t.get[0] === "object" ? t.get : t.get_names.split(" + ").map((name) => ({ name }));
+  return `<div class="trade pending"><div class="head">${badge(t.with, t.with_logo, "sm")}<span class="nm">${esc(t.with)}</span><span class="tag tint">${t.mine ? "your offer" : "their offer"}</span><span class="tag">${esc(t.kind)}</span>
+<span class="gain">${t.my_gain != null ? `<span class="tag ${t.my_gain > 0 ? "good" : "bad"}">you ${t.my_gain >= 0 ? "+" : ""}${pts(Math.abs(t.my_gain)) === "n/a" ? "" : (t.my_gain >= 0 ? "+" : "-") + Math.abs(t.my_gain).toFixed(1)}/wk</span><span class="tag ${t.their_gain >= 0 ? "good" : "warn"}">them ${t.their_gain >= 0 ? "+" : "-"}${Math.abs(t.their_gain).toFixed(1)}/wk</span>` : `<span class="tag">not scored</span>`}</span></div>
+<div class="swap">${side("You send", give)}<div class="arrow">${I.swap}</div>${side("You get", get)}</div>
+<p class="stamp">${t.expires_at ? `Expires ${esc(fmtExp(t.expires_at))} ET.` : "Pending on ESPN."}${t.mine ? ` Withdraw it from the trade blitz page, or on ESPN.` : " Accept or decline it on ESPN."}</p></div>`;
+}
+
+export function blitzPage(b, picks, csrf, { flash = null, results = null, freed = null, moves = [] } = {}) {
   const r = b.report;
   if (results) {
     const sent = results.filter((x) => x.result.ok).length;
-    return layout("Offers sent", `<h1>${sent === results.length ? `${plural(sent, "offer")} sent` : `${sent} of ${results.length} offers sent`}</h1>
-${results.map((x) => `<div class="card"><p class="${x.result.ok ? "good" : "bad"}">${esc(x.result.message)}</p>${tradeCard(r, x.trade, false)}</div>`).join("")}
+    const offers = results.filter((x) => x.trade && !x.withdrawn), wd = results.filter((x) => x.withdrawn), mv = results.filter((x) => x.move);
+    const bits = [];
+    if (wd.length) bits.push(`${wd.filter((x) => x.result.ok).length} of ${wd.length} withdrawn`);
+    if (offers.length) bits.push(`${offers.filter((x) => x.result.ok).length} of ${plural(offers.length, "offer")} sent`);
+    if (mv.length) bits.push(`${mv.filter((x) => x.result.ok).length} of ${plural(mv.length, "waiver move")} done`);
+    return layout("Blitz sent", `<h1>${bits.join(", ") || "Nothing sent"}</h1>
+${results.map((x) => `<div class="card"><p class="${x.result.ok ? "good" : "bad"}">${x.withdrawn ? "Withdraw: " : x.move ? `${x.move.on_waivers ? "Claim" : "Add"} ${esc(x.move.name)}${x.move.drop ? `, drop ${esc(x.move.drop.name)}` : ""}: ` : ""}${esc(x.result.message)}</p>${x.withdrawn ? pendingCard(r, x.trade) : x.trade ? tradeCard(r, x.trade, false) : ""}</div>`).join("")}
 <p class="muted">Each manager gets ESPN's usual notice and accepts or declines there. If two of them accept offers that share a player, ESPN voids the later one, so nothing can double-trade. Withdraw any offer on ESPN if you change your mind.</p>
 <p><a class="btn" href="/league/${r.league_id}?refresh=1#trades">Back to ${esc(r.league)}</a></p>`, { authed: true });
   }
   const totalGain = picks.reduce((n, t) => n + t.my_gain, 0);
+  const mine = (b.pending || []).filter((t) => t.mine);
+  const freedGain = freed ? freed.reduce((n, t) => n + t.my_gain, 0) : 0;
+  const pendingBlock = mine.length ? `<h2>Your offers already out</h2><p class="lede">Players in these offers are kept out of new ones. Tick an offer to withdraw it; the board below then assumes those players are free again${freed && freedGain > totalGain + 0.05 ? `, which would let you send a set worth about ${pts(freedGain)} a week instead of ${pts(totalGain)}` : ""}.</p>
+<div class="trades">${mine.map((t) => `<label class="pick"><input type="checkbox" name="withdraw" value="${esc(String(t.id))}"${t.my_gain != null && freed && freedGain > totalGain + 0.05 && t.my_gain < freedGain - totalGain ? " checked" : ""}>${pendingCard(r, t)}</label>`).join("")}</div>` : "";
   return layout("Trade blitz", `<h1>Trade blitz <span class="muted">${esc(r.league)}</span></h1>
 ${flash ? flashBox(flash) : ""}
+${mine.length ? `<form method="post" action="/trades" id="blitz"><input type="hidden" name="csrf" value="${esc(csrf)}"><input type="hidden" name="league" value="${r.league_id}">${pendingBlock}</form>` : ""}
 <p class="lede">${picks.length ? `The best ${plural(picks.length, "offer")} that can all be out at once: no player offered twice, one offer per manager. Together they are worth about ${pts(totalGain)} points a week if everyone said yes. Untick any you do not want, then send the rest in one go.` : "No trade on the board clearly helps you without hurting the other side, so there is nothing to send right now."}</p>
-${picks.length ? `<form method="post" action="/trades"><input type="hidden" name="csrf" value="${esc(csrf)}"><input type="hidden" name="league" value="${r.league_id}">
-<div class="trades">${picks.map((t) => `<label class="pick"><input type="checkbox" name="id" value="${esc(t.id)}" checked>${tradeCard(r, t, false)}</label>`).join("")}</div>
-<p style="margin-top:16px"><button class="btn big" type="submit">Send the ticked offers to ESPN</button></p>
-<p class="stamp">Press once. Each offer goes to its manager separately; they accept or decline on ESPN.</p></form>` : ""}
+${picks.length || (freed && freed.length) ? `<h2>New offers</h2><div class="trades">${(freed && freed.length > picks.length ? freed : picks).map((t) => `<label class="pick"><input type="checkbox" name="id" value="${esc(t.id)}" form="blitz"${picks.some((p) => p.id === t.id) ? " checked" : ""}>${tradeCard(r, t, false)}${picks.some((p) => p.id === t.id) ? "" : `<p class="stamp">Needs a player from one of your pending offers; tick that offer above to withdraw it first.</p>`}</label>`).join("")}</div>
+<p style="margin-top:16px"><button class="btn big" type="submit" form="blitz">${mine.length ? "Withdraw the ticked offers and send the new ones" : "Send the ticked offers to ESPN"}</button></p>
+<p class="stamp">Press once. Each offer goes to its manager separately; they accept or decline on ESPN.</p>` : ""}
+${moves.length ? `<h2>Waiver moves</h2><p class="lede">The top pickup at each position where someone out-projects your weakest starter, with the drop chosen for you. Claims only go through if you win the claim, and the drop only happens then. Untick any you do not want.</p>
+<div class="group">${moves.map((m) => `<label class="row pick-row"><input type="checkbox" name="move" value="${m.player_id}" form="blitz"${m.fills_empty_slot ? " checked" : ""}>${avatar(m, "sm")}<div class="main"><div class="t">${m.on_waivers ? "Claim" : "Add"} ${esc(m.name)} <span class="muted">${esc(m.pos)} · ${esc(m.team)} · ${pts(m.proj)} proj</span></div><div class="s">${m.fills_empty_slot ? `fills your empty ${esc(m.pos)} slot` : `+${pts(m.edge)} over your weakest ${esc(m.pos)}`}${m.drop ? ` · drop ${esc(m.drop.name)} (${esc(m.drop.reason)})` : " · open roster spot, no drop"}</div></div></label>`).join("")}</div>
+${!picks.length && !(freed && freed.length) ? `<p style="margin-top:16px"><button class="btn big" type="submit" form="blitz">Send the ticked moves to ESPN</button></p>` : ""}` : ""}
+${!mine.length ? `<form method="post" action="/trades" id="blitz"><input type="hidden" name="csrf" value="${esc(csrf)}"><input type="hidden" name="league" value="${r.league_id}"></form>` : ""}
 <p><a class="btn ghost" href="/league/${r.league_id}#trades">Back</a></p>`, { authed: true });
 }
 

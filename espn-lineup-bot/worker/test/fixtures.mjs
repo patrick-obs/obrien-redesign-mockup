@@ -5,9 +5,10 @@ export const ELIG = {
 };
 export const SLOTS = { QB: 1, RB: 2, WR: 2, TE: 1, "RB/WR/TE": 1, "D/ST": 1, K: 1, BE: 7, IR: 2 };
 export const NOW = Date.UTC(2026, 10, 1, 17, 0, 0);
-const ids = {};
+const idMap = {};
+export const ids = { get: (name) => idMap[name] };
 export function bp(name, pos, slot, proj, { status = "ACTIVE", bye = false, hours = 24, recentAvg = null, owned = 50, seasonProjAvg, seasonAvg } = {}) {
-  return { playerId: (ids[name] ||= 1000 + Object.keys(ids).length), name, position: pos, eligible: ELIG[pos], slot, proj, status, bye,
+  return { playerId: (idMap[name] ||= 1000 + Object.keys(idMap).length), name, position: pos, eligible: ELIG[pos], slot, proj, status, bye,
     locked: NOW >= NOW + hours * 3600e3, proTeam: "KC", opponent: bye ? "None" : "BUF", oppRank: 12, gameDate: NOW + hours * 3600e3,
     recentAvg, percentOwned: owned, seasonProjAvg: seasonProjAvg ?? proj, seasonAvg: seasonAvg ?? proj };
 }
@@ -61,6 +62,9 @@ export function fakeEspn({ posts = [] } = {}) {
     rosters: async (f, c, league) => Object.fromEntries(league.teams.map((t) => [t.id, (t.id === 3 ? MINE() : t.id === 7 ? THEIRS() : OTHERS())])),
     gamesPlayed: (t) => t.wins + t.losses + t.ties,
     PRO_TEAM: { 12: "KC", 2: "BUF" },
+    tradeStatus: "PENDING",
+    tradeTransactions: async function (f, c, league, teamId) { return league.id === 1 ? [{ id: 555, proposed_by: 3, mine: true, with_team_id: 7, with: "Rival", with_logo: "", give: [ids.get("TE B")], get: [ids.get("D W")], proposed_at: NOW - 3600e3, expires_at: NOW + 86400e3, status: this.tradeStatus }] : []; },
+    cancelTrade: async (f, c, season, leagueId, teamId, txId) => { posts.push({ kind: "withdraw", leagueId, teamId, txId }); return { ok: true, status: 200, message: "Offer withdrawn." }; },
     applyLineup: async (f, c, season, leagueId, teamId, week, items) => { posts.push({ kind: "lineup", leagueId, teamId, week, items, cookies: c }); return { ok: true, status: 200, message: "Lineup set." }; },
     proposeTrade: async (f, c, season, leagueId, teamId, week, theirTeamId, giveIds, getIds) => { posts.push({ kind: "trade", leagueId, teamId, week, theirTeamId, giveIds, getIds }); return { ok: true, status: 200, message: "Trade proposed." }; },
     addPlayer: async (f, c, season, leagueId, teamId, week, opts) => { posts.push({ kind: "add", leagueId, teamId, week, ...opts }); return { ok: true, status: 200, message: opts.waiver ? "Waiver claim submitted." : "Player added." }; },

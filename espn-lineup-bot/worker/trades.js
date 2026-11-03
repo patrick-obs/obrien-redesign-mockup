@@ -123,6 +123,18 @@ export function proposeTrades(mine, others, slotCounts, opts = {}) {
   return ideas.slice(0, perLeague);
 }
 
+/** Score any package by the same lineup math as the board: what each side's best lineup gains per week. */
+export function evaluateTrade(mine, theirs, giveIds, getIds, slotCounts) {
+  const give = mine.filter((p) => giveIds.includes(p.playerId)), get = theirs.filter((p) => getIds.includes(p.playerId));
+  if (give.length !== giveIds.length || get.length !== getIds.length) return null;
+  const myBase = optimize(mine, slotCounts), theirBase = optimize(theirs, slotCounts);
+  const myAfter = optimize(mine.filter((p) => !give.includes(p)).concat(get), slotCounts);
+  const theirAfter = optimize(theirs.filter((p) => !get.includes(p)).concat(give), slotCounts);
+  const pj = (p) => ({ name: p.name, pos: p.position, value: p.weekly ?? p.proj, player_id: p.playerId, team: p.proTeam });
+  return { give: give.map(pj), get: get.map(pj), my_gain: r1(projectedTotal(myAfter) - projectedTotal(myBase)), their_gain: r1(projectedTotal(theirAfter) - projectedTotal(theirBase)),
+    give_names: give.map((p) => p.name).join(" + "), get_names: get.map((p) => p.name).join(" + "), kind: `${give.length}-for-${get.length}` };
+}
+
 /**
  * The best set of offers that can all be out at once: best gain first, never the same outgoing player in two offers,
  * at most one offer per manager, and never a player ESPN already has in a pending offer (pass their ids in `busy`).
