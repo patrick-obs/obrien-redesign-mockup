@@ -86,7 +86,9 @@ export class App {
       const league = await this.espn.loadLeague(f, c, s.season, leagueId);
       const b = { league_id: leagueId, name: league.name, started: league.started, drafted: !!league.drafted, teams: league.teams.length, current_week: league.currentWeek };
       // A league that reached the season without a draft was never renewed: nobody is running it this year.
-      b.orphaned = !league.started && !league.drafted && league.currentWeek > 0;
+      // ESPN reports week 0 for an undrafted league, so also treat "undrafted in September or later" as orphaned.
+      const inSeason = league.currentWeek > 0 || new Date(now).getUTCMonth() + 1 >= 9;
+      b.orphaned = !league.started && !league.drafted && league.teams.length > 0 && inSeason;
       if (!league.started) return b;
       const me = this.espn.findTeam(league, s.swid, null);
       const week = league.currentWeek;
