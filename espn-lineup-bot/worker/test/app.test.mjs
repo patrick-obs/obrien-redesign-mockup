@@ -398,3 +398,26 @@ test("autopilot revisits active offers: a live offer whose value collapsed is wi
   assert.equal(plan2.withdraw.length, 1); assert.match(plan2.why[0], /better use of WR3/);
   assert.equal(plan2.offers[0].id, "big");
 });
+
+test("expired cookies: banner, feed entry, 503 health, cleared by saving new cookies", async () => {
+  const posts = [];
+  const espn = fakeEspn({ posts });
+  const bad = { ...espn, loadLeague: async () => { throw new Error("ESPN refused the request (401). The ESPN cookies are wrong or expired; update them under Settings."); } };
+  const app = new App({ env: { APP_PASSWORD: "open-sesame", SECRET_KEY: "test-secret", ESPN_S2: "s2cookie", SWID: "{abc-123}" }, storage: new FakeStorage(), fetchFn: async () => { throw new Error("no network"); }, espn: bad });
+  assert.equal(await (await app.handle(req("/health"))).text(), "ok");
+  await app.handle(new Request("https://advisor.internal/__warm", { headers: { "x-warm-key": "test-secret" } }));
+  const h = await app.handle(req("/health"));
+  assert.equal(h.status, 503); assert.match(await h.text(), /espn-auth-failed/);
+  assert.equal(posts.length, 0, "nothing is sent while the cookies are bad");
+  const cookie = await login(app);
+  const page = await (await app.handle(req("/", { cookie }))).text();
+  assert.match(page, /ESPN has been rejecting the cookies/); assert.match(page, /ESPN rejected the cookies/);
+  assert.equal((await app.activity()).filter((e) => e.kind === "auth").length, 1, "logged once, not every run");
+  // New cookies that pass discovery clear it.
+  app.espn = espn;
+  const sp = await (await app.handle(req("/settings", { cookie }))).text();
+  const csrf = sp.match(/name="csrf" value="([0-9a-f]+)"/)[1];
+  await app.handle(req("/settings", { method: "POST", cookie, body: form({ csrf, swid: "{abc-123}", espn_s2: "fresh" }) }));
+  assert.equal((await app.handle(req("/health"))).status, 200);
+  assert.ok((await app.activity()).some((e) => e.kind === "auth" && e.ok));
+});

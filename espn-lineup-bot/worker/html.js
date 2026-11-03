@@ -211,7 +211,7 @@ export const errorPage = (message, authed) => layout("Problem", `<h1>Something w
 
 export const settingsPage = (s, csrf, flash = []) => layout("Settings", `
 <h1>ESPN connection</h1><div class="card" style="max-width:640px">
-<p class="muted">These two cookies let the app read your leagues and set your lineups. Get them from fantasy.espn.com while logged in: press F12, open Application, then Cookies, then https://fantasy.espn.com. They expire now and then; paste fresh ones when the app says it cannot load a league.</p>
+<p class="muted">These two cookies let the app read your leagues and set your lineups. Get them from fantasy.espn.com while logged in: press F12, open Application, then Cookies, then https://fantasy.espn.com. SWID never changes. espn_s2 normally lasts about a year, but dies if you log out of ESPN on that device or change the password; the dashboard shows a banner the moment ESPN stops accepting it, and nothing is sent to ESPN until you paste a fresh one here.</p>
 <form method="post"><input type="hidden" name="csrf" value="${esc(csrf)}">
 <label for="swid">SWID (keep the curly braces)</label><input type="text" id="swid" name="swid" value="${esc(s.swid)}" autocomplete="off">
 <label for="espn_s2">espn_s2</label><textarea id="espn_s2" name="espn_s2" rows="4" autocomplete="off">${esc(s.espn_s2)}</textarea>
@@ -278,8 +278,9 @@ function activityList(items) {
     : e.kind === "add" ? `Added ${esc(e.add)}${e.drop ? `, dropped ${esc(e.drop)}` : ""}`
     : e.kind === "withdraw" ? `Withdrew offer to ${esc(e.with)}: ${esc(e.give)} for ${esc(e.get)}`
     : e.kind === "settled" ? `${esc(e.message)} <span class="muted">(${esc(e.give)} for ${esc(e.get)})</span>`
+    : e.kind === "auth" ? esc(e.message)
     : `Lineup set: ${plural(e.changes, "change")}${e.items ? ` <span class="muted">(${esc(e.items.join(", "))})</span>` : ""}`;
-  return `<div class="card" id="activity"><h2 class="top">Sent to ESPN</h2><div class="group">${items.map((e) => `<div class="row"><div class="main"><div class="t">${line(e)}</div><div class="s">${esc(e.league)} · week ${e.week} · ${esc(fmtDay(e.at))} ET · ${e.by === "auto" ? "automatic" : e.by === "espn" ? "from ESPN" : "by you"}${e.ok || e.kind === "settled" ? "" : ` · <span class="bad">ESPN refused: ${esc(e.message)}</span>`}</div></div><div class="trail"><span class="tag ${e.kind === "settled" ? (e.ok ? "good" : "") : e.ok ? "good" : "bad"}">${e.kind === "settled" ? esc(e.outcome) : e.ok ? (e.kind === "trade" ? "offered" : e.kind === "claim" ? "pending" : "done") : "failed"}</span></div></div>`).join("")}</div></div>`;
+  return `<div class="card" id="activity"><h2 class="top">Sent to ESPN</h2><div class="group">${items.map((e) => `<div class="row"><div class="main"><div class="t">${line(e)}</div><div class="s">${esc(e.league)}${e.week ? ` · week ${e.week}` : ""} · ${esc(fmtDay(e.at))} ET · ${e.by === "auto" ? "automatic" : e.by === "espn" ? "from ESPN" : "by you"}${e.ok || e.kind === "settled" ? "" : ` · <span class="bad">ESPN refused: ${esc(e.message)}</span>`}</div></div><div class="trail"><span class="tag ${e.kind === "settled" ? (e.ok ? "good" : "") : e.ok ? "good" : "bad"}">${e.kind === "settled" ? esc(e.outcome) : e.ok ? (e.kind === "trade" ? "offered" : e.kind === "claim" ? "pending" : "done") : "failed"}</span></div></div>`).join("")}</div></div>`;
 }
 
 export function indexPage({ bundles, errors, totalMoves, season, now, csrf = "", hiddenCount = 0, activity = [] }) {

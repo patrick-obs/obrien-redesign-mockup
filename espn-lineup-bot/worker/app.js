@@ -220,6 +220,13 @@ export class App {
     await this.storage.put(key, next);
   }
 
+  /** Remember whether ESPN is accepting the cookies, and say so once in the feed when it stops. */
+  async noteAuth(ok, message = "") {
+    const a = (await this.storage.get("espn_auth")) || { failed: false };
+    if (ok && a.failed) { await this.storage.put("espn_auth", { failed: false }); await this.logActivity({ kind: "auth", ok: true, league: "all leagues", week: null, message: "ESPN accepted the cookies again.", by: "espn" }); }
+    else if (!ok && !a.failed) { await this.storage.put("espn_auth", { failed: true, since: this.now(), message }); await this.logActivity({ kind: "auth", ok: false, league: "all leagues", week: null, message: `ESPN rejected the cookies: ${message}. Lineups, pickups and trades are paused until new cookies are saved under Settings.`, by: "espn" }); }
+  }
+
   // ------------------------------------------------------------ activity log
   /** Everything the app ever sends to ESPN, newest first, capped at 200 entries. */
   async logActivity(entry) {
@@ -266,7 +273,7 @@ export class App {
     const path = url.pathname;
     try {
       if (path === "/__warm") return this.warm(request);
-      if (path === "/health") return new Response("ok");
+      if (path === "/health") { const a = await this.storage.get("espn_auth"); return a?.failed ? new Response(`espn-auth-failed since ${new Date(a.since).toISOString()}`, { status: 503 }) : new Response("ok"); }
       if (path === "/login") return this.login(request, url);
       if (path === "/logout" && request.method === "POST") return redirect("/login", { "set-cookie": clearSessionCookie() });
       if (!(await this.authed(request))) return redirect(`/login?next=${encodeURIComponent(path)}`);
@@ -309,13 +316,19 @@ export class App {
     const force = url.searchParams.get("refresh") === "1";
     const leagues = await this.leagues(force);
     const bundles = [], errors = [];
+    const auth = await this.storage.get("espn_auth");
+    if (auth?.failed) errors.push(`ESPN has been rejecting the cookies since ${new Date(auth.since).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York" })} ET. Nothing is being set, picked up or offered until fresh espn_s2 and SWID are saved under Settings.`);
     for (const lg of leagues) {
       if (s.hidden.includes(lg.league_id)) continue;
       try {
         const b = await this.bundle(lg.league_id, force);
         if (b.started) b.auto = await this.storage.get(`auto:${b.league_id}:${b.week}`);
         bundles.push(b);
-      } catch (e) { errors.push(`${lg.league_name}: ${e?.message || e}`); }
+        await this.noteAuth(true);
+      } catch (e) {
+        errors.push(`${lg.league_name}: ${e?.message || e}`);
+        if (/\b401\b|cookies/i.test(e?.message || "")) await this.noteAuth(false, e.message);
+      }
     }
     bundles.sort((a, b) => (a.started === b.started ? a.name.localeCompare(b.name) : a.started ? -1 : 1));
     const totalMoves = bundles.reduce((n, b) => n + (b.report ? b.report.lineup_items.length : 0), 0);
@@ -566,6 +579,7 @@ export class App {
       try { leagues = await this.espn.discoverLeagues(this.fetchFn, { espn_s2, swid }, s.season); }
       catch (e) { return html(settingsPage(s, csrf, [e?.message || String(e)])); }
       await this.storage.put("settings", { espn_s2, swid });
+      await this.noteAuth(true);
       await this.clearCache();
       return redirect(`/?saved=${leagues.length}`);
     }
@@ -583,7 +597,11 @@ export class App {
       try {
         const b = await this.bundle(lg.league_id, true);
         if (b.started && (await this.autoManage(b, s))) acted++;
-      } catch (e) { console.warn("warm failed", lg.league_name, e?.message); }
+        await this.noteAuth(true);
+      } catch (e) {
+        console.warn("warm failed", lg.league_name, e?.message);
+        if (/\b401\b|cookies/i.test(e?.message || "")) await this.noteAuth(false, e.message);
+      }
     }
     return new Response(`warmed ${leagues.length}, auto-managed ${acted}`);
   }
