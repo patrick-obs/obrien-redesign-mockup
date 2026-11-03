@@ -597,3 +597,21 @@ test("an add refused as 'not a free agent' is resent as a waiver claim", async (
   const r = await addPlayer(fetchFn, { swid: "{A}", espn_s2: "x" }, 2026, 1, 3, 9, { addId: 77, dropId: 5, waiver: false, bid: 0 });
   assert.equal(r.ok, true); assert.equal(r.claimed, true); assert.deepEqual(posts.map((p) => p.type), ["FREEAGENT", "WAIVER"]);
 });
+
+test("a refused pickup is retried on a later pass, and a blocked offer never crowds a sendable one out of the set", async () => {
+  const posts = [];
+  const espn = fakeEspn({ posts });
+  let fails = 1;
+  const realAdd = espn.addPlayer;
+  espn.addPlayer = async (...args) => { if (fails-- > 0) return { ok: false, status: 409, message: "not a free agent (test)" }; return realAdd(...args); };
+  const app = new App({ env: { APP_PASSWORD: "open-sesame", SECRET_KEY: "test-secret", ESPN_S2: "s2cookie", SWID: "{abc-123}" }, storage: new FakeStorage(), fetchFn: async () => { throw new Error("no network"); }, espn, now: () => NOW });
+  await app.savePrefs({ automanage: true, auto_lineup: false, auto_trades: false, auto_fill_empty: true, league_auto: { "1": true } });
+  await app.handle(new Request("https://advisor.internal/__warm", { headers: { "x-warm-key": "test-secret" } }));
+  assert.equal(posts.filter((p) => p.kind === "add").length, 0, "first pass: ESPN refused");
+  await app.handle(new Request("https://advisor.internal/__warm", { headers: { "x-warm-key": "test-secret" } }));
+  assert.equal(posts.filter((p) => p.kind === "add").length, 1, "second pass: tried again and went through");
+  const b = await app.bundle(1);
+  b.trades = [{ ...b.trades[0], their_gain: -0.5, my_gain: 9 }, ...b.trades.slice(1)];
+  const plan = app.blitzPlan(b);
+  assert.ok(plan.offers.every((t) => t.their_gain >= 0), "the recommended set never includes an offer that costs the other side");
+});

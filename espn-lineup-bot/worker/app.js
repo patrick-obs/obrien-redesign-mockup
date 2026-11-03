@@ -614,8 +614,11 @@ export class App {
     const r = b.report, mine = (b.rosters || {})[b.team_id] || [];
     const REPLACE_MARGIN = 1.0, STALE_GAIN = 0.5;
     const pending = (b.pending || []).filter((t) => t.mine);
-    const robust = (busy) => mine.length ? robustSet(b.trades || [], { mine, rosters: b.rosters || {}, slotCounts: r.slot_counts, rosterSize: r.roster_size, rosterCount: r.roster_count, busy, max: 4 })
-      : { offers: blitzSet(b.trades || [], { busy, max: 4 }), if_all_accepted: null, robust: false };
+    // Only offers the other manager also comes out ahead on (or level) make the recommended set: an offer that costs
+    // them anything on paper is not getting accepted, and a blocked offer must not crowd out a sendable one.
+    const board = (b.trades || []).filter((t) => (t.their_gain ?? -1) >= 0);
+    const robust = (busy) => mine.length ? robustSet(board, { mine, rosters: b.rosters || {}, slotCounts: r.slot_counts, rosterSize: r.roster_size, rosterCount: r.roster_count, busy, max: 4 })
+      : { offers: blitzSet(board, { busy, max: 4 }), if_all_accepted: null, robust: false };
     const gainOf = (set) => set.offers.reduce((s, t) => s + t.my_gain, 0);
     const busyOf = (keep) => new Set(keep.flatMap((t) => [...t.give_ids, ...t.get_ids]));
     // 1. Offers that will not be accepted, or whose value to you has collapsed, come back.
@@ -827,12 +830,14 @@ export class App {
       const inOffers = new Set([...(b.pending || []).flatMap((t) => [...(t.give_ids || []), ...(t.get_ids || [])]), ...(prev.offered_players || [])]);
       for (const m of this.blitzPlan(b).moves) {
         if (made >= 2) break;
-        if (claimed.has(m.player_id)) continue;
+        if (claimed.has(m.player_id) || (prev.failed?.[m.player_id] || 0) >= 3) continue;
         if (!m.drop && r.open_spots <= 0) continue;
         if (m.drop && inOffers.has(m.drop.player_id)) continue; // never drop a player who is in an offer
         const bid = m.on_waivers ? (this.suggestBid(b, m) ?? 0) : 0;
         const result = await this.espn.addPlayer(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, b.current_week, { addId: m.player_id, dropId: m.drop ? m.drop.player_id : null, waiver: !!m.on_waivers, bid });
-        claimed.add(m.player_id); made++;
+        // A refused add is not "done": it may be tried again next pass, but not forever.
+        if (result.ok) claimed.add(m.player_id); else { prev.failed = prev.failed || {}; prev.failed[m.player_id] = (prev.failed[m.player_id] || 0) + 1; }
+        made++;
         log({ kind: m.on_waivers ? "claim" : "add", ok: result.ok, message: result.message, add: m.name, drop: m.drop ? m.drop.name : null });
         await this.logActivity({ kind: m.on_waivers ? "claim" : "add", league: b.name, league_id: b.league_id, week: b.week, ok: result.ok, message: result.message, add: m.name, drop: m.drop ? m.drop.name : null, bid: m.on_waivers ? bid : null, by: "auto" });
         acted = true;
