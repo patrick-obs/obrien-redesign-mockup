@@ -529,14 +529,17 @@ export class App {
       results.push({ move: m, result });
     }
     // Withdraw first, so the replacements are not blocked by the offers they replace.
+    const stillBusy = new Set();
     for (const id of keep) {
       const p = (b.pending || []).find((t) => String(t.id) === id);
       if (!p || !p.mine) continue;
       const result = await this.espn.cancelTrade(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, p.id);
       await this.logActivity({ kind: "withdraw", league: b.name, league_id: b.league_id, week: b.week, ok: result.ok, message: result.message, with: p.with, give: p.give_names, get: p.get_names, by: "you" });
       results.push({ trade: p, result, withdrawn: true });
+      if (!result.ok) for (const x of [...p.give_ids, ...p.get_ids]) stillBusy.add(x);
     }
     for (const t of toSend) {
+      if ([...t.give, ...t.get].some((p) => stillBusy.has(p.player_id))) { results.push({ trade: t, result: { ok: false, message: "Not sent: it overlaps an offer that could not be withdrawn." } }); continue; }
       const give = t.give.map((p) => p.player_id), get = t.get.map((p) => p.player_id);
       let result;
       if (give.some((x) => x == null) || get.some((x) => x == null)) result = { ok: false, message: "ESPN ids missing for this offer; propose it on ESPN by hand." };
@@ -581,7 +584,8 @@ export class App {
       }
     }
     // Never burn a roster spot on one-week bye cover automatically; real holes and clear upgrades only.
-    const moves = this.waiverMoves(b).filter((m) => !m.bye_cover && (m.fills_empty_slot || m.edge >= 2));
+    const inOffers = new Set([...set.offers.flatMap((t) => t.give.map((p) => p.player_id)), ...keep.flatMap((t) => t.give_ids || [])]);
+    const moves = this.waiverMoves(b).filter((m) => !m.bye_cover && (m.fills_empty_slot || m.edge >= 2) && !(m.drop && inOffers.has(m.drop.player_id)));
     return { withdraw, offers: set.offers, if_all_accepted: set.if_all_accepted, robust: set.robust, moves, why };
   }
 
@@ -747,15 +751,19 @@ export class App {
         acted = true;
       }
     }
+    // Trades first, so pickups can avoid dropping anyone who is in an offer (sent now or already out).
+    if (s.auto_trades) { if (await this.autoTrades(b, s, log)) acted = true; if (await this.autoRespond(b, s, log)) acted = true; }
     if (s.auto_fill_empty) {
       // The plan's pickups: real holes and clear upgrades, drops never a recommended starter, never bye cover.
       // Claims are conditional on ESPN's side (the drop only happens if the claim wins); at most two per run, no repeats this week.
       const claimed = new Set(prev.claimed || []);
       let made = 0;
+      const inOffers = new Set([...(b.pending || []).flatMap((t) => [...(t.give_ids || []), ...(t.get_ids || [])]), ...(prev.offered_players || [])]);
       for (const m of this.blitzPlan(b).moves) {
         if (made >= 2) break;
         if (claimed.has(m.player_id)) continue;
         if (!m.drop && r.open_spots <= 0) continue;
+        if (m.drop && inOffers.has(m.drop.player_id)) continue; // never drop a player who is in an offer
         const bid = m.on_waivers ? (this.suggestBid(b, m) ?? 0) : 0;
         const result = await this.espn.addPlayer(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, b.week, { addId: m.player_id, dropId: m.drop ? m.drop.player_id : null, waiver: !!m.on_waivers, bid });
         claimed.add(m.player_id); made++;
@@ -765,8 +773,8 @@ export class App {
       }
       prev.claimed = [...claimed];
     }
-    if (s.auto_trades) { if (await this.autoTrades(b, s, log)) acted = true; if (await this.autoRespond(b, s, log)) acted = true; }
-    await this.storage.put(key, prev);
+    const latest = (await this.storage.get(key)) || {};
+    await this.storage.put(key, { ...prev, offered_players: latest.offered_players || prev.offered_players || [] });
     if (acted) { this.mem.delete(`league:${b.league_id}`); await this.storage.delete(`league:${b.league_id}`); }
     return acted;
   }
@@ -783,14 +791,20 @@ export class App {
     const st = (await this.storage.get(stKey)) || { declined: {}, cooldown: {}, offered: {} };
     const plan = this.blitzPlan(b);
     let acted = false, open = (b.pending || []).filter((t) => t.mine).length;
+    // Players in offers that could not be withdrawn stay busy: no replacement goes out over a live offer.
+    const stillBusy = new Set(), stillWith = new Set();
     for (const p of plan.withdraw) {
       const result = await this.espn.cancelTrade(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, p.id);
       await this.logActivity({ kind: "withdraw", league: b.name, league_id: b.league_id, week: b.week, ok: result.ok, message: result.message, with: p.with, give: p.give_names, get: p.get_names, by: "auto" });
       log({ kind: "withdraw", ok: result.ok, with: p.with, message: result.message });
-      if (result.ok) open--; acted = true;
+      if (result.ok) open--; else { for (const id of [...p.give_ids, ...p.get_ids]) stillBusy.add(id); stillWith.add(p.with_team_id); }
+      acted = true;
     }
+    const prevLog = (await this.storage.get(`auto:${b.league_id}:${b.week}`)) || {};
+    const offeredPlayers = new Set(prevLog.offered_players || []);
     for (const t of plan.offers) {
       if (open >= AUTO_MAX_OPEN) break;
+      if (stillWith.has(t.with_team_id) || [...t.give, ...t.get].some((p) => stillBusy.has(p.player_id))) continue;
       if (t.my_gain < AUTO_MIN_GAIN) continue;
       const give = t.give.map((p) => p.player_id), get = t.get.map((p) => p.player_id);
       if (give.some((x) => x == null) || get.some((x) => x == null)) continue;
@@ -802,10 +816,11 @@ export class App {
       await this.logActivity({ kind: "trade", league: b.name, league_id: b.league_id, week: b.week, ok: result.ok, message: result.message, with: t.with, give: t.give_names, get: t.get_names, my_gain: t.my_gain, their_gain: t.their_gain, by: "auto" });
       log({ kind: "trade", ok: result.ok, with: t.with, give: t.give_names, get: t.get_names, message: result.message });
       st.offered[pkg] = this.now();
-      if (result.ok) open++;
+      if (result.ok) { open++; for (const id of give) offeredPlayers.add(id); }
       acted = true;
     }
     await this.storage.put(stKey, st);
+    if (offeredPlayers.size) await this.storage.put(`auto:${b.league_id}:${b.week}`, { ...prevLog, offered_players: [...offeredPlayers] });
     return acted;
   }
 }

@@ -319,27 +319,41 @@ export async function pendingTrades(fetchFn, cookies, league, teamId) {
  * unofficial, so the response is returned verbatim for the page to show.
  */
 /** Accept or decline an offer another manager sent us. Same unofficial shape as withdrawing; the reply is shown verbatim. */
-export async function respondTrade(fetchFn, cookies, season, leagueId, teamId, txId, accept) {
-  const url = `${WRITE}${season}/segments/0/leagues/${leagueId}/transactions/${txId}`;
+/**
+ * ESPN's shape for changing a trade proposal is unofficial and undocumented; try the plausible calls in turn and
+ * report which one worked (or every status seen) so the next run and the activity feed are honest about it.
+ */
+async function tradeAction(fetchFn, cookies, season, leagueId, teamId, txId, attempts, okMessage) {
+  const base = `${WRITE}${season}/segments/0/leagues/${leagueId}/transactions`;
   const headers = { Cookie: cookieHeader(cookies), "User-Agent": UA, "Content-Type": "application/json" };
-  const status = accept ? "ACCEPTED" : "REJECTED";
-  let r = await fetchFn(url, { method: "PUT", headers, body: JSON.stringify({ id: txId, teamId, status, memberId: cookies.swid }) });
-  if (r.status === 404 || r.status === 405) r = await fetchFn(url, { method: "POST", headers, body: JSON.stringify({ id: txId, teamId, type: "TRADE_PROPOSAL", executionType: accept ? "ACCEPT" : "REJECT", memberId: cookies.swid }) });
-  const ok = r.status >= 200 && r.status < 300;
-  let resp; const text = await r.text();
-  try { resp = JSON.parse(text); } catch { resp = text.slice(0, 500); }
-  return { ok, status: r.status, message: ok ? (accept ? "Offer accepted." : "Offer declined.") : errorMessage(resp, r.status), response: resp };
+  const seen = [];
+  for (const a of attempts) {
+    const r = await fetchFn(base + a.path, { method: a.method, headers, body: a.body ? JSON.stringify(a.body) : undefined });
+    const text = await r.text(); let resp; try { resp = JSON.parse(text); } catch { resp = text.slice(0, 300); }
+    if (r.status >= 200 && r.status < 300) return { ok: true, status: r.status, message: `${okMessage} (${a.method} ${a.path || "/"})`, response: resp, used: a };
+    seen.push(`${a.method} ${a.path || "/"} → ${r.status}`);
+    if (![404, 405, 400].includes(r.status)) return { ok: false, status: r.status, message: errorMessage(resp, r.status) + ` [${seen.join("; ")}]`, response: resp };
+  }
+  return { ok: false, status: 405, message: `ESPN accepted none of the known calls for this [${seen.join("; ")}]. Do it on ESPN by hand.` };
+}
+
+export async function respondTrade(fetchFn, cookies, season, leagueId, teamId, txId, accept) {
+  const status = accept ? "ACCEPTED" : "REJECTED", exec = accept ? "ACCEPT" : "REJECT";
+  return tradeAction(fetchFn, cookies, season, leagueId, teamId, txId, [
+    { method: "POST", path: `/${txId}/${accept ? "accept" : "reject"}`, body: { teamId, memberId: cookies.swid } },
+    { method: "PUT", path: `/${txId}`, body: { id: txId, teamId, status, memberId: cookies.swid } },
+    { method: "POST", path: "", body: { id: txId, teamId, type: "TRADE_PROPOSAL", executionType: exec, memberId: cookies.swid, relatedTransactionId: txId } },
+    { method: "PATCH", path: `/${txId}`, body: { status } },
+  ], accept ? "Offer accepted." : "Offer declined.");
 }
 
 export async function cancelTrade(fetchFn, cookies, season, leagueId, teamId, txId) {
-  const url = `${WRITE}${season}/segments/0/leagues/${leagueId}/transactions/${txId}`;
-  const headers = { Cookie: cookieHeader(cookies), "User-Agent": UA, "Content-Type": "application/json" };
-  let r = await fetchFn(url, { method: "PUT", headers, body: JSON.stringify({ id: txId, teamId, status: "CANCELED", memberId: cookies.swid }) });
-  if (r.status === 404 || r.status === 405) r = await fetchFn(url, { method: "POST", headers, body: JSON.stringify({ id: txId, teamId, type: "TRADE_PROPOSAL", executionType: "CANCEL", memberId: cookies.swid }) });
-  const ok = r.status >= 200 && r.status < 300;
-  let resp; const text = await r.text();
-  try { resp = JSON.parse(text); } catch { resp = text.slice(0, 500); }
-  return { ok, status: r.status, message: ok ? "Offer withdrawn." : errorMessage(resp, r.status), response: resp };
+  return tradeAction(fetchFn, cookies, season, leagueId, teamId, txId, [
+    { method: "DELETE", path: `/${txId}` },
+    { method: "POST", path: `/${txId}/cancel`, body: { teamId, memberId: cookies.swid } },
+    { method: "POST", path: "", body: { id: txId, teamId, type: "TRADE_PROPOSAL", executionType: "CANCEL", memberId: cookies.swid, relatedTransactionId: txId } },
+    { method: "PATCH", path: `/${txId}`, body: { status: "CANCELED" } },
+  ], "Offer withdrawn.");
 }
 
 // ------------------------------------------------------------------ writes

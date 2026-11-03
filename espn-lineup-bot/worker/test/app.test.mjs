@@ -507,3 +507,20 @@ test("blind spots: trade deadline, protected drops, IR blocker, no matchup, inco
   const r = await app2.handle(req("/respond", { method: "POST", cookie: cookie2, body: form({ csrf, league: 1, tx: 903, action: "decline" }) }));
   assert.equal(r.status, 200); assert.ok(posts.some((p) => p.kind === "decline" && p.txId === 903));
 });
+
+test("a failed withdrawal blocks the replacement, and pickups never drop a player who is in an offer", async () => {
+  const posts = [];
+  const espn = fakeEspn({ posts });
+  espn.cancelTrade = async function (f, c, season, leagueId, teamId, txId) { posts.push({ kind: "withdraw", txId }); return { ok: false, status: 405, message: "ESPN accepted none of the known calls for this [DELETE /555 → 405]. Do it on ESPN by hand." }; };
+  const app = new App({ env: { APP_PASSWORD: "open-sesame", SECRET_KEY: "test-secret", ESPN_S2: "s2cookie", SWID: "{abc-123}" }, storage: new FakeStorage(), fetchFn: async () => { throw new Error("no network"); }, espn, now: () => NOW });
+  await app.savePrefs({ auto_lineup: false });
+  await app.handle(new Request("https://advisor.internal/__warm", { headers: { "x-warm-key": "test-secret" } }));
+  // The pending offer (RB B for D W with Rival) could not be withdrawn: nothing may go to Rival or touch RB B / D W.
+  const trades = posts.filter((p) => p.kind === "trade");
+  assert.ok(trades.every((p) => p.theirTeamId !== 7), "no replacement offer to the manager whose offer is still live");
+  const adds = posts.filter((p) => p.kind === "add");
+  assert.ok(adds.every((p) => p.dropId !== ids.get("RB B")), "never drop a player who is in a live offer");
+  // Trades run before pickups.
+  const kinds = posts.map((p) => p.kind);
+  assert.ok(kinds.indexOf("withdraw") < kinds.lastIndexOf("add") || !kinds.includes("add"));
+});
