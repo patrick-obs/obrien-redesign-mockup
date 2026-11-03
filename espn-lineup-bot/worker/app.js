@@ -442,14 +442,33 @@ export class App {
    */
   blitzPlan(b) {
     const r = b.report, mine = (b.rosters || {})[b.team_id] || [];
-    const withdraw = (b.pending || []).filter((t) => t.mine && t.acceptable === false);
-    const stillOut = (b.pending || []).filter((t) => t.mine && !withdraw.includes(t));
-    const busy = new Set(stillOut.flatMap((t) => [...t.give_ids, ...t.get_ids]));
-    const set = mine.length ? robustSet(b.trades || [], { mine, rosters: b.rosters || {}, slotCounts: r.slot_counts, rosterSize: r.roster_size, rosterCount: r.roster_count, busy, max: 4 })
+    const REPLACE_MARGIN = 1.0, STALE_GAIN = 0.5;
+    const pending = (b.pending || []).filter((t) => t.mine);
+    const robust = (busy) => mine.length ? robustSet(b.trades || [], { mine, rosters: b.rosters || {}, slotCounts: r.slot_counts, rosterSize: r.roster_size, rosterCount: r.roster_count, busy, max: 4 })
       : { offers: blitzSet(b.trades || [], { busy, max: 4 }), if_all_accepted: null, robust: false };
+    const gainOf = (set) => set.offers.reduce((s, t) => s + t.my_gain, 0);
+    const busyOf = (keep) => new Set(keep.flatMap((t) => [...t.give_ids, ...t.get_ids]));
+    // 1. Offers that will not be accepted, or whose value to you has collapsed, come back.
+    const withdraw = pending.filter((t) => t.acceptable === false || (t.my_gain != null && t.my_gain < STALE_GAIN));
+    const why = withdraw.map((t) => t.acceptable === false ? `${t.give_names} for ${t.get_names} to ${t.with}: the other side comes out behind, so it is not going to be accepted.`
+      : `${t.give_names} for ${t.get_names} to ${t.with}: it is now worth only ${t.my_gain.toFixed(1)} a week to you.`);
+    // 2. Every other active offer is re-examined: if freeing its players lets a clearly better set go out, replace it.
+    let keep = pending.filter((t) => !withdraw.includes(t));
+    let set = robust(busyOf(keep));
+    let improved = true;
+    while (improved) {
+      improved = false;
+      for (const t of keep) {
+        const without = keep.filter((x) => x !== t);
+        const alt = robust(busyOf(without));
+        if (gainOf(alt) >= gainOf(set) + (t.my_gain || 0) + REPLACE_MARGIN) {
+          withdraw.push(t); why.push(`${t.give_names} for ${t.get_names} to ${t.with}: a better use of ${t.give_names} is on the board (${gainOf(alt).toFixed(1)} a week against ${(gainOf(set) + (t.my_gain || 0)).toFixed(1)}).`);
+          keep = without; set = alt; improved = true; break;
+        }
+      }
+    }
     // Never burn a roster spot on one-week bye cover automatically; real holes and clear upgrades only.
     const moves = this.waiverMoves(b).filter((m) => !m.bye_cover && (m.fills_empty_slot || m.edge >= 2));
-    const why = withdraw.map((t) => `${t.give_names} for ${t.get_names} to ${t.with}: the other side comes out behind, so it is not going to be accepted.`);
     return { withdraw, offers: set.offers, if_all_accepted: set.if_all_accepted, robust: set.robust, moves, why };
   }
 

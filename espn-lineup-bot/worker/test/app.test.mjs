@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { App } from "../app.js";
-import { fakeEspn, FakeStorage } from "./fixtures.mjs";
+import { fakeEspn, FakeStorage, ids, NOW } from "./fixtures.mjs";
 
 function makeApp(posts = []) {
   const env = { APP_PASSWORD: "open-sesame", SECRET_KEY: "test-secret", ESPN_S2: "s2cookie", SWID: "{abc-123}" };
@@ -369,4 +369,32 @@ test("autopilot: withdraws the losing offer, sends the robust set once, backs of
   // Master switch off: nothing.
   await app.savePrefs({ automanage: false });
   const n = posts.length; t += 86400e3; await warm(); assert.equal(posts.length, n);
+});
+
+test("autopilot revisits active offers: a live offer whose value collapsed is withdrawn, and a better use of a player replaces it", async () => {
+  const posts = [];
+  const espn = fakeEspn({ posts });
+  // Live offer: my starting back RB C (11) for Rival's RB Y (10): fine for them, now a loss for me.
+  espn.tradeTransactions = async function (f, c, league) { return league.id === 1 ? [{ id: 777, proposed_by: 3, mine: true, with_team_id: 7, with: "Rival", with_logo: "", give: [ids.get("RB C")], get: [ids.get("RB Y")], proposed_at: NOW - 3600e3, expires_at: NOW + 86400e3, status: this.tradeStatus }] : []; };
+  const app = new App({ env: { APP_PASSWORD: "open-sesame", SECRET_KEY: "test-secret", ESPN_S2: "s2cookie", SWID: "{abc-123}" }, storage: new FakeStorage(), fetchFn: async () => { throw new Error("no network"); }, espn, now: () => NOW });
+  const b = await app.bundle(1);
+  assert.equal(b.pending[0].acceptable, true); assert.ok(b.pending[0].my_gain < 0.5, String(b.pending[0].my_gain));
+  const plan = app.blitzPlan(b);
+  assert.equal(plan.withdraw.length, 1); assert.match(plan.why[0], /worth only/);
+  await app.savePrefs({ auto_lineup: false, auto_fill_empty: false });
+  await app.handle(new Request("https://advisor.internal/__warm", { headers: { "x-warm-key": "test-secret" } }));
+  assert.equal(posts[0].kind, "withdraw"); assert.equal(posts[0].txId, 777); assert.ok(posts.some((p) => p.kind === "trade"));
+  // Replacement: a stub bundle where freeing the live offer's player unlocks a far better set.
+  const pj = (p) => ({ name: p.name, pos: p.position, value: p.proj, player_id: p.playerId });
+  const mk = (id, withId, give, get, gain) => ({ id, with: `T${withId}`, with_team_id: withId, give: give.map(pj), get: get.map(pj), my_gain: gain, give_names: give.map((p) => p.name).join(" + "), get_names: get.map((p) => p.name).join(" + "), their_gain: 0, pitch: "" });
+  const ELIG = { QB: ["QB", "BE"], RB: ["RB", "BE"], WR: ["WR", "BE"] };
+  let n = 5000; const rp = (name, pos, v) => ({ name, position: pos, eligible: ELIG[pos], slot: "BE", proj: v, status: "ACTIVE", playerId: n++, proTeam: "KC" });
+  const mine = [rp("QB1", "QB", 18), rp("RB1", "RB", 10), rp("RB2", "RB", 9), rp("WR1", "WR", 12), rp("WR2", "WR", 11), rp("WR3", "WR", 10)];
+  const them = [rp("RBx", "RB", 20), rp("RBy", "RB", 12), rp("QBx", "QB", 15), rp("WRx", "WR", 9), rp("WRy", "WR", 9)];
+  const stub = { team_id: 1, report: { slot_counts: { QB: 1, RB: 2, WR: 2 }, roster_size: 0, roster_count: 0, waivers: {}, drop_candidates: [], open_spots: 0 }, rosters: { 1: mine, 9: them },
+    trades: [mk("big", 9, [mine[5]], [them[0]], 10)],
+    pending: [{ id: 1, mine: true, with: "T9", with_team_id: 9, acceptable: true, my_gain: 2, give_ids: [mine[5].playerId], get_ids: [them[1].playerId], give_names: "WR3", get_names: "RBy" }] };
+  const plan2 = app.blitzPlan(stub);
+  assert.equal(plan2.withdraw.length, 1); assert.match(plan2.why[0], /better use of WR3/);
+  assert.equal(plan2.offers[0].id, "big");
 });

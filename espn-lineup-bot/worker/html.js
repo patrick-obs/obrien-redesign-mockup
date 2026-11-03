@@ -406,7 +406,7 @@ ${withButton ? `<p class="act"><a class="btn" href="/trade?league=${r.league_id}
 function blitzSimple(b, csrf, plan, flash, allMoves) {
   const r = b.report;
   const steps = [];
-  for (const t of plan.withdraw) steps.push({ t: `Withdraw your offer to ${esc(t.with)}`, s: `${esc(t.give_names)} for ${esc(t.get_names)}. It grades ${t.their_gain >= 0 ? "+" : "-"}${Math.abs(t.their_gain).toFixed(1)} a week for them, so it will not be accepted.` });
+  plan.withdraw.forEach((t, i) => steps.push({ t: `Withdraw your offer to ${esc(t.with)}`, s: esc(plan.why[i] || `${t.give_names} for ${t.get_names}.`) }));
   const statusOf = (t, p) => ((b.rosters || {})[t.with_team_id] || []).find((x) => x.playerId === p.player_id)?.status || "ACTIVE";
   for (const t of plan.offers) {
     const shaky = t.get.filter((p) => statusOf(t, p) !== "ACTIVE").map((p) => `${p.name} is ${statusOf(t, p).replace(/_/g, " ").toLowerCase()}`);
