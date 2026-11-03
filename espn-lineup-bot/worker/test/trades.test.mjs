@@ -128,3 +128,14 @@ test("robust set: two offers that are each fine alone but empty a slot together 
   const set3 = robustSet([two], { mine, rosters: { 1: teamA, 2: teamB }, slotCounts: SLOTS, rosterSize: 6, rosterCount: 6 });
   assert.equal(set3.offers.length, 0);
 });
+
+test("stars are judged on raw weekly value, both ways: no selling your best for a bye-adjusted bargain, no asking for theirs", () => {
+  let n = 500; const rp = (name, pos, weekly, proj) => { const p = rosterPlayer(name, pos, ELIG[pos], "ACTIVE", proj ?? weekly, n++); p.weekly = weekly; return p; };
+  const mine = [rp("QB1", "QB", 18), rp("RB1", "RB", 17), rp("RB2", "RB", 12), rp("WRstar", "WR", 24.1, 20.3), rp("WR2", "WR", 15), rp("TE1", "TE", 11), rp("FLX", "WR", 9), rp("D1", "D/ST", 6), rp("K1", "K", 8), rp("RB3", "RB", 8), rp("WR4", "WR", 7)];
+  const theirs = [rp("QBx", "QB", 20.8, 21.8), rp("RBx1", "RB", 25), rp("RBx2", "RB", 10), rp("WRx1", "WR", 19.7, 20.7), rp("WRx2", "WR", 16), rp("TEx", "TE", 9), rp("FLXx", "WR", 8), rp("Dx", "D/ST", 5), rp("Kx", "K", 8), rp("RBx3", "RB", 7), rp("WRx4", "WR", 6)];
+  const ideas = proposeTrades(mine, { Them: { id: 7, players: theirs } }, SLOTS, { perTeam: 40, perLeague: 80, minMyGain: 0.1 });
+  for (const t of ideas) {
+    if (t.give.some((p) => p.name === "WRstar")) assert.ok(t.get.some((p) => p.name === "RBx1"), `WRstar only leaves for RBx1: ${t.give_names} > ${t.get_names}`);
+    if (t.get.some((p) => p.name === "RBx1")) assert.ok(t.give.some((p) => p.name === "WRstar"), `their star RBx1 only for WRstar: ${t.give_names} > ${t.get_names}`);
+  }
+});

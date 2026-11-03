@@ -66,9 +66,13 @@ export function proposeTrades(mine, others, slotCounts, opts = {}) {
   const minMyGain = opts.minMyGain ?? MIN_MY_GAIN, maxTheirLoss = opts.maxTheirLoss ?? MAX_THEIR_LOSS, maxAsk = opts.maxValueAsk ?? MAX_VALUE_ASK;
   const perTeam = opts.perTeam ?? PER_TEAM, perLeague = opts.perLeague ?? PER_LEAGUE;
   const myBase = optimize(mine, slotCounts), baseMine = projectedTotal(myBase);
-  // Star protection: your two most valuable starters only leave in a deal that brings back someone at least as good.
+  // Star protection: your two most valuable starters only leave in a deal that brings back someone at least as good,
+  // judged on raw weekly value: a bye week or a hard playoff schedule is a tiebreaker, never a reason to sell a star.
+  const w = (p) => p.weekly ?? p.proj;
   const starters = new Set(Object.values(myBase).flat().map((p) => p.name));
-  const protect = new Set(opts.protectIds || mine.filter((p) => p.playerId != null && starters.has(p.name)).sort((a, b) => b.proj - a.proj).slice(0, 2).map((p) => p.playerId));
+  const protect = new Set(opts.protectIds || mine.filter((p) => p.playerId != null && starters.has(p.name)).sort((a, b) => w(b) - w(a)).slice(0, 2).map((p) => p.playerId));
+  // The same courtesy for the other manager: nobody gives up their two best starters for less, so do not ask.
+  const theirStars = (theirs) => { const base = optimize(theirs, slotCounts); const st = new Set(Object.values(base).flat().map((p) => p.name)); return theirs.filter((p) => st.has(p.name)).sort((a, b) => w(b) - w(a)).slice(0, 2); };
   const myPackages = packages(tradeable(mine));
   const ideas = [];
   for (const [teamName, entry] of Object.entries(others)) {
@@ -77,6 +81,7 @@ export function proposeTrades(mine, others, slotCounts, opts = {}) {
     const theirLogo = Array.isArray(entry) ? "" : entry.logo || "";
     const theirBase = optimize(theirs, slotCounts), baseTheirs = projectedTotal(theirBase);
     const theirPackages = packages(tradeable(theirs));
+    const stars = theirStars(theirs);
     const teamIdeas = [];
     const gainOf = new Map(); // "giveNames>getNames" -> my_gain, for the package-vs-sub-trade check
     const key = (give, get) => `${give.map((p) => p.name).sort().join("|")}>${get.map((p) => p.name).sort().join("|")}`;
@@ -85,7 +90,10 @@ export function proposeTrades(mine, others, slotCounts, opts = {}) {
       for (const get of theirPackages) {
         if (!fair(give, get, giveSum, giveBest, maxAsk)) continue;
         const star = give.find((p) => protect.has(p.playerId));
-        if (star && !get.some((p) => p.proj >= star.proj)) continue;
+        if (star && !get.some((p) => w(p) >= w(star))) continue;
+        // Their star only moves for someone as good, or for a clear overpay in depth (a real consolidation offer).
+        const theirStar = get.find((p) => stars.includes(p));
+        if (theirStar && !give.some((p) => w(p) >= w(theirStar)) && give.reduce((n, p) => n + w(p), 0) < 1.2 * w(theirStar)) continue;
         const newMine = mine.filter((p) => !give.includes(p)).concat(get);
         const newTheirs = theirs.filter((p) => !get.includes(p)).concat(give);
         const myAfter = optimize(newMine, slotCounts), theirAfter = optimize(newTheirs, slotCounts);
