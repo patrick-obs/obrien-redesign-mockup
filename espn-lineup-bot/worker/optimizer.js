@@ -86,7 +86,6 @@ export function warningsFor(players, assignment, slotCounts) {
     if (p.bye) out.push(`${p.name} is starting at ${slot} but is on BYE.`);
     else if (NO_PLAY.has(p.status)) out.push(`${p.name} is starting at ${slot} but is ${p.status.replace(/_/g, " ").toLowerCase()}.`);
     else if (SHAKY.has(p.status)) out.push(`${p.name} (${slot}) is ${p.status.toLowerCase()}. Check status before kickoff.`);
-    if (p.locked) out.push(`${p.name} (${slot}) is locked; game already started.`);
   }
   return out;
 }

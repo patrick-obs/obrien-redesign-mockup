@@ -34,9 +34,9 @@ export function fakeLeague(id = 1, started = true) {
   me.schedule = [7, 9, 10, 7, 9, 10, 7, 9, 10, 7, 9, 10, 7, 9]; me.scores = Array(8).fill(100); me.outcomes = ["W", "L", "W", "W", "L", "W", "L", "W", "U", "U", "U", "U", "U", "U"];
   opp.scores = Array(8).fill(90);
   const teams = [me, opp, t3, t4];
-  return { id, season: 2026, name: started ? "Test League" : "Dead League", currentWeek: started ? 9 : 0, currentMatchupPeriod: started ? 9 : 1, finalScoringPeriod: 17,
+  return { id, season: 2026, name: started ? "Test League" : "Dead League", currentWeek: 9, currentMatchupPeriod: started ? 9 : 1, finalScoringPeriod: 17,
     regSeasonCount: 14, playoffTeamCount: 2, rosterSize: 11, acquisition: { type: "WAIVERS_CONTINUOUS", usesBudget: true, budget: 100 },
-    matchupPeriods: {}, slotCounts: SLOTS, teams, byId: Object.fromEntries(teams.map((t) => [t.id, t])), started };
+    matchupPeriods: {}, slotCounts: SLOTS, teams, byId: Object.fromEntries(teams.map((t) => [t.id, t])), started, drafted: started };
 }
 export function fakeBoxes(league) {
   const [me, opp, t3, t4] = league.teams;
@@ -60,6 +60,7 @@ export function fakeEspn({ posts = [] } = {}) {
     freeAgents: async (f, c, league, week, pos) => FA[pos] || [],
     rosters: async (f, c, league) => Object.fromEntries(league.teams.map((t) => [t.id, (t.id === 3 ? MINE() : t.id === 7 ? THEIRS() : OTHERS())])),
     gamesPlayed: (t) => t.wins + t.losses + t.ties,
+    PRO_TEAM: { 12: "KC", 2: "BUF" },
     applyLineup: async (f, c, season, leagueId, teamId, week, items) => { posts.push({ kind: "lineup", leagueId, teamId, week, items, cookies: c }); return { ok: true, status: 200, message: "Lineup set." }; },
     proposeTrade: async (f, c, season, leagueId, teamId, week, theirTeamId, giveIds, getIds) => { posts.push({ kind: "trade", leagueId, teamId, week, theirTeamId, giveIds, getIds }); return { ok: true, status: 200, message: "Trade proposed." }; },
     addPlayer: async (f, c, season, leagueId, teamId, week, opts) => { posts.push({ kind: "add", leagueId, teamId, week, ...opts }); return { ok: true, status: 200, message: opts.waiver ? "Waiver claim submitted." : "Player added." }; },

@@ -112,6 +112,23 @@ label{display:block;font-weight:600;margin:14px 0 6px;font-size:15px}
 .login h1{margin:0 0 4px;font-size:28px}.login .lede{margin:0 0 22px}.login label{text-align:left}.login .btn{margin-top:8px}
 .stamp{color:var(--muted);font-size:14px}
 footer{color:var(--faint);font-size:13px;text-align:center;padding:24px 20px 36px;max-width:60ch;margin:0 auto}
+.pct{font-size:34px;font-weight:800;letter-spacing:-.04em;line-height:1;color:var(--head)}.pct.good{color:var(--good)}.pct.bad{color:var(--bad)}.pct.mode{font-size:22px;text-transform:capitalize}
+.winline{display:flex;align-items:center;gap:14px;padding:6px 2px 10px;color:inherit}.winline:hover{text-decoration:none}.winline .main{flex:1}.winline .t{font-weight:600}.winline .s{font-size:13px;color:var(--muted)}
+.meter{height:8px;border-radius:4px;background:var(--badbg);overflow:hidden;margin:0 0 12px}.meter i{display:block;height:100%;background:var(--good);border-radius:4px}
+.todo{margin:12px 0 4px}.todo .lbl,.lbl{font-size:13px;font-weight:600;color:var(--muted);margin:0 0 6px 2px}
+.row.primary .t{color:var(--accent)}
+.auto{display:flex;align-items:center;gap:6px}.auto svg{width:14px;height:14px;color:var(--accent)}
+.notes{margin-top:10px}details.moves{margin-top:10px}details.moves summary{cursor:pointer;font-size:14px;color:var(--muted);font-weight:500;padding:6px 0}
+.lock{display:inline-flex;width:16px;height:16px;color:var(--faint);vertical-align:middle}.lock svg{width:16px;height:16px}
+td.ours{color:var(--accent);font-weight:600}
+.matchup .vs{display:flex;flex-direction:column;align-items:center;gap:2px}
+.odds{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin:4px 0 12px}.odds .o{background:var(--soft);border-radius:14px;padding:14px}.odds .o .s{font-size:13px;color:var(--ink);margin-top:6px;font-weight:600}.odds .o .s .muted{font-weight:400}
+ol.plan{margin:0 0 8px;padding-left:22px}ol.plan li{margin:0 0 8px;font-size:16px}ol.plan li::marker{color:var(--accent);font-weight:700}
+label.row{cursor:pointer;font-weight:400;margin:0}
+.switch{appearance:none;-webkit-appearance:none;width:51px;height:31px;border-radius:16px;background:var(--fill);position:relative;outline:none;cursor:pointer;transition:background .2s;margin:0;flex:none}
+.switch::after{content:"";position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.25);transition:transform .2s}
+.switch:checked{background:var(--good)}.switch:checked::after{transform:translateX(20px)}
+.card.orphan{border:1px dashed var(--line);box-shadow:none;background:transparent}
 @media (max-width:640px){main{padding:16px 14px 28px}.card{padding:16px;border-radius:16px}h1{font-size:30px}h2{font-size:20px}.hero{padding:20px}.hero p{font-size:24px}.hero .btn.big{flex-basis:100%}header{padding:8px 12px}header .logo{height:32px}header nav a{padding:6px 8px;font-size:14px}.login .logo{height:120px}.swap{grid-template-columns:1fr}.swap .arrow{text-align:center}.swap .arrow svg{transform:rotate(90deg)}.matchup .big{font-size:32px}.seg{top:54px;margin:0 -14px 18px;padding:3px 14px;border-radius:0}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}html{scroll-behavior:auto}}
 </style>

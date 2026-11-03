@@ -108,6 +108,23 @@ label{display:block;font-weight:600;margin:14px 0 6px;font-size:15px}
 .login h1{margin:0 0 4px;font-size:28px}.login .lede{margin:0 0 22px}.login label{text-align:left}.login .btn{margin-top:8px}
 .stamp{color:var(--muted);font-size:14px}
 footer{color:var(--faint);font-size:13px;text-align:center;padding:24px 20px 36px;max-width:60ch;margin:0 auto}
+.pct{font-size:34px;font-weight:800;letter-spacing:-.04em;line-height:1;color:var(--head)}.pct.good{color:var(--good)}.pct.bad{color:var(--bad)}.pct.mode{font-size:22px;text-transform:capitalize}
+.winline{display:flex;align-items:center;gap:14px;padding:6px 2px 10px;color:inherit}.winline:hover{text-decoration:none}.winline .main{flex:1}.winline .t{font-weight:600}.winline .s{font-size:13px;color:var(--muted)}
+.meter{height:8px;border-radius:4px;background:var(--badbg);overflow:hidden;margin:0 0 12px}.meter i{display:block;height:100%;background:var(--good);border-radius:4px}
+.todo{margin:12px 0 4px}.todo .lbl,.lbl{font-size:13px;font-weight:600;color:var(--muted);margin:0 0 6px 2px}
+.row.primary .t{color:var(--accent)}
+.auto{display:flex;align-items:center;gap:6px}.auto svg{width:14px;height:14px;color:var(--accent)}
+.notes{margin-top:10px}details.moves{margin-top:10px}details.moves summary{cursor:pointer;font-size:14px;color:var(--muted);font-weight:500;padding:6px 0}
+.lock{display:inline-flex;width:16px;height:16px;color:var(--faint);vertical-align:middle}.lock svg{width:16px;height:16px}
+td.ours{color:var(--accent);font-weight:600}
+.matchup .vs{display:flex;flex-direction:column;align-items:center;gap:2px}
+.odds{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin:4px 0 12px}.odds .o{background:var(--soft);border-radius:14px;padding:14px}.odds .o .s{font-size:13px;color:var(--ink);margin-top:6px;font-weight:600}.odds .o .s .muted{font-weight:400}
+ol.plan{margin:0 0 8px;padding-left:22px}ol.plan li{margin:0 0 8px;font-size:16px}ol.plan li::marker{color:var(--accent);font-weight:700}
+label.row{cursor:pointer;font-weight:400;margin:0}
+.switch{appearance:none;-webkit-appearance:none;width:51px;height:31px;border-radius:16px;background:var(--fill);position:relative;outline:none;cursor:pointer;transition:background .2s;margin:0;flex:none}
+.switch::after{content:"";position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.25);transition:transform .2s}
+.switch:checked{background:var(--good)}.switch:checked::after{transform:translateX(20px)}
+.card.orphan{border:1px dashed var(--line);box-shadow:none;background:transparent}
 @media (max-width:640px){main{padding:16px 14px 28px}.card{padding:16px;border-radius:16px}h1{font-size:30px}h2{font-size:20px}.hero{padding:20px}.hero p{font-size:24px}.hero .btn.big{flex-basis:100%}header{padding:8px 12px}header .logo{height:32px}header nav a{padding:6px 8px;font-size:14px}.login .logo{height:120px}.swap{grid-template-columns:1fr}.swap .arrow{text-align:center}.swap .arrow svg{transform:rotate(90deg)}.matchup .big{font-size:32px}.seg{top:54px;margin:0 -14px 18px;padding:3px 14px;border-radius:0}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}html{scroll-behavior:auto}}`;
 
@@ -126,6 +143,19 @@ const I = {
   swap: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h14M14 4l4 4-4 4M20 16H6M10 12l-4 4 4 4"/></svg>`,
   chev: `<svg class="chev" viewBox="0 0 8 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.5 1.5L6.5 7l-5 5.5"/></svg>`,
   check: `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="11"/><path d="M7 12.5l3.2 3.2L17 9" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  lock: `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 10V8a5 5 0 0110 0v2h1a2 2 0 012 2v8a2 2 0 01-2 2H6a2 2 0 01-2-2v-8a2 2 0 012-2zm2 0h6V8a3 3 0 00-6 0z"/></svg>`,
+  bolt: `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13 2L4 14h6l-1 8 9-12h-6z"/></svg>`,
+};
+const pct = (p) => p == null ? "n/a" : `${Math.round(p * 100)}%`;
+/** Status chips: amber only for real uncertainty; byes and locks are quiet. */
+const statusTag = (p) => {
+  if (!p.notes) return "";
+  const bad = p.bye || ["OUT", "INJURY_RESERVE", "SUSPENSION"].includes(p.status);
+  const bits = [];
+  if (p.bye) bits.push(`<span class="tag">bye</span>`);
+  if (p.status && p.status !== "ACTIVE") bits.push(`<span class="tag ${bad ? "bad" : "warn"}">${esc(p.status.replace(/_/g, " ").toLowerCase())}</span>`);
+  if (p.locked) bits.push(`<span class="lock" title="Locked: his game has started">${I.lock}</span>`);
+  return bits.join(" ");
 };
 
 const initials = (name) => String(name || "").split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase() || "?";
@@ -182,6 +212,12 @@ export const settingsPage = (s, csrf, flash = []) => layout("Settings", `
 <label for="swid">SWID (keep the curly braces)</label><input type="text" id="swid" name="swid" value="${esc(s.swid)}" autocomplete="off">
 <label for="espn_s2">espn_s2</label><textarea id="espn_s2" name="espn_s2" rows="4" autocomplete="off">${esc(s.espn_s2)}</textarea>
 <p class="muted">Season: ${esc(s.season)}</p><p><button class="btn" type="submit">Save and test</button></p></form></div>
+<h2>Automation</h2><div class="card" style="max-width:640px"><form method="post"><input type="hidden" name="csrf" value="${esc(csrf)}"><input type="hidden" name="prefs" value="1">
+<div class="group">
+<label class="row" for="auto_lineup"><div class="main"><div class="t">Set lineups automatically</div><div class="s">Thursday, Saturday and Sunday at 8am ET, again Thursday at 6pm and Sunday at noon ET, the advisor sets each lineup to the recommendation. The first run of the week sets it; later runs only touch it if the lineup still matches what the advisor set. If you move anyone on ESPN, it leaves that week alone.</div></div><div class="trail"><input type="hidden" name="auto_lineup" value="0"><input type="checkbox" class="switch" id="auto_lineup" name="auto_lineup" value="1"${s.auto_lineup ? " checked" : ""}></div></label>
+<label class="row" for="auto_fill_empty"><div class="main"><div class="t">Fill empty slots automatically</div><div class="s">Only when a starting slot has nobody eligible: adds the best free agent (never a waiver claim) and drops your lowest-value bench player. Off by default because it drops real players.</div></div><div class="trail"><input type="hidden" name="auto_fill_empty" value="0"><input type="checkbox" class="switch" id="auto_fill_empty" name="auto_fill_empty" value="1"${s.auto_fill_empty ? " checked" : ""}></div></label>
+</div><p><button class="btn" type="submit">Save preferences</button></p></form>
+${s.hidden_leagues && s.hidden_leagues.length ? `<h3>Hidden leagues</h3><div class="group">${s.hidden_leagues.map((lg) => `<div class="row"><div class="main"><div class="t">${esc(lg.name)}</div></div><div class="trail"><form method="post" action="/hide"><input type="hidden" name="csrf" value="${esc(csrf)}"><input type="hidden" name="league" value="${lg.id}"><input type="hidden" name="action" value="show"><button class="btn ghost small" type="submit">Show again</button></form></div></div>`).join("")}</div>` : ""}</div>
 ${s.claude ? `<h2>Analyst</h2><div class="card" style="max-width:640px"><div class="group">
 <div class="row"><div class="main"><div class="t">Claude rewrite</div><div class="s">${s.claude.hasKey ? (s.claude.enabled ? "On. Claude rewrites each league's take when the report is rebuilt." : "Off (ANALYST_ENABLED is 0). The rules-based take is shown.") : "No ANTHROPIC_API_KEY secret on the Worker, so the rules-based take is shown."}</div></div><div class="trail"><span class="tag ${s.claude.enabled ? "good" : ""}">${s.claude.enabled ? "on" : "off"}</span></div></div>
 <div class="row"><div class="main"><div class="t">Calls today</div><div class="s">Resets at midnight UTC. Each league rebuild is one short call; pages are cached for ${Math.round((s.cacheSeconds || 600) / 60)} minutes.</div></div><div class="trail"><span class="v">${s.claude.today}</span><span class="m">/ ${s.claude.cap}</span></div></div>
@@ -197,21 +233,35 @@ function lineupTable(r, lineup) {
     for (const p of lineup[slot] || []) {
       const bad = p.bye || ["OUT", "INJURY_RESERVE", "SUSPENSION"].includes(p.status);
       rows.push(`<tr><td class="slot"><span>${esc(slot)}</span></td><td class="player who">${playerCell(p)}</td><td>${nfl(p.opp)}${rankChip(p.opp_rank)}</td>
-<td class="num proj">${pts(p.proj)}</td><td class="num">${p.recent_avg != null ? pts(p.recent_avg) : ""}</td>
-<td>${p.notes ? `<span class="tag ${bad ? "bad" : "warn"}">${esc(p.notes)}</span>` : ""}</td></tr>`);
+<td class="num proj">${pts(p.proj)}</td><td class="num ours">${p.our_proj != null ? pts(p.our_proj) : ""}</td><td class="num">${p.recent_avg != null ? pts(p.recent_avg) : ""}</td>
+<td>${statusTag(p)}</td></tr>`);
     }
     for (let i = (lineup[slot] || []).length; i < (r.slot_counts[slot] || 0); i++) {
-      rows.push(`<tr><td class="slot"><span>${esc(slot)}</span></td><td class="player bad">EMPTY</td><td></td><td class="num proj">0.0</td><td></td><td><span class="tag bad">nobody eligible</span></td></tr>`);
+      rows.push(`<tr><td class="slot"><span>${esc(slot)}</span></td><td class="player bad">EMPTY</td><td></td><td class="num proj">0.0</td><td></td><td></td><td><span class="tag bad">nobody eligible</span></td></tr>`);
     }
   }
-  return `<div class="tablewrap"><table><tr><th>Slot</th><th>Player</th><th>Opponent</th><th class="num">Proj</th><th class="num">Last 3</th><th>Status</th></tr>${rows.join("")}</table></div>`;
+  return `<div class="tablewrap"><table><tr><th>Slot</th><th>Player</th><th>Opponent</th><th class="num" title="ESPN's projection">ESPN</th><th class="num" title="Our projection: ESPN blended with his last three games and season average, adjusted for the opponent">Advisor</th><th class="num">Last 3</th><th>Status</th></tr>${rows.join("")}</table></div>`;
 }
 
 const teamRow = (name, logo, sub, trail, href) => `<${href ? `a href="${href}" class="row link"` : 'div class="row"'}>${badge(name, logo)}<div class="main"><div class="t">${esc(name)}</div>${sub ? `<div class="s">${sub}</div>` : ""}</div><div class="trail">${trail || ""}${href ? I.chev : ""}</div></${href ? "a" : "div"}>`;
 
 // ------------------------------------------------------------------ dashboard
 
-export function indexPage({ bundles, errors, totalMoves, season, now }) {
+const fmtTime = (ts) => new Date(ts).toLocaleString("en-US", { weekday: "short", hour: "numeric", minute: "2-digit", timeZone: "America/New_York" });
+
+/** The dashboard's "to do" list for one league: always at least one thing to open. */
+function todo(b) {
+  const r = b.report, items = [];
+  if (r.lineup_items.length) items.push({ href: `/lineups?league=${b.league_id}`, text: `Set this lineup`, sub: `${plural(r.lineup_items.length, "change")}, +${pts(r.recommended_lineup_proj - r.current_lineup_proj)} points`, primary: true });
+  else items.push({ href: `/league/${b.league_id}#lineup`, text: "Review lineup", sub: "Already optimal; see who starts and why" });
+  const picks = Object.entries(r.waivers).flatMap(([pos, ps]) => ps.filter((p) => !p.error && p.player_id != null).map((p) => ({ ...p, pos: p.pos || pos }))).sort((a, b) => (b.fills_empty_slot - a.fills_empty_slot) || (b.edge - a.edge));
+  if (picks[0]) items.push({ href: `/add?league=${b.league_id}&amp;player=${picks[0].player_id}`, text: `${picks[0].on_waivers ? "Claim" : "Add"} ${picks[0].name}`, sub: picks[0].fills_empty_slot ? `fills your empty ${picks[0].pos} slot` : `+${pts(picks[0].edge)} over your weakest ${picks[0].pos}`, primary: picks[0].fills_empty_slot });
+  if (b.trades && b.trades[0]) items.push({ href: `/trade?league=${b.league_id}&amp;id=${esc(b.trades[0].id)}`, text: `Propose ${b.trades[0].kind} trade to ${b.trades[0].with}`, sub: `+${pts(b.trades[0].my_gain)} a week, ${b.trades[0].their_gain >= 0 ? "they gain too" : "costs them little"}` });
+  items.push({ href: `/league/${b.league_id}#plan`, text: "Game plan", sub: b.season?.odds ? `${b.season.odds.playoff_odds}% playoff odds` : "season strategy" });
+  return `<div class="todo"><div class="lbl">To do</div><div class="group">${items.map((it) => `<a class="row link${it.primary ? " primary" : ""}" href="${it.href}"><div class="main"><div class="t">${it.text}</div><div class="s">${it.sub}</div></div><div class="trail">${I.chev}</div></a>`).join("")}</div></div>`;
+}
+
+export function indexPage({ bundles, errors, totalMoves, season, now, csrf = "", hiddenCount = 0 }) {
   const live = bundles.filter((b) => b.started);
   const when = new Date(now).toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York" });
   let top = "";
@@ -222,22 +272,34 @@ export function indexPage({ bundles, errors, totalMoves, season, now }) {
 <p class="stamp">Data as of ${esc(when)} ET. <a href="/?refresh=1">Refresh from ESPN</a></p></div>`;
   }
   const cards = bundles.map((b) => {
-    if (!b.started) return `<div class="card"><div class="lg-head">${badge(b.name, "")}<div class="main"><div class="t"><a href="/league/${b.league_id}">${esc(b.name)}</a></div><div class="s">Not started this season (no draft or rosters yet).</div></div></div></div>`;
-    const r = b.report, d = r.recommended_lineup_proj - r.current_lineup_proj;
+    if (!b.started) {
+      const why = b.orphaned ? `This league was never drafted for ${esc(season)}, so nobody renewed it on ESPN: it is orphaned this year. Ask whoever ran it to reactivate and draft it, or hide it here.`
+        : `Not started this season (no draft or rosters yet).`;
+      return `<div class="card orphan"><div class="lg-head">${badge(b.name, "")}<div class="main"><div class="t">${esc(b.name)}</div><div class="s">${b.orphaned ? "Not renewed" : "Not started"}${b.teams ? ` · ${plural(b.teams, "team")}` : ""}</div></div></div>
+<p class="muted">${why}</p>
+<form method="post" action="/hide"><input type="hidden" name="csrf" value="${esc(csrf)}"><input type="hidden" name="league" value="${b.league_id}"><input type="hidden" name="action" value="hide"><button class="btn ghost small" type="submit">Hide this league</button></form></div>`;
+    }
+    const r = b.report, d = r.recommended_lineup_proj - r.current_lineup_proj, wp = r.win_prob;
+    const lastAuto = b.auto?.events?.slice().reverse().find((e) => e.kind === "lineup" && !e.skipped);
+    const lastSkip = b.auto?.events?.slice().reverse().find((e) => e.kind === "lineup" && e.skipped);
     return `<div class="card">
-<div class="lg-head">${badge(r.team, r.logo)}<div class="main"><div class="t"><a href="/league/${b.league_id}">${esc(b.name)}</a></div><div class="s">${esc(r.team)}</div></div><div class="rec">${esc(r.record)}</div></div>
-<div class="group">
-<div class="row">${badge(r.opponent, r.opponent_logo, "sm")}<div class="main"><div class="t">Week ${r.week} vs ${esc(r.opponent)}</div><div class="s">${esc(r.opponent_record)}</div></div><div class="trail"><span class="v">${pts(r.espn_projection.me)}</span><span class="m">vs ${pts(r.espn_projection.opponent)}</span></div></div>
-<div class="row"><div class="main"><div class="t">Lineup as set / best</div><div class="s">ESPN projection of your starters</div></div><div class="trail"><span class="m">${pts(r.current_lineup_proj)} /</span><span class="v">${pts(r.recommended_lineup_proj)}</span>${d > 0 ? `<span class="tag good">+${pts(d)}</span>` : ""}</div></div>
+<div class="lg-head">${badge(r.team, r.logo)}<div class="main"><div class="t"><a href="/league/${b.league_id}">${esc(b.name)}</a></div><div class="s">${esc(r.team)} · ${esc(r.record)}${b.season?.odds ? ` · ${b.season.odds.playoff_odds}% playoff odds` : ""}</div></div></div>
+<a class="winline" href="/league/${b.league_id}#lineup"><div class="pct ${wp == null ? "" : wp >= 0.6 ? "good" : wp <= 0.4 ? "bad" : ""}">${pct(wp)}</div><div class="main"><div class="t">Win chance vs ${esc(r.opponent)}</div><div class="s">${r.live ? "Live: from the score so far and what is left to play" : "Before kickoff: from both lineups as set"}</div></div>${I.chev}</a>
+<div class="meter"><i style="width:${wp == null ? 50 : Math.round(wp * 100)}%"></i></div>
+<div class="group score">
+<div class="row"><div class="main"><div class="t">Score now</div><div class="s">${r.live ? "games in progress" : "nothing played yet"}</div></div><div class="trail"><span class="v">${pts(r.score.me)}</span><span class="m">${esc(r.opponent)} ${pts(r.score.opponent)}</span></div></div>
+<div class="row"><div class="main"><div class="t">Projected finish</div><div class="s">ESPN, lineups as set${r.advisor ? ` · Advisor says ${pts(r.advisor.me_as_set)} vs ${pts(r.advisor.opponent_as_set)}` : ""}</div></div><div class="trail"><span class="v">${pts(r.projected_finish.me)}</span><span class="m">vs ${pts(r.projected_finish.opponent)}</span></div></div>
+<a class="row link" href="/league/${b.league_id}#lineup"><div class="main"><div class="t">Best possible lineup</div><div class="s">${d > 0 ? `${pts(d)} more than the lineup as set` : "your lineup is already the best one"}</div></div><div class="trail"><span class="v">${pts(r.recommended_lineup_proj)}</span>${d > 0 ? `<span class="tag good">+${pts(d)}</span>` : `<span class="tag good">set</span>`}${I.chev}</div></a>
 </div>
+${todo(b)}
+${lastAuto ? `<p class="stamp auto">${I.bolt} Set automatically ${esc(fmtTime(lastAuto.at))} ET (${plural(lastAuto.changes, "change")}).${lastSkip && lastSkip.at > lastAuto.at ? " Later runs left your changes alone." : ""}</p>` : lastSkip ? `<p class="stamp auto">${I.bolt} Automatic set skipped: you changed the lineup on ESPN this week.</p>` : ""}
 ${b.analyst ? `<p class="take"><a href="/league/${b.league_id}#analyst">${esc(b.analyst.headline)}</a></p>` : ""}
-<div class="tags">${r.lineup_items.length ? `<span class="tag warn">${plural(r.lineup_items.length, "change")}</span>` : `<span class="tag good">lineup set</span>`}
-${b.problem_count ? `<span class="tag bad">${plural(b.problem_count, "problem")}</span>` : ""}
-${b.trades && b.trades.length ? `<span class="tag tint">${plural(b.trades.length, "trade idea")}</span>` : ""}</div>
-${r.moves.map(move).join("")}
-${r.warnings.map(note).join("")}</div>`;
+<div class="tags">${r.lineup_items.length ? `<span class="tag warn">${plural(r.lineup_items.length, "change")}</span>` : `<span class="tag good">lineup set</span>`}${b.problem_count ? `<span class="tag bad">${plural(b.problem_count, "problem")}</span>` : ""}${b.trades && b.trades.length ? `<span class="tag tint">${plural(b.trades.length, "trade idea")}</span>` : ""}</div>
+${r.warnings.length ? `<div class="notes">${r.warnings.map(note).join("")}</div>` : ""}
+${r.moves.length ? `<details class="moves"><summary>${plural(r.moves.length, "lineup change")} recommended</summary>${r.moves.map(move).join("")}</details>` : ""}</div>`;
   });
-  return layout("Your leagues", `<h1>Your leagues <span class="muted">${esc(season)}</span></h1>${errors.map(flashBox).join("")}${top}<div class="grid">${cards.join("")}</div>`, { authed: true });
+  const hiddenNote = hiddenCount ? `<p class="stamp">${plural(hiddenCount, "hidden league")}. <a href="/settings">Show again in Settings</a>.</p>` : "";
+  return layout("Your leagues", `<h1>Your leagues <span class="muted">${esc(season)}</span></h1>${errors.map(flashBox).join("")}${top}<div class="grid">${cards.join("")}</div>${hiddenNote}`, { authed: true });
 }
 
 // ------------------------------------------------------------------ league page
@@ -259,26 +321,39 @@ ${Object.entries(r.waivers).map(([pos, picks]) => picks.map((d) => d.error
   const analyst = b.analyst ? `<div class="card analyst" id="analyst"><h2 class="top">Analyst's take</h2><p class="headline">${esc(b.analyst.headline)}</p>
 ${b.analyst.paragraphs.map((p) => `<p>${esc(p)}</p>`).join("")}
 <p class="stamp by">${b.analyst.source === "claude" ? "Written by Claude from this week's numbers." : "Built from this week's numbers."}</p></div>` : "";
-  const total = Math.max(0.1, r.recommended_lineup_proj + Math.max(0, r.opponent_best_proj));
-  const share = Math.round((r.recommended_lineup_proj / total) * 100);
+  const wp = r.win_prob;
   const matchup = `<div class="matchup">
-<div class="side">${badge(r.team, r.logo, "lg")}<div class="nm">${esc(r.team)}</div><div class="rec">${esc(r.record)}</div><div class="big">${pts(r.recommended_lineup_proj)}</div><div class="sub">best lineup · ${pts(r.current_lineup_proj)} as set · ESPN says ${pts(r.espn_projection.me)}</div></div>
-<div class="vs">VS</div>
-<div class="side them">${badge(r.opponent, r.opponent_logo, "lg")}<div class="nm">${esc(r.opponent)}</div><div class="rec">${esc(r.opponent_record)}</div><div class="big dim">${pts(r.opponent_best_proj)}</div><div class="sub">best possible · ESPN says ${pts(r.espn_projection.opponent)}</div></div>
-</div><div class="bar"><i style="width:${share}%"></i></div>`;
+<div class="side">${badge(r.team, r.logo, "lg")}<div class="nm">${esc(r.team)}</div><div class="rec">${esc(r.record)}</div><div class="big">${pts(r.projected_finish.me)}</div><div class="sub">projected finish · ${pts(r.score.me)} so far</div><div class="sub">best lineup ${pts(r.recommended_lineup_proj)} · Advisor ${pts(r.advisor?.me)}</div></div>
+<div class="vs"><div class="pct ${wp == null ? "" : wp >= 0.6 ? "good" : wp <= 0.4 ? "bad" : ""}">${pct(wp)}</div><div class="sub">win chance</div></div>
+<div class="side them">${badge(r.opponent, r.opponent_logo, "lg")}<div class="nm">${esc(r.opponent)}</div><div class="rec">${esc(r.opponent_record)}</div><div class="big dim">${pts(r.projected_finish.opponent)}</div><div class="sub">projected finish · ${pts(r.score.opponent)} so far</div><div class="sub">best possible ${pts(r.opponent_best_proj)} · Advisor ${pts(r.advisor?.opponent)}</div></div>
+</div><div class="meter"><i style="width:${wp == null ? 50 : Math.round(wp * 100)}%"></i></div>
+<p class="stamp">Win chance comes from the gap between the two projected finishes and how much of the week is still to play${r.live ? "; it tightens as games finish" : ""}. "Advisor" is our own projection: ESPN blended with each player's last three games and season average, adjusted for the matchup.</p>`;
+  const sn = b.season || {};
+  const strengthRows = Object.entries(sn.strength || {}).sort((a, b) => a[1].rank - b[1].rank).map(([pos, s]) => `<div class="row"><div class="main"><div class="t">${esc(pos)}</div><div class="s">${pts(s.mine)} a week · league average ${pts(s.league_avg)}</div></div><div class="trail"><span class="tag ${s.rank <= 2 ? "good" : s.rank > Math.ceil(s.teams / 2) ? "bad" : ""}">${s.rank} of ${s.teams}</span></div></div>`).join("");
+  const outlookRows = (sn.outlook || []).map((g) => `<div class="row">${badge(g.opponent, g.logo, "sm")}<div class="main"><div class="t">Week ${g.week} · ${esc(g.opponent)}</div><div class="s">${pts(g.avg_pf)} a week</div></div><div class="trail"><span class="tag ${g.win_prob >= 60 ? "good" : g.win_prob < 45 ? "bad" : ""}">${g.win_prob}% win chance</span></div></div>`).join("");
+  const plan = sn.plan ? `<div class="card" id="plan"><h2 class="top">Game plan</h2>
+<div class="odds"><div class="o"><div class="pct ${sn.odds?.playoff_odds >= 60 ? "good" : sn.odds?.playoff_odds < 25 ? "bad" : ""}">${sn.odds ? `${sn.odds.playoff_odds}%` : "n/a"}</div><div class="s">Playoff odds<br><span class="muted">${sn.spots} of ${r.standings.length} make it</span></div></div><div class="o"><div class="pct">${sn.odds ? `${sn.odds.first_odds}%` : "n/a"}</div><div class="s">Finish first</div></div><div class="o"><div class="pct">${sn.odds ? pts(sn.odds.expected_wins) : "n/a"}</div><div class="s">Expected wins<br><span class="muted">${sn.odds ? plural(sn.odds.games_left, "game") + " left" : ""}</span></div></div><div class="o"><div class="pct mode">${esc(sn.plan.mode)}</div><div class="s">Mode</div></div></div>
+<p class="stamp">Odds come from simulating the remaining schedule 1,500 times using each team's average score${sn.contending ? ". You are in contention, so playoff weeks count extra when valuing players and trades." : "."}</p>
+<h3>The plan</h3><ol class="plan">${sn.plan.bullets.map((x) => `<li>${esc(x)}</li>`).join("")}</ol>
+<p class="stamp by">${sn.plan.source === "claude" ? "Plan written by Claude from this week's numbers." : "Built from this week's numbers."}</p>
+${strengthRows ? `<h3>Your starters by position</h3><div class="group">${strengthRows}</div>` : ""}
+${outlookRows ? `<h3>Remaining schedule</h3><div class="group">${outlookRows}</div>` : ""}
+${sn.byes_ahead && sn.byes_ahead.length ? `<h3>Byes still to come</h3><div class="group">${sn.byes_ahead.map((x) => `<div class="row"><div class="main"><div class="t">${esc(x.name)}</div><div class="s">${esc(x.pos)}</div></div><div class="trail"><span class="tag">week ${x.week}</span></div></div>`).join("")}</div>` : ""}
+</div>` : "";
   const matchRow = (s) => `${badge(s.team, s.logo, "sm")}<span><strong>${esc(s.team)}</strong> <span class="muted">${esc(s.record)} · ${pts(s.espn_proj)} / ${pts(s.best_lineup_proj)}</span></span>`;
   const body = `<h1>${esc(r.league)} <span class="muted">week ${r.week}</span></h1>
-<div class="seg"><a href="#analyst">Analyst</a><a href="#lineup">Lineup</a><a href="#opponent">Opponent</a><a href="#waivers">Waivers</a><a href="#trades">Trades</a><a href="#league">League</a><a href="#schedule">Schedule</a><a href="#standings">Standings</a></div>
+<div class="seg"><a href="#analyst">Analyst</a><a href="#lineup">Lineup</a><a href="#plan">Plan</a><a href="#opponent">Opponent</a><a href="#waivers">Waivers</a><a href="#trades">Trades</a><a href="#league">League</a><a href="#schedule">Schedule</a><a href="#standings">Standings</a></div>
 ${analyst}
 <div class="card" id="lineup">${matchup}
 ${r.lineup_items.length ? `<p><a class="btn" href="/lineups?league=${r.league_id}">Set this lineup (${plural(r.lineup_items.length, "change")})</a></p>` : `<p><span class="tag good">${I.check.replace("<svg", '<svg style="width:14px;height:14px"')} lineup already set</span></p>`}
 <h2>Recommended lineup</h2>${lineupTable(r, r.recommended)}
 <h2>Changes to make</h2>${r.moves.length ? r.moves.map(move).join("") : `<p class="good">None. Your lineup already matches the projections.</p>`}
 ${r.warnings.length ? `<h2>Watch out</h2>${r.warnings.map(note).join("")}` : ""}
-<h2>Bench</h2><div class="group">${r.bench.map((p) => `<div class="row">${avatar(p)}<div class="main"><div class="t">${esc(p.name)}</div><div class="s">${esc(p.pos)} · ${esc(p.team)}${p.opp && p.opp !== "bye" ? ` · vs ${esc(p.opp)}` : ""}</div></div><div class="trail"><span class="v">${pts(p.proj)}</span>${p.notes ? `<span class="tag warn">${esc(p.notes)}</span>` : ""}</div></div>`).join("")}</div></div>
+<h2>Bench</h2><div class="group">${r.bench.map((p) => `<div class="row">${avatar(p)}<div class="main"><div class="t">${esc(p.name)}</div><div class="s">${esc(p.pos)} · ${esc(p.team)}${p.opp && p.opp !== "bye" ? ` · vs ${esc(p.opp)}` : ""}</div></div><div class="trail"><span class="v">${pts(p.proj)}</span>${statusTag(p)}</div></div>`).join("")}</div></div>
+${plan}
 <div class="card" id="opponent"><div class="lg-head">${badge(r.opponent, r.opponent_logo)}<div class="main"><div class="t">${esc(r.opponent)}</div><div class="s">${esc(r.opponent_record)} · best possible ${pts(r.opponent_best_proj)}</div></div></div>
 ${lineupTable(r, r.opponent_lineup)}${r.opponent_issues.length ? note(`Their problems as set: ${r.opponent_issues.join("; ")}`) : ""}</div>
-<div class="card" id="waivers"><h2 class="top">Waiver watch</h2><p class="lede">Free agents projected above your weakest starter at that position this week. Add is immediate; Claim goes through your league's waiver process.</p>${waivers}</div>
+<div class="card" id="waivers"><h2 class="top">Waiver watch</h2><p class="lede">Free agents projected above your weakest starter at that position this week. Add is immediate; Claim goes through your league's waiver process. What owned means: the share of ESPN leagues that roster the player, so a low number next to a high projection is a bargain nobody has noticed yet.</p>${waivers}</div>
 <div class="card" id="trades"><h2 class="top">Trade ideas</h2><p class="lede">One-for-one and two-player packages, ranked by what your best lineup gains per week for the rest of the season and filtered to offers the other side could reasonably accept. Proposing sends the offer through ESPN; the other manager still has to accept.</p>${trades}</div>
 <div class="card" id="league"><h2 class="top">All matchups, week ${r.week}</h2><p class="lede">ESPN projection / best possible from each roster.</p>
 <div class="group">${r.matchups.map((s) => `<div class="row" style="flex-wrap:wrap">${s.length === 2 ? `<span class="tm" style="flex:1 1 260px">${matchRow(s[0])}</span><span class="muted" style="font-weight:700;font-size:12px">VS</span><span class="tm" style="flex:1 1 260px">${matchRow(s[1])}</span>${[s[0].team_id, s[1].team_id].includes(r.team_id) ? `<span class="tag tint">you</span>` : ""}` : s.length ? `${badge(s[0].team, s[0].logo, "sm")}<span>${esc(s[0].team)} has a bye</span>` : ""}

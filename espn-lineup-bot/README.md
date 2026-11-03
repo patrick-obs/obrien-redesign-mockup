@@ -115,6 +115,39 @@ ESPN_S2=... SWID=... npm run smoke   # Worker code against your real leagues, fr
 pip install pytest && pytest tests   # Python CLI and Flask app (21 tests)
 ```
 
+## Dashboard, season strategy and automation
+
+- **Win chance.** Each league card leads with the chance of winning this week, from the gap between the two
+  projected finishes and how much of the week is left to play (a normal model with a 24-point weekly
+  spread that shrinks as games finish). Below it: score now, projected finish (ESPN's live projection
+  during games, otherwise the lineup as set), and the best possible lineup. Everything is a link.
+- **To do.** Every card lists the concrete next clicks: set the lineup, add or claim the top waiver
+  pick (drop pre-filled), propose the best trade, open the game plan. With nothing to fix it still
+  offers "Review lineup" and the plan.
+- **Advisor projection.** Beside ESPN's number for every starter: ESPN blended with the player's last
+  three games and season average, nudged by the opponent's rank against the position, discounted for
+  questionable/doubtful. Totals for both lineups appear in the matchup header; the optimizer still
+  sets lineups on ESPN's projection.
+- **Game plan** (`worker/season.js`). Playoff odds and expected wins from 1,500 simulations of the
+  remaining schedule (each game won with a probability from the two teams' average scores, standings
+  by wins then points), a mode (lock / contend / push / long shot), your starters ranked by position
+  against the league, each remaining game with a win chance, byes still to come for starters, and an
+  ordered list of moves. Claude writes the plan in the same call as the analyst's take; the rules
+  version is the fallback.
+- **Trades look further out.** Player values are weighted over the remaining weeks: bye weeks count
+  against a player, playoff weeks count 1.5x when you are in contention (playoff odds >= 35%) and
+  0.5x when not. Packages go up to three players a side. Cards show the per-week and rest-of-season
+  gain.
+- **Automatic lineups.** On every cron run (Thu/Sat/Sun 8am ET, Thu 6pm, Sun noon) the Worker sets
+  each lineup to the recommendation, logging to `auto:<league>:<week>`. It only acts while the lineup
+  still matches what it last set that week; a manual change on ESPN makes it stand down for the
+  week. Off switch in Settings. "Fill empty slots automatically" (off by default) adds the best free
+  agent for a slot nobody on the roster can fill and drops the lowest-value bench player; it never
+  places waiver claims.
+- **Orphaned leagues.** A league that reached the season without a draft is shown as "Not renewed"
+  with an explanation and a Hide button; hidden leagues can be shown again from Settings.
+- "Locked" is shown as a small lock, not a warning; byes are grey; amber is only for real uncertainty.
+
 ## Trades, waivers and the analyst
 
 - **Analyst's take.** Every league page opens with a short read of the week: the matchup, what the

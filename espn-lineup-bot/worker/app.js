@@ -4,6 +4,7 @@ import * as espnMod from "./espn.js";
 import { buildReport, waiverThresholds } from "./report.js";
 import { playerValue, rosterPlayer, proposeTrades } from "./trades.js";
 import { analystTake, polishTake } from "./analyst.js";
+import { byeWeeks, horizonWeights, availability, simulateSeason, scheduleOutlook, positionalStrength, gamePlan } from "./season.js";
 import { makeSession, verifySession, csrfFor, parseCookies, sessionCookie, clearSessionCookie, SESSION_COOKIE, timingSafeEqual } from "./auth.js";
 import { loginPage, errorPage, settingsPage, indexPage, leaguePage, lineupsPage, tradePage, addPage } from "./html.js";
 
@@ -37,7 +38,15 @@ export class App {
     const s = { espn_s2: this.env.ESPN_S2 || "", swid: this.env.SWID || "", season: Number(this.env.SEASON || this.espn.currentSeason(new Date(this.now()))) };
     const saved = await this.storage.get("settings");
     if (saved) { if (saved.espn_s2) s.espn_s2 = saved.espn_s2; if (saved.swid) s.swid = saved.swid; }
+    const prefs = (await this.storage.get("prefs")) || {};
+    s.auto_lineup = prefs.auto_lineup !== false;          // on unless switched off
+    s.auto_fill_empty = prefs.auto_fill_empty === true;    // off unless switched on
+    s.hidden = Array.isArray(prefs.hidden) ? prefs.hidden : [];
     return s;
+  }
+  async savePrefs(patch) {
+    const prefs = (await this.storage.get("prefs")) || {};
+    await this.storage.put("prefs", { ...prefs, ...patch });
   }
   cookies(s) { return { espn_s2: s.espn_s2, swid: s.swid }; }
 
@@ -75,7 +84,9 @@ export class App {
     return this.cached(`league:${leagueId}`, this.cacheSeconds, force, async () => {
       const f = this.fetchFn, c = this.cookies(s), now = this.now();
       const league = await this.espn.loadLeague(f, c, s.season, leagueId);
-      const b = { league_id: leagueId, name: league.name, started: league.started };
+      const b = { league_id: leagueId, name: league.name, started: league.started, drafted: !!league.drafted, teams: league.teams.length, current_week: league.currentWeek };
+      // A league that reached the season without a draft was never renewed: nobody is running it this year.
+      b.orphaned = !league.started && !league.drafted && league.currentWeek > 0;
       if (!league.started) return b;
       const me = this.espn.findTeam(league, s.swid, null);
       const week = league.currentWeek;
@@ -85,6 +96,15 @@ export class App {
       ]);
       const sched = this.espn.proScheduleForWeek(allSched, week);
       const boxes = await this.espn.boxScores(f, c, league, week, sched, ratings, now);
+      // Season context: playoff odds decide how much the playoff weeks count when valuing players.
+      const odds = simulateSeason(league, { sims: 1500, seed: leagueId });
+      const myOdds = odds.by_team[me.id] || null;
+      const contending = (myOdds?.playoff_odds ?? 50) >= 35;
+      const weights = horizonWeights(league, week, contending);
+      const weeksLeft = Object.keys(weights).length;
+      const byes = byeWeeks(allSched, week + 1, league.finalScoringPeriod || 17);
+      const abbrToId = Object.fromEntries(Object.entries(this.espn.PRO_TEAM || {}).map(([id, ab]) => [ab, Number(id)]));
+      const byesFor = (abbr) => byes[abbrToId[abbr]] || [];
       let rep = buildReport(league, me, boxes, week, now, null);
       // waivers: only the positions worth scanning
       const faByPos = {};
@@ -94,28 +114,41 @@ export class App {
       }));
       positions.forEach((pos, i) => { faByPos[pos] = results[i]; });
       rep = buildReport(league, me, boxes, week, now, faByPos);
-      // trades
-      let trades = [];
+      // Trades and roster shape, valued over the rest of the season: weekly value times the share of the weighted
+      // remaining weeks the player is available for (bye weeks removed, playoff weeks weighted by contention).
+      let trades = [], strength = null, byesAhead = [];
       try {
         const rosters = await this.espn.rosters(f, c, league);
-        const conv = (t) => (rosters[t.id] || []).map((p) => rosterPlayer(p.name, p.position, p.eligible, p.status,
-          playerValue(p.seasonProjAvg, p.seasonAvg, this.espn.gamesPlayed(t)), p.playerId, p.proTeam));
+        const conv = (t) => (rosters[t.id] || []).map((p) => {
+          const weekly = playerValue(p.seasonProjAvg, p.seasonAvg, this.espn.gamesPlayed(t));
+          const pb = byesFor(p.proTeam), avail = availability(weights, pb);
+          const rp = rosterPlayer(p.name, p.position, p.eligible, p.status, Math.round(weekly * avail * 100) / 100, p.playerId, p.proTeam);
+          rp.weekly = weekly; rp.avail = avail; rp.byes = pb;
+          return rp;
+        });
         const mine = conv(me);
         const others = Object.fromEntries(league.teams.filter((t) => t.id !== me.id).map((t) => [t.name, { id: t.id, logo: t.logo || "", players: conv(t) }]));
-        trades = proposeTrades(mine, others, rep.slot_counts);
+        trades = proposeTrades(mine, others, rep.slot_counts, { weeksLeft, horizonNote: contending ? "with the playoff weeks counted extra" : "" });
+        strength = positionalStrength({ [me.id]: mine, ...Object.fromEntries(Object.values(others).map((o) => [o.id, o.players])) }, me.id, rep.slot_counts);
+        const starters = new Set(Object.values(rep.recommended).flat().map((p) => p.name));
+        byesAhead = mine.filter((p) => starters.has(p.name) && p.byes.length).map((p) => ({ name: p.name, pos: p.position, week: p.byes[0] })).sort((a, b) => a.week - b.week);
       } catch (e) { console.warn("trades failed", e?.message); }
+      const outlook = scheduleOutlook(league, me);
+      const plan = gamePlan({ report: rep, odds, outlook, strength, trades, weeksLeft, byesAhead });
       const problem_count = rep.warnings.filter((w) => /No eligible|BYE| is out|injury reserve|suspension/.test(w)).length;
       // The analyst's take: rules first, Claude's rewrite of the same facts when a key is configured and the daily cap allows.
       let analyst = null;
       try {
-        analyst = analystTake({ report: rep, trades, league });
+        analyst = analystTake({ report: rep, trades, league, odds: myOdds, strength, plan });
         if (await this.claudeAllowed()) {
           const polished = await polishTake(analyst, { apiKey: this.env.ANTHROPIC_API_KEY, fetchFn: f });
           if (polished) analyst = polished;
         }
         delete analyst.facts;
       } catch (e) { console.warn("analyst failed", e?.message); }
-      return { ...b, report: rep, trades, analyst, team_id: me.id, week, problem_count };
+      const season = { odds: myOdds, spots: odds.spots, outlook, strength, plan: { ...plan, bullets: analyst?.plan?.length ? analyst.plan : plan.bullets, source: analyst?.source === "claude" && analyst.plan?.length ? "claude" : "rules" }, weeks_left: weeksLeft, contending, byes_ahead: byesAhead,
+        standings_odds: Object.fromEntries(Object.entries(odds.by_team).map(([id, o]) => [id, o.playoff_odds])) };
+      return { ...b, report: rep, trades, analyst, season, team_id: me.id, week, problem_count };
     });
   }
 
@@ -160,11 +193,12 @@ export class App {
       if (path === "/login") return this.login(request, url);
       if (path === "/logout" && request.method === "POST") return redirect("/login", { "set-cookie": clearSessionCookie() });
       if (!(await this.authed(request))) return redirect(`/login?next=${encodeURIComponent(path)}`);
-      if (path === "/") return this.index(url);
+      if (path === "/") return this.index(url, request);
       if (path.startsWith("/league/")) return this.league(Number(path.split("/")[2]), url);
       if (path === "/lineups") return this.lineups(request, url);
       if (path === "/trade") return this.trade(request, url);
       if (path === "/add") return this.add(request, url);
+      if (path === "/hide" && request.method === "POST") return this.hide(request);
       if (path === "/settings") return this.settingsPage(request);
       if (path === "/refresh" && request.method === "POST") { await this.clearCache(); return redirect("/"); }
       return html(errorPage("Page not found.", true), 404);
@@ -189,21 +223,26 @@ export class App {
     return html(loginPage(!!expected));
   }
 
-  async index(url) {
+  async index(url, request = null) {
     const s = await this.settings();
+    if (request) url.request = request;
     if (!(s.espn_s2 && s.swid)) return redirect("/settings");
     const force = url.searchParams.get("refresh") === "1";
     const leagues = await this.leagues(force);
     const bundles = [], errors = [];
     for (const lg of leagues) {
-      try { bundles.push(await this.bundle(lg.league_id, force)); }
-      catch (e) { errors.push(`${lg.league_name}: ${e?.message || e}`); }
+      if (s.hidden.includes(lg.league_id)) continue;
+      try {
+        const b = await this.bundle(lg.league_id, force);
+        if (b.started) b.auto = await this.storage.get(`auto:${b.league_id}:${b.week}`);
+        bundles.push(b);
+      } catch (e) { errors.push(`${lg.league_name}: ${e?.message || e}`); }
     }
     bundles.sort((a, b) => (a.started === b.started ? a.name.localeCompare(b.name) : a.started ? -1 : 1));
     const totalMoves = bundles.reduce((n, b) => n + (b.report ? b.report.lineup_items.length : 0), 0);
     const saved = url.searchParams.get("saved");
     if (saved) errors.unshift(`Saved. ESPN reports ${saved} league(s) for this account.`);
-    return html(indexPage({ bundles, errors, totalMoves, season: s.season, now: this.now() }));
+    return html(indexPage({ bundles, errors, totalMoves, season: s.season, now: this.now(), csrf: await this.csrf(url.request || new Request(url.href)), hiddenCount: s.hidden.length }));
   }
 
   async league(id, url) {
@@ -230,6 +269,19 @@ export class App {
     }
     await this.clearCache();
     return html(lineupsPage({ bundles, results, only, csrf }));
+  }
+
+  /** Hide a league from the dashboard (an orphaned one, say) or show it again. */
+  async hide(request) {
+    const form = await request.formData();
+    if (!(await this.checkCsrf(request, form))) return html(errorPage("Form expired. Go back and try again.", true), 400);
+    const id = Number(form.get("league") || 0), show = form.get("action") === "show";
+    if (!id) return html(errorPage("No league given.", true), 400);
+    const s = await this.settings();
+    const hidden = new Set(s.hidden);
+    if (show) hidden.delete(id); else hidden.add(id);
+    await this.savePrefs({ hidden: [...hidden] });
+    return redirect(show ? "/settings" : "/");
   }
 
   /** Preview, then send, one trade proposal the advisor computed. Only proposals in the cached bundle can be sent. */
@@ -283,10 +335,15 @@ export class App {
     const s = await this.settings();
     s.claude = { ...this.claudeConfig(), hasKey: !!this.env.ANTHROPIC_API_KEY, today: await this.claudeCallsToday() };
     s.cacheSeconds = this.cacheSeconds;
+    try { s.hidden_leagues = (await this.leagues()).filter((lg) => s.hidden.includes(lg.league_id)).map((lg) => ({ id: lg.league_id, name: lg.league_name })); } catch { s.hidden_leagues = s.hidden.map((id) => ({ id, name: `League ${id}` })); }
     const csrf = await this.csrf(request);
     if (request.method === "POST") {
       const form = await request.formData();
       if (!(await this.checkCsrf(request, form))) return html(errorPage("Form expired. Go back and try again.", true), 400);
+      if (form.get("prefs") === "1") {
+        await this.savePrefs({ auto_lineup: form.get("auto_lineup") === "1", auto_fill_empty: form.get("auto_fill_empty") === "1" });
+        return redirect("/settings?prefs=saved");
+      }
       const espn_s2 = (form.get("espn_s2") || "").trim(), swid = (form.get("swid") || "").trim();
       if (!(espn_s2 && swid)) return html(settingsPage(s, csrf, ["Both cookies are required."]));
       let leagues;
@@ -296,14 +353,59 @@ export class App {
       await this.clearCache();
       return redirect(`/?saved=${leagues.length}`);
     }
-    return html(settingsPage(s, csrf));
+    return html(settingsPage(s, csrf, new URL(request.url).searchParams.get("prefs") === "saved" ? ["Preferences saved."] : []));
   }
 
-  /** Called by the cron trigger to pre-build every league before game days. */
+  /** Called by the cron trigger to pre-build every league before game days, and to set lineups automatically. */
   async warm(request) {
     if (!timingSafeEqual(request.headers.get("x-warm-key") || "", this.env.SECRET_KEY || "x")) return new Response("no", { status: 403 });
+    const s = await this.settings();
     const leagues = await this.leagues(true);
-    for (const lg of leagues) { try { await this.bundle(lg.league_id, true); } catch (e) { console.warn("warm failed", lg.league_name, e?.message); } }
-    return new Response(`warmed ${leagues.length}`);
+    let acted = 0;
+    for (const lg of leagues) {
+      if (s.hidden.includes(lg.league_id)) continue;
+      try {
+        const b = await this.bundle(lg.league_id, true);
+        if (b.started && (await this.autoManage(b, s))) acted++;
+      } catch (e) { console.warn("warm failed", lg.league_name, e?.message); }
+    }
+    return new Response(`warmed ${leagues.length}, auto-managed ${acted}`);
+  }
+
+  /**
+   * Automatic management for one league, run from the cron. Sets the lineup to the recommendation, but only while the
+   * lineup still matches what we last set this week: if you moved anyone on ESPN since, your override stands.
+   * With auto_fill_empty on, also fills a starting slot that has nobody eligible with the best free agent, dropping the
+   * lowest-value bench player. Returns true when anything was sent to ESPN. Everything is logged under auto:<league>:<week>.
+   */
+  async autoManage(b, s) {
+    const r = b.report, key = `auto:${b.league_id}:${b.week}`;
+    const prev = (await this.storage.get(key)) || { week: b.week, events: [] };
+    const slots = {}; for (const p of [...Object.values(r.recommended).flat(), ...r.bench]) if (p.name) slots[p.name] = p.slot;
+    const log = (e) => { prev.events.push({ at: this.now(), ...e }); };
+    let acted = false;
+    if (s.auto_lineup && r.lineup_items.length) {
+      const overridden = prev.target && Object.entries(prev.target).some(([name, slot]) => name in slots && slots[name] !== slot);
+      if (overridden) log({ kind: "lineup", skipped: true, message: "Left alone: the lineup was changed on ESPN after the last automatic set." });
+      else {
+        const result = await this.espn.applyLineup(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, b.week, r.lineup_items);
+        prev.target = { ...slots }; for (const it of r.lineup_items) prev.target[it.name] = it.to;
+        log({ kind: "lineup", ok: result.ok, changes: r.lineup_items.length, message: result.message, items: r.lineup_items.map((it) => `${it.name} ${it.from}→${it.to}`) });
+        acted = true;
+      }
+    }
+    if (s.auto_fill_empty && !prev.filled) {
+      const pick = Object.values(r.waivers).flat().find((p) => !p.error && p.fills_empty_slot && p.player_id != null && !p.on_waivers);
+      const drop = r.open_spots > 0 ? null : (r.drop_candidates || []).find((c) => !c.starter) || null;
+      if (pick && (drop || r.open_spots > 0)) {
+        const result = await this.espn.addPlayer(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, b.week, { addId: pick.player_id, dropId: drop ? drop.player_id : null, waiver: false, bid: 0 });
+        prev.filled = true;
+        log({ kind: "add", ok: result.ok, message: result.message, add: pick.name, drop: drop ? drop.name : null });
+        acted = true;
+      }
+    }
+    await this.storage.put(key, prev);
+    if (acted) { this.mem.delete(`league:${b.league_id}`); await this.storage.delete(`league:${b.league_id}`); }
+    return acted;
   }
 }

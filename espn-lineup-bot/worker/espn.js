@@ -107,13 +107,14 @@ export function parseLeague(d, season, id) {
       t.schedule.push(oppId); t.scores.push(mine.totalPoints ?? 0); t.outcomes.push(outcome);
     }
   }
-  const started = !!(d.draftDetail?.drafted) && currentWeek > 0 && teams.length > 0;
+  const drafted = !!(d.draftDetail?.drafted);
+  const started = drafted && currentWeek > 0 && teams.length > 0;
   return {
     id, season, name: s.name || `League ${id}`, currentWeek, currentMatchupPeriod: st.currentMatchupPeriod || 0,
     finalScoringPeriod: st.finalScoringPeriod || 17, regSeasonCount: s.scheduleSettings?.matchupPeriodCount || 14,
     playoffTeamCount: s.scheduleSettings?.playoffTeamCount || 0, rosterSize,
     acquisition: { type: acq.acquisitionType || "", usesBudget: !!acq.isUsingAcquisitionBudget, budget: acq.acquisitionBudget || 0 },
-    matchupPeriods, slotCounts, teams, byId, started,
+    matchupPeriods, slotCounts, teams, byId, started, drafted,
   };
 }
 

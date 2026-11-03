@@ -11,7 +11,7 @@ test("report: lineup, warnings, waivers, league-wide sections", () => {
   assert.ok(r.moves.some((m) => m.startsWith("START RB C")) && r.moves.some((m) => m.startsWith("SIT   RB B") && m.includes("out")));
   assert.ok(r.moves.some((m) => m.startsWith("SIT   TE A") && m.includes("bye")) && r.moves.some((m) => m.startsWith("START TE B")));
   assert.ok(r.warnings.some((w) => w.includes("No eligible player for D/ST")));
-  assert.ok(r.warnings.some((w) => w.includes("WR A (WR) is questionable")) && r.warnings.some((w) => w.includes("K A (K) is locked")));
+  assert.ok(r.warnings.some((w) => w.includes("WR A (WR) is questionable")) && !r.warnings.some((w) => w.includes("locked")));
   assert.deepEqual(r.recommended["D/ST"], []);
   assert.equal(r.recommended.TE[0].name, "TE B");
   assert.ok(r.recommended_lineup_proj > r.current_lineup_proj);

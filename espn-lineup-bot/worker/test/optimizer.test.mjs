@@ -32,7 +32,7 @@ test("locked starter stays put", () => {
     P("WR1", "WR", "WR", 14), P("WR2", "WR", "WR", 10), P("WR3", "WR", "RB/WR/TE", 8), P("TE1", "TE", "TE", 9), P("K1", "K", "K", 8), P("D1", "D/ST", "D/ST", 7)];
   const a = optimize(roster, SLOTS);
   assert.equal(a.QB[0].name, "QB1");
-  assert.ok(warningsFor(roster, a, SLOTS).some((w) => w.includes("locked")));
+  assert.ok(!warningsFor(roster, a, SLOTS).some((w) => w.includes("locked")), "locked is shown as status, not a warning");
 });
 
 test("empty slot warns and unplayable players never fill it", () => {

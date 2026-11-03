@@ -5,7 +5,7 @@
 const f1 = (x) => Number(x).toFixed(1);
 
 /** Facts the take is built from. Kept separate so the Claude rewrite sees exactly what the rules saw. */
-export function analystFacts({ report: r, trades = [], league = {} }) {
+export function analystFacts({ report: r, trades = [], league = {}, odds = null, strength = null, plan = null }) {
   const myBest = r.recommended_lineup_proj, oppBest = r.opponent_best_proj, asSet = r.current_lineup_proj;
   const edge = Math.round((myBest - oppBest) * 10) / 10;
   const benchCost = Math.round((myBest - asSet) * 10) / 10;
@@ -21,6 +21,9 @@ export function analystFacts({ report: r, trades = [], league = {} }) {
   const toughest = rem.slice().sort((a, b) => b.avg_pf - a.avg_pf)[0] || null;
   return { team: r.team, record: r.record, week: r.week, opponent: r.opponent, opponent_record: r.opponent_record,
     my_best: myBest, opp_best: oppBest, edge, as_set: asSet, bench_cost: benchCost, moves: r.moves, problems, shaky,
+    win_chance_pct: r.win_prob == null ? null : Math.round(r.win_prob * 100), score_now: r.score, projected_finish: r.projected_finish,
+    advisor_projection: r.advisor, playoff_odds_pct: odds?.playoff_odds ?? null, expected_wins: odds?.expected_wins ?? null,
+    strength: strength || null, plan_mode: plan?.mode || null, plan_bullets: plan?.bullets || [],
     top_pick: picks[0] || null, top_trade: trades[0] || null, rank, teams: r.standings.length, playoff_teams: playoffTeams,
     weeks_left: weeksLeft, toughest_remaining: toughest, points_for_rank: pointsForRank(r.standings, r.team_id) };
 }
@@ -65,7 +68,7 @@ export function analystTake(input) {
   if (f.top_trade) season.push(`The trade to make: ${f.top_trade.give_names} to ${f.top_trade.with} for ${f.top_trade.get_names}, worth about ${f1(f.top_trade.my_gain)} a week to you${f.top_trade.their_gain >= 0 ? " and fair for them" : ""}.`);
   else season.push("No trade on the board clearly helps you without hurting the other side; keep checking as injuries move values.");
   p.push(season.join(" "));
-  return { headline, paragraphs: p, source: "rules", facts: f };
+  return { headline, paragraphs: p, plan: f.plan_bullets, source: "rules", facts: f };
 }
 
 // First letter down, trailing period off, and any inner full stop softened so the sentence can be embedded.
@@ -73,7 +76,13 @@ const lower = (s) => s.replace(/\.$/, "").replace(/\. (\w)/g, (m, c) => `; ${c.t
 const ordinal = (n) => `${n}${["th", "st", "nd", "rd"][(n % 100 > 10 && n % 100 < 14) ? 0 : Math.min(n % 10, 4) % 4] || "th"}`;
 
 const MODEL = "claude-opus-5-5";
-const SYSTEM = `You are the resident analyst for a private fantasy football app used by one manager. Write like a sharp, likeable TV analyst: confident, specific, second person, plain words, no hype, no emoji, no headers, no bullet points. You may only use the facts in the JSON you are given; never invent players, stats, injuries or news. Numbers are ESPN projections. Return exactly this shape: a first line that is a headline of at most twelve words, a blank line, then two or three short paragraphs totalling 120 to 180 words that cover the matchup, the lineup and biggest risk, and the season picture with the one trade or waiver move that matters most.`;
+const SYSTEM = `You are the resident analyst for a private fantasy football app used by one manager. Write like a sharp, likeable TV analyst: confident, specific, second person, plain words, no hype, no emoji, no markdown headers. You may only use the facts in the JSON you are given; never invent players, stats, injuries or news. "advisor_projection" is the app's own projection (ESPN blended with recent form and matchup); where it disagrees with ESPN, say which you trust and why, briefly. Return exactly this shape:
+line 1: a headline of at most twelve words
+blank line
+two or three short paragraphs totalling 120 to 180 words: the matchup and win chance, the lineup and biggest risk, the season picture.
+blank line
+a line that says only: PLAN
+then three to five lines, each starting with "- ", giving the concrete moves to win the league or finish as high as possible: this week's moves, the trade to make, the position to buy and the one to sell from, how to play the remaining schedule. Build on plan_bullets; be specific and ordered by importance.`;
 
 /**
  * Optional rewrite by Claude. Returns a take with source "claude", or null on any failure, so callers fall back to the rules.
@@ -93,9 +102,11 @@ export async function polishTake(take, { apiKey, fetchFn = fetch, timeoutMs = 25
     const d = await r.json();
     if (d.stop_reason === "refusal") return null;
     const text = (d.content || []).filter((b) => b.type === "text").map((b) => b.text).join("").trim();
-    const [headline, ...rest] = text.split(/\n\s*\n/);
+    const [body, planText = ""] = text.split(/\n\s*PLAN\s*\n/);
+    const [headline, ...rest] = body.split(/\n\s*\n/);
     if (!headline || rest.length === 0) return null;
-    return { headline: headline.replace(/^#+\s*/, "").trim(), paragraphs: rest.map((s) => s.trim()).filter(Boolean), source: "claude", facts: take.facts };
+    const plan = planText.split("\n").map((l) => l.replace(/^\s*[-*]\s*/, "").trim()).filter(Boolean);
+    return { headline: headline.replace(/^#+\s*/, "").trim(), paragraphs: rest.map((s) => s.trim()).filter(Boolean), plan: plan.length ? plan : take.plan, source: "claude", facts: take.facts };
   } catch (e) {
     console.warn("analyst: claude failed", e?.message);
     return null;

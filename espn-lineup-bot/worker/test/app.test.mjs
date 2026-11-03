@@ -32,7 +32,7 @@ test("dashboard and league page render", async () => {
   const r = await app.handle(req("/", { cookie }));
   assert.equal(r.status, 200);
   const h = await r.text();
-  assert.match(h, /Test League/); assert.match(h, /Dead League/); assert.match(h, /Not started/);
+  assert.match(h, /Test League/); assert.match(h, /Dead League/); assert.match(h, /Not renewed|Not started/);
   assert.match(h, /Set all lineups/); assert.match(h, /lineup change/); assert.match(h, /START RB C/); assert.match(h, /1 problem/);
   const l = await (await app.handle(req("/league/1", { cookie }))).text();
   for (const s of ["Recommended lineup", "EMPTY", "nobody eligible", "Trade ideas", "Waiver watch", "League injury report", "Remaining schedule", "Standings", "fills your EMPTY slot", "TE FA", "Analyst's take", "/add\\?league=1&amp;player=", "Claim</a>"]) assert.match(l, new RegExp(s));
@@ -71,12 +71,59 @@ test("settings saves cookies to storage", async () => {
   assert.equal((await app.settings()).swid, "{new}");
 });
 
-test("warm endpoint needs the key and fills the cache", async () => {
-  const app = makeApp();
+test("warm endpoint needs the key, fills the cache, sets lineups once and respects overrides", async () => {
+  const posts = [];
+  const app = makeApp(posts);
   assert.equal((await app.handle(req("/__warm"))).status, 403);
-  const r = await app.handle(new Request("https://advisor.internal/__warm", { headers: { "x-warm-key": "test-secret" } }));
-  assert.equal(await r.text(), "warmed 2");
-  assert.ok(await app.storage.get("league:1"));
+  const warm = () => app.handle(new Request("https://advisor.internal/__warm", { headers: { "x-warm-key": "test-secret" } }));
+  assert.equal(await (await warm()).text(), "warmed 2, auto-managed 1");
+  assert.equal(posts.filter((p) => p.kind === "lineup").length, 1); assert.equal(posts[0].leagueId, 1);
+  const log1 = await app.storage.get("auto:1:9");
+  assert.equal(log1.events[0].kind, "lineup"); assert.equal(log1.events[0].changes, 4); assert.equal(log1.target["RB C"], "RB");
+  // The fake roster never changes, which looks exactly like a manual override: the second run must leave it alone.
+  assert.equal(await (await warm()).text(), "warmed 2, auto-managed 0");
+  assert.equal(posts.filter((p) => p.kind === "lineup").length, 1);
+  assert.equal((await app.storage.get("auto:1:9")).events[1].skipped, true);
+  // Switched off: nothing is sent.
+  await app.savePrefs({ auto_lineup: false });
+  const app2 = new App({ env: { APP_PASSWORD: "open-sesame", SECRET_KEY: "test-secret", ESPN_S2: "s2cookie", SWID: "{abc-123}" }, storage: app.storage, fetchFn: async () => { throw new Error("no network"); }, espn: fakeEspn({ posts }) });
+  await app2.clearCache();
+  assert.equal(await (await app2.handle(new Request("https://advisor.internal/__warm", { headers: { "x-warm-key": "test-secret" } }))).text(), "warmed 2, auto-managed 0");
+  // Opt-in empty-slot fill: D FA is on waivers in the fixture, so nothing is added (claims are never automatic).
+  await app2.savePrefs({ auto_lineup: false, auto_fill_empty: true });
+  await app2.handle(new Request("https://advisor.internal/__warm", { headers: { "x-warm-key": "test-secret" } }));
+  assert.equal(posts.filter((p) => p.kind === "add").length, 0);
+  // Dashboard shows the automatic set, and the orphaned league is called out and can be hidden.
+  const cookie = await login(app);
+  const h = await (await app.handle(req("/", { cookie }))).text();
+  assert.match(h, /Set automatically/); assert.match(h, /never drafted|not renewed/i); assert.match(h, /name="action" value="hide"/);
+  const csrf = h.match(/name="csrf" value="([0-9a-f]+)"/)[1];
+  const hid = await app.handle(req("/hide", { method: "POST", cookie, body: form({ csrf, league: 2 }) }));
+  assert.equal(hid.status, 302);
+  const h2 = await (await app.handle(req("/", { cookie }))).text();
+  assert.ok(!h2.includes("Dead League")); assert.match(h2, /1 hidden league/);
+  const sp = await (await app.handle(req("/settings", { cookie }))).text();
+  assert.match(sp, /Dead League/); assert.match(sp, /name="action" value="show"/);
+  await app.handle(req("/hide", { method: "POST", cookie, body: form({ csrf, league: 2, action: "show" }) }));
+  assert.match(await (await app.handle(req("/", { cookie }))).text(), /Dead League/);
+  // Preferences form.
+  const saved = await app.handle(req("/settings", { method: "POST", cookie, body: form({ csrf, prefs: 1, auto_lineup: 0, auto_fill_empty: 1 }) }));
+  assert.equal(saved.status, 302);
+  assert.deepEqual((await app.storage.get("prefs")).auto_lineup, false); assert.equal((await app.storage.get("prefs")).auto_fill_empty, true);
+});
+
+test("dashboard and league page carry the win chance, both projections, playoff odds and the game plan", async () => {
+  const app = makeApp();
+  const cookie = await login(app);
+  const h = await (await app.handle(req("/", { cookie }))).text();
+  assert.match(h, /Win chance/); assert.match(h, /class="pct[ "]/); assert.match(h, /To do/); assert.match(h, /Review lineup|Set this lineup/);
+  const l = await (await app.handle(req("/league/1", { cookie }))).text();
+  for (const s of ["Game plan", "Playoff odds", "Advisor", "Weakest spot|No weak position", "Remaining schedule", "win chance", "What owned means|share of ESPN leagues"]) assert.match(l, new RegExp(s));
+  const b = await app.bundle(1);
+  assert.ok(b.season.odds.playoff_odds >= 0 && b.season.odds.playoff_odds <= 100);
+  assert.ok(b.season.plan.bullets.length >= 3); assert.equal(b.season.plan.source, "rules");
+  assert.ok(b.trades.every((t) => t.weeks_left === 8 && t.season_gain === Math.round(t.my_gain * 8 * 10) / 10));
+  assert.ok(b.report.advisor.me > 0 && b.report.recommended.QB[0].our_proj > 0);
 });
 
 test("analyst take is built from the numbers and never claims to be Claude without a key", async () => {

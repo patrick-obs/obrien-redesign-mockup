@@ -2,6 +2,7 @@
 import { makePlayer, isStarting, effectiveProj, canPlay, optimize, diffLineup, warningsFor, projectedTotal, slotCountsFromLineup, NO_PLAY, SHAKY, BENCH_SLOTS } from "./optimizer.js";
 import { SLOT_IDS, FLEX_SLOTS, record, avgPf, standings, gamesPlayed } from "./espn.js";
 import { playerValue } from "./trades.js";
+import { winProbability } from "./season.js";
 
 export const SLOT_DISPLAY_ORDER = ["QB", "RB", "WR", "TE", "RB/WR/TE", "RB/WR", "WR/TE", "OP", "D/ST", "K"];
 const TROUBLE = new Set([...NO_PLAY, ...SHAKY]);
@@ -35,11 +36,28 @@ export function lineupProblems(players, slotCounts) {
 export const rosterInjuries = (players) =>
   players.filter((p) => TROUBLE.has(p.status)).map((p) => `${p.name} (${p.position}) ${p.status.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())}`);
 
+/**
+ * The Advisor's own projection: ESPN's number blended with what the player has actually done (last three games and
+ * the season), then nudged by the opponent's rank against the position (32 = softest). Zero when he cannot play.
+ */
+export function advisorProj(p) {
+  if (!canPlay(p)) return 0;
+  const espn = Number(p.proj || 0), recent = p.recentAvg, season = Number(p.seasonAvg || 0);
+  let base = espn, w = 1;
+  if (recent != null && recent > 0) { base += 0.6 * recent; w += 0.6; }
+  if (season > 0) { base += 0.4 * season; w += 0.4; }
+  base = base / w;
+  if (p.oppRank) base *= 1 + ((p.oppRank - 16.5) / 16.5) * 0.08;
+  if (p.status === "DOUBTFUL") base *= 0.25; else if (p.status === "QUESTIONABLE") base *= 0.9;
+  return Math.round(base * 10) / 10;
+}
+
 export function playerJson(p) {
   return { name: p.name, pos: p.position, team: p.proTeam, opp: p.opponent && p.opponent !== "None" ? p.opponent : "bye",
-    opp_rank: p.oppRank, proj: p.proj, effective_proj: effectiveProj(p), status: p.status, bye: p.bye, locked: p.locked,
-    recent_avg: p.recentAvg, slot: p.slot, notes: fmtStatus(p), player_id: p.playerId };
+    opp_rank: p.oppRank, proj: p.proj, effective_proj: effectiveProj(p), our_proj: advisorProj(p), season_avg: p.seasonAvg || 0,
+    status: p.status, bye: p.bye, locked: p.locked, recent_avg: p.recentAvg, slot: p.slot, notes: fmtStatus(p), player_id: p.playerId };
 }
+const advisorTotal = (assignment) => Math.round(Object.values(assignment).flat().reduce((s, p) => s + advisorProj(p), 0) * 10) / 10;
 
 /** Positions worth scanning on waivers, with the projection a free agent must beat. */
 export function waiverThresholds(assignment, slotCounts) {
@@ -121,6 +139,13 @@ export function buildReport(league, me, boxes, week, now, faByPos = null) {
   const oppRec = optimize(theirs, slotCounts);
   const opp = oppSide?.team;
   const thresholds = waiverThresholds(rec, slotCounts);
+  // Live picture: score so far, ESPN's projected finish (live during games, else the lineup as set), and a win chance.
+  const oppCurrent = {}; for (const s of Object.keys(slotCounts)) oppCurrent[s] = theirs.filter((p) => p.slot === s);
+  const myScore = Math.round((mySide.score || 0) * 10) / 10, oppScore = oppSide ? Math.round((oppSide.score || 0) * 10) / 10 : null;
+  const myFinish = mySide.projected >= 0 ? mySide.projected : projectedTotal(current);
+  const oppFinish = oppSide ? (oppSide.projected >= 0 ? oppSide.projected : projectedTotal(oppCurrent)) : null;
+  const remaining = myFinish > 0 ? Math.max(0, Math.min(1, 1 - myScore / myFinish)) : 1;
+  const winProb = oppFinish == null ? null : winProbability(myFinish, oppFinish, remaining);
 
   const rep = {
     league_id: league.id, league: league.name, season: league.season, week, current_week: league.currentWeek,
@@ -128,7 +153,11 @@ export function buildReport(league, me, boxes, week, now, faByPos = null) {
     team_id: me.id, team: me.name, record: record(me), logo: me.logo || "",
     opponent: opp ? opp.name : "bye", opponent_record: opp ? record(opp) : "", opponent_logo: opp ? opp.logo || "" : "",
     espn_projection: { me: mySide.projected, opponent: oppSide ? oppSide.projected : -1 },
+    score: { me: myScore, opponent: oppScore }, projected_finish: { me: Math.round(myFinish * 10) / 10, opponent: oppFinish == null ? null : Math.round(oppFinish * 10) / 10 },
+    remaining_share: Math.round(remaining * 100) / 100, win_prob: winProb, live: mySide.projected >= 0 && myScore > 0,
     current_lineup_proj: projectedTotal(current), recommended_lineup_proj: projectedTotal(rec),
+    opponent_current_proj: projectedTotal(oppCurrent),
+    advisor: { me: advisorTotal(rec), me_as_set: advisorTotal(current), opponent: advisorTotal(oppRec), opponent_as_set: advisorTotal(oppCurrent) },
     slot_counts: slotCounts, slot_order: order,
     recommended: Object.fromEntries(order.map((s) => [s, (rec[s] || []).map(playerJson)])),
     bench: bench.map(playerJson), moves: diffLineup(mine, rec), warnings: warningsFor(mine, rec, slotCounts),
