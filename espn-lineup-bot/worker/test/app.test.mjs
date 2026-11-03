@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { App } from "../app.js";
-import { fakeEspn, FakeStorage, ids, NOW, fakeLeague, fakeBoxes, bp } from "./fixtures.mjs";
+import { fakeEspn, FakeStorage, ids, NOW, fakeLeague, fakeBoxes, bp, MINE, OTHERS } from "./fixtures.mjs";
 
 function makeApp(posts = []) {
   const env = { APP_PASSWORD: "open-sesame", SECRET_KEY: "test-secret", ESPN_S2: "s2cookie", SWID: "{abc-123}" };
@@ -523,4 +523,33 @@ test("a failed withdrawal blocks the replacement, and pickups never drop a playe
   // Trades run before pickups.
   const kinds = posts.map((p) => p.kind);
   assert.ok(kinds.indexOf("withdraw") < kinds.lastIndexOf("add") || !kinds.includes("add"));
+});
+
+test("when the week is fully played, the card shows last week's result and everything targets next week; recommendations page", async () => {
+  const posts = [];
+  const espn = fakeEspn({ posts });
+  const finalBoxes = (league) => { const bx = fakeBoxes(league); const lock = (ps) => ps.map((p) => ({ ...p, locked: true })); bx[0].home = { ...bx[0].home, score: 116.2, projected: 116.2, lineup: lock(bx[0].home.lineup) }; bx[0].away = { ...bx[0].away, score: 111.4, projected: 111.4, lineup: lock(bx[0].away.lineup) }; return bx; };
+  espn.boxScores = async (f, c, league, week) => week === 10 ? [{ home: { teamId: 3, team: league.byId[3], score: 0, projected: -1, lineup: MINE() }, away: { teamId: 9, team: league.byId[9], score: 0, projected: -1, lineup: OTHERS() } }] : finalBoxes(league);
+  const app = new App({ env: { APP_PASSWORD: "open-sesame", SECRET_KEY: "test-secret", ESPN_S2: "s2cookie", SWID: "{abc-123}" }, storage: new FakeStorage(), fetchFn: async () => { throw new Error("no network"); }, espn, now: () => NOW });
+  const b = await app.bundle(1);
+  assert.equal(b.report.week, 10); assert.equal(b.current_week, 9); assert.equal(b.report.opponent, "Third");
+  const lw = b.report.last_week;
+  assert.deepEqual([lw.week, lw.me, lw.opponent, lw.opponent_name, lw.result], [9, 111.4, 116.2, "Rival", "L"]);
+  assert.ok(b.report.win_prob > 0.5, "next week against a weak lineup is favourable, not 0%");
+  const cookie = await login(app);
+  const h = await (await app.handle(req("/", { cookie }))).text();
+  assert.match(h, /Lost week 9/); assert.match(h, /Win chance vs Third <span class="muted">week 10/); assert.match(h, /href="\/moves">Recommendations/);
+  const m = await (await app.handle(req("/moves", { cookie }))).text();
+  assert.match(m, /Recommendations/); assert.match(m, /Test League/); assert.match(m, /Let Luna do the rest|Nothing to do here/);
+});
+
+test("the lineups page still reviews a lineup that is already set", async () => {
+  const espn = fakeEspn();
+  const app = new App({ env: { APP_PASSWORD: "open-sesame", SECRET_KEY: "test-secret", ESPN_S2: "s2cookie", SWID: "{abc-123}" }, storage: new FakeStorage(), fetchFn: async () => { throw new Error("no network"); }, espn, now: () => NOW });
+  const cookie = await login(app);
+  const b = await app.bundle(1);
+  b.report.lineup_items = [];
+  app.bundle = async () => b;
+  const page = await (await app.handle(req("/lineups?league=1", { cookie }))).text();
+  assert.match(page, /Already set/); assert.match(page, /win chance/); assert.match(page, /Bench:/); assert.match(page, /QB A/);
 });

@@ -8,7 +8,7 @@ import { byeWeeks, horizonWeights, availability, simulateSeason, scheduleOutlook
 import { playoffSos, sosFactor } from "./trades.js";
 import { fetchScoreboard } from "./vegas.js";
 import { makeSession, verifySession, csrfFor, parseCookies, sessionCookie, clearSessionCookie, SESSION_COOKIE, timingSafeEqual } from "./auth.js";
-import { loginPage, errorPage, settingsPage, indexPage, leaguePage, lineupsPage, tradePage, addPage, blitzPage } from "./html.js";
+import { loginPage, errorPage, settingsPage, indexPage, leaguePage, lineupsPage, tradePage, addPage, blitzPage, movesPage } from "./html.js";
 
 const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
 const html = (body, status = 200, headers = {}) => new Response(body, { status, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", ...headers } });
@@ -99,16 +99,34 @@ export class App {
       b.orphaned = !league.started && !league.drafted && league.teams.length > 0 && inSeason;
       if (!league.started) return b;
       const me = this.espn.findTeam(league, s.swid, null);
-      const week = league.currentWeek;
-      const [allSched, ratings] = await Promise.all([
+      let week = league.currentWeek, lastWeek = null;
+      let [allSched, ratings] = await Promise.all([
         this.cached(`prosched:${s.season}`, 6 * 3600, false, () => this.espn.proSchedule(f, c, s.season)),
         this.espn.positionalRatings(f, c, s.season, leagueId, week),
       ]);
-      const sched = this.espn.proScheduleForWeek(allSched, week);
+      let sched = this.espn.proScheduleForWeek(allSched, week);
+      const weekSd = leagueSd(league);
+      let boxes = await this.espn.boxScores(f, c, league, week, sched, ratings, now);
+      // Every game of the week has been played but ESPN has not rolled to the next scoring period yet (it does that on
+      // Tuesday morning): keep last week's result as one line and plan the coming week instead of showing a finished
+      // matchup as a 0% (or 100%) win chance.
+      {
+        const kicks = Object.values(sched).map((g) => Date.parse(g.date)).filter((t) => t > 0);
+        const box = boxes.find((bx) => [bx.home?.teamId, bx.away?.teamId].includes(me.id));
+        const played = (side) => !!side && side.score > 0 && side.projected >= 0 && Math.abs(side.projected - side.score) < 0.05 && side.lineup.every((p) => p.locked || p.bye);
+        const over = kicks.length ? kicks.every((t) => now - t > 4.5 * 3600e3) : !!(box && played(box.home) && played(box.away));
+        if (over && box && week < (league.finalScoringPeriod || 17)) {
+          const r1 = (x) => Math.round((x || 0) * 10) / 10;
+          const mine = box.home?.teamId === me.id ? box.home : box.away, theirs = box.home?.teamId === me.id ? box.away : box.home;
+          if (mine && theirs) lastWeek = { week, me: r1(mine.score), opponent: r1(theirs.score), opponent_name: theirs.team?.name || "", opponent_logo: theirs.team?.logo || "", result: mine.score > theirs.score ? "W" : mine.score < theirs.score ? "L" : "T" };
+          week += 1;
+          try { ratings = await this.espn.positionalRatings(f, c, s.season, leagueId, week); } catch (e) { console.warn("next-week ratings failed", e?.message); }
+          sched = this.espn.proScheduleForWeek(allSched, week);
+          boxes = await this.espn.boxScores(f, c, league, week, sched, ratings, now);
+        }
+      }
       // Game context for the week from ESPN's public scoreboard (no login). Optional: a failure just means no Vegas tilt.
       const vegas = await this.cached(`vegas:${s.season}:${week}`, 3600, false, async () => { try { return await fetchScoreboard(f, s.season, week); } catch (e) { console.warn("scoreboard failed", e?.message); return {}; } });
-      const weekSd = leagueSd(league);
-      const boxes = await this.espn.boxScores(f, c, league, week, sched, ratings, now);
       // When there is no matchup this week (playoff bye / eliminated), the roster still needs managing: use the mRoster view as the lineup.
       let rosterLineup = [];
       if (!boxes.some((bx) => [bx.home?.teamId, bx.away?.teamId].includes(me.id)) && this.espn.rosterLineup) {
@@ -152,6 +170,7 @@ export class App {
       }));
       positions.forEach((pos, i) => { faByPos[pos] = results[i]; });
       rep = buildReport(league, me, boxes, week, now, faByPos, ctx);
+      rep.last_week = lastWeek;
       rep.trade_deadline = league.tradeDeadline || null;
       rep.trades_closed = !!(league.tradeDeadline && now > league.tradeDeadline);
       // Trades and roster shape, valued over the rest of the season: weekly value times the share of the weighted
@@ -312,6 +331,7 @@ export class App {
       if (path === "/lineups") return this.lineups(request, url);
       if (path === "/trade") return this.trade(request, url);
       if (path === "/trades") return this.blitz(request, url);
+      if (path === "/moves") return this.moves(request);
       if (path === "/withdraw" && request.method === "POST") return this.withdraw(request);
       if (path === "/add") return this.add(request, url);
       if (path === "/hide" && request.method === "POST") return this.hide(request);
@@ -425,7 +445,7 @@ export class App {
         await this.logActivity({ kind: "incoming", league: b.name, league_id: b.league_id, week: b.week, ok: true, message: `${t.with} offered ${t.get_names} for ${t.give_names} (${t.my_gain == null ? "unscored" : `${t.my_gain >= 0 ? "+" : ""}${t.my_gain.toFixed(1)}/wk for you`}). Your call: accept or decline on the league page.`, by: "espn" });
         continue;
       }
-      const result = await this.espn.respondTrade(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, t.id, decision);
+      const result = await this.espn.respondTrade(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, t.id, decision, b.current_week);
       seen[t.id] = decision ? "accepted" : "declined";
       log({ kind: decision ? "accept" : "decline", ok: result.ok, with: t.with, message: result.message });
       await this.logActivity({ kind: "incoming", league: b.name, league_id: b.league_id, week: b.week, ok: result.ok, message: `${decision ? "Accepted" : "Declined"} ${t.with}'s offer of ${t.get_names} for ${t.give_names} (${t.my_gain >= 0 ? "+" : ""}${t.my_gain.toFixed(1)}/wk for you).${result.ok ? "" : ` ESPN said: ${result.message}`}`, by: "auto" });
@@ -444,7 +464,7 @@ export class App {
     const b = await this.bundle(leagueId);
     const t = (b.pending || []).find((x) => String(x.id) === txId && !x.mine);
     if (!t) return html(errorPage("That offer is not pending, or it is one of yours.", true), 404);
-    const result = await this.espn.respondTrade(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, t.id, accept);
+    const result = await this.espn.respondTrade(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, t.id, accept, b.current_week);
     const seen = (await this.storage.get(`incoming:${b.league_id}`)) || {}; seen[t.id] = accept ? "accepted" : "declined"; await this.storage.put(`incoming:${b.league_id}`, seen);
     await this.logActivity({ kind: "incoming", league: b.name, league_id: b.league_id, week: b.week, ok: result.ok, message: `${accept ? "Accepted" : "Declined"} ${t.with}'s offer of ${t.get_names} for ${t.give_names}.${result.ok ? "" : ` ESPN said: ${result.message}`}`, by: "you" });
     await this.clearCache();
@@ -495,10 +515,21 @@ export class App {
     if (!(await this.checkCsrf(request, form))) return html(errorPage("Form expired. Go back and try again.", true), 400);
     const give = trade.give.map((p) => p.player_id), get = trade.get.map((p) => p.player_id);
     if (trade.with_team_id == null || give.some((x) => x == null) || get.some((x) => x == null)) return html(errorPage("ESPN ids are missing for this trade, so it cannot be sent from here. Propose it on ESPN by hand.", true));
-    const result = await this.espn.proposeTrade(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, b.week, trade.with_team_id, give, get);
+    const result = await this.espn.proposeTrade(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, b.current_week, trade.with_team_id, give, get);
     await this.logActivity({ kind: "trade", league: b.name, league_id: b.league_id, week: b.week, ok: result.ok, message: result.message, with: trade.with, give: trade.give_names, get: trade.get_names, my_gain: trade.my_gain, their_gain: trade.their_gain, by: "you" });
     await this.clearCache();
     return html(tradePage(b, trade, csrf, result));
+  }
+
+  /** Every league's plan on one page, one button each. */
+  async moves(request) {
+    const s = await this.settings();
+    const leagues = (await this.leagues()).filter((lg) => !s.hidden.includes(lg.league_id));
+    const items = [];
+    for (const lg of leagues) {
+      try { const b = await this.bundle(lg.league_id); if (b.started) items.push({ b, plan: this.blitzPlan(b) }); } catch (e) { items.push({ error: `${lg.league_name || lg.league_id}: ${e?.message || e}` }); }
+    }
+    return html(movesPage(items, await this.csrf(request)));
   }
 
   /** Several offers to several managers in one go: the non-overlapping best set, each one sent as its own ESPN proposal. */
@@ -524,7 +555,7 @@ export class App {
     if (!toSend.length && !moves.length && !keep.size) return html(blitzPage(b, picks, csrf, { flash: "Nothing to send: the board has no offer that is safe whichever way it goes.", plan, moves: this.waiverMoves(b) }));
     const results = [];
     for (const m of moves) {
-      const result = await this.espn.addPlayer(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, b.week, { addId: m.player_id, dropId: m.drop ? m.drop.player_id : null, waiver: m.on_waivers, bid: 0 });
+      const result = await this.espn.addPlayer(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, b.current_week, { addId: m.player_id, dropId: m.drop ? m.drop.player_id : null, waiver: m.on_waivers, bid: 0 });
       await this.logActivity({ kind: m.on_waivers ? "claim" : "add", league: b.name, league_id: b.league_id, week: b.week, ok: result.ok, message: result.message, add: m.name, drop: m.drop ? m.drop.name : null, bid: m.on_waivers ? 0 : null, by: "you" });
       results.push({ move: m, result });
     }
@@ -533,7 +564,7 @@ export class App {
     for (const id of keep) {
       const p = (b.pending || []).find((t) => String(t.id) === id);
       if (!p || !p.mine) continue;
-      const result = await this.espn.cancelTrade(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, p.id);
+      const result = await this.espn.cancelTrade(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, p.id, b.current_week);
       await this.logActivity({ kind: "withdraw", league: b.name, league_id: b.league_id, week: b.week, ok: result.ok, message: result.message, with: p.with, give: p.give_names, get: p.get_names, by: "you" });
       results.push({ trade: p, result, withdrawn: true });
       if (!result.ok) for (const x of [...p.give_ids, ...p.get_ids]) stillBusy.add(x);
@@ -543,7 +574,7 @@ export class App {
       const give = t.give.map((p) => p.player_id), get = t.get.map((p) => p.player_id);
       let result;
       if (give.some((x) => x == null) || get.some((x) => x == null)) result = { ok: false, message: "ESPN ids missing for this offer; propose it on ESPN by hand." };
-      else result = await this.espn.proposeTrade(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, b.week, t.with_team_id, give, get);
+      else result = await this.espn.proposeTrade(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, b.current_week, t.with_team_id, give, get);
       await this.logActivity({ kind: "trade", league: b.name, league_id: b.league_id, week: b.week, ok: result.ok, message: result.message, with: t.with, give: t.give_names, get: t.get_names, my_gain: t.my_gain, their_gain: t.their_gain, by: "you" });
       results.push({ trade: t, result });
     }
@@ -612,7 +643,7 @@ export class App {
     const b = await this.bundle(leagueId);
     const p = (b.pending || []).find((t) => String(t.id) === txId && t.mine);
     if (!p) return html(errorPage("That offer is not one of yours, or it is no longer pending.", true), 404);
-    const result = await this.espn.cancelTrade(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, p.id);
+    const result = await this.espn.cancelTrade(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, p.id, b.current_week);
     await this.logActivity({ kind: "withdraw", league: b.name, league_id: b.league_id, week: b.week, ok: result.ok, message: result.message, with: p.with, give: p.give_names, get: p.get_names, by: "you" });
     await this.clearCache();
     return html(errorPage(result.ok ? `Withdrawn: ${p.give_names} for ${p.get_names} to ${p.with}.` : result.message, true), result.ok ? 200 : 502);
@@ -657,7 +688,7 @@ export class App {
     if (dropId != null && !drop) return html(addPage(b, pick, csrf, { ...state, flash: "Pick a drop from the list." }));
     if (!drop && r.open_spots <= 0) return html(addPage(b, pick, csrf, { ...state, flash: "Your roster is full, so you have to drop someone to add him." }));
     if (r.budget_left != null && bid > r.budget_left) return html(addPage(b, pick, csrf, { ...state, flash: `You only have $${r.budget_left} of waiver budget left.` }));
-    const result = await this.espn.addPlayer(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, b.week,
+    const result = await this.espn.addPlayer(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, b.current_week,
       { addId: pick.player_id, dropId: drop ? drop.player_id : null, waiver: !!pick.on_waivers, bid });
     await this.logActivity({ kind: pick.on_waivers ? "claim" : "add", league: b.name, league_id: b.league_id, week: b.week, ok: result.ok, message: result.message, add: pick.name, drop: drop ? drop.name : null, bid: pick.on_waivers ? bid : null, by: "you" });
     await this.clearCache();
@@ -744,7 +775,7 @@ export class App {
       const pick = Object.values(r.waivers).flat().find((p) => !p.error && p.fills_empty_slot && !p.bye_cover && p.player_id != null && !p.on_waivers);
       const drop = r.open_spots > 0 ? null : (r.drop_candidates || []).find((c) => !c.starter) || null;
       if (pick && (drop || r.open_spots > 0)) {
-        const result = await this.espn.addPlayer(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, b.week, { addId: pick.player_id, dropId: drop ? drop.player_id : null, waiver: false, bid: 0 });
+        const result = await this.espn.addPlayer(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, b.current_week, { addId: pick.player_id, dropId: drop ? drop.player_id : null, waiver: false, bid: 0 });
         prev.filled = true;
         log({ kind: "add", ok: result.ok, message: result.message, add: pick.name, drop: drop ? drop.name : null });
         await this.logActivity({ kind: "add", league: b.name, league_id: b.league_id, week: b.week, ok: result.ok, message: result.message, add: pick.name, drop: drop ? drop.name : null, by: "auto" });
@@ -765,7 +796,7 @@ export class App {
         if (!m.drop && r.open_spots <= 0) continue;
         if (m.drop && inOffers.has(m.drop.player_id)) continue; // never drop a player who is in an offer
         const bid = m.on_waivers ? (this.suggestBid(b, m) ?? 0) : 0;
-        const result = await this.espn.addPlayer(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, b.week, { addId: m.player_id, dropId: m.drop ? m.drop.player_id : null, waiver: !!m.on_waivers, bid });
+        const result = await this.espn.addPlayer(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, b.current_week, { addId: m.player_id, dropId: m.drop ? m.drop.player_id : null, waiver: !!m.on_waivers, bid });
         claimed.add(m.player_id); made++;
         log({ kind: m.on_waivers ? "claim" : "add", ok: result.ok, message: result.message, add: m.name, drop: m.drop ? m.drop.name : null });
         await this.logActivity({ kind: m.on_waivers ? "claim" : "add", league: b.name, league_id: b.league_id, week: b.week, ok: result.ok, message: result.message, add: m.name, drop: m.drop ? m.drop.name : null, bid: m.on_waivers ? bid : null, by: "auto" });
@@ -794,7 +825,7 @@ export class App {
     // Players in offers that could not be withdrawn stay busy: no replacement goes out over a live offer.
     const stillBusy = new Set(), stillWith = new Set();
     for (const p of plan.withdraw) {
-      const result = await this.espn.cancelTrade(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, p.id);
+      const result = await this.espn.cancelTrade(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, p.id, b.current_week);
       await this.logActivity({ kind: "withdraw", league: b.name, league_id: b.league_id, week: b.week, ok: result.ok, message: result.message, with: p.with, give: p.give_names, get: p.get_names, by: "auto" });
       log({ kind: "withdraw", ok: result.ok, with: p.with, message: result.message });
       if (result.ok) open--; else { for (const id of [...p.give_ids, ...p.get_ids]) stillBusy.add(id); stillWith.add(p.with_team_id); }
@@ -812,7 +843,7 @@ export class App {
       if (st.declined[pkg] && this.now() - st.declined[pkg] < WEEK) continue;
       if (st.offered[pkg] && this.now() - st.offered[pkg] < WEEK) continue;
       if (st.cooldown[t.with_team_id] && this.now() - st.cooldown[t.with_team_id] < COOLDOWN) continue;
-      const result = await this.espn.proposeTrade(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, b.week, t.with_team_id, give, get);
+      const result = await this.espn.proposeTrade(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, b.current_week, t.with_team_id, give, get);
       await this.logActivity({ kind: "trade", league: b.name, league_id: b.league_id, week: b.week, ok: result.ok, message: result.message, with: t.with, give: t.give_names, get: t.get_names, my_gain: t.my_gain, their_gain: t.their_gain, by: "auto" });
       log({ kind: "trade", ok: result.ok, with: t.with, give: t.give_names, get: t.get_names, message: result.message });
       st.offered[pkg] = this.now();

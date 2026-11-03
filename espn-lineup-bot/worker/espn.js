@@ -337,21 +337,27 @@ async function tradeAction(fetchFn, cookies, season, leagueId, teamId, txId, att
   return { ok: false, status: 405, message: `ESPN accepted none of the known calls for this [${seen.join("; ")}]. Do it on ESPN by hand.` };
 }
 
-export async function respondTrade(fetchFn, cookies, season, leagueId, teamId, txId, accept) {
+// On 2026-11-02 ESPN answered the POST-to-collection shape with a 409 "can only be executed in the current scoring
+// period" once DELETE (405) and /cancel (404) had failed, so that shape goes first and carries the current week.
+export async function respondTrade(fetchFn, cookies, season, leagueId, teamId, txId, accept, week = null) {
   const status = accept ? "ACCEPTED" : "REJECTED", exec = accept ? "ACCEPT" : "REJECT";
+  const body = { isLeagueManager: false, id: txId, teamId, type: "TRADE_PROPOSAL", executionType: exec, memberId: cookies.swid, relatedTransactionId: txId };
+  if (week) body.scoringPeriodId = week;
   return tradeAction(fetchFn, cookies, season, leagueId, teamId, txId, [
-    { method: "POST", path: `/${txId}/${accept ? "accept" : "reject"}`, body: { teamId, memberId: cookies.swid } },
+    { method: "POST", path: "", body },
+    { method: "POST", path: `/${txId}/${accept ? "accept" : "reject"}`, body: { teamId, memberId: cookies.swid, scoringPeriodId: week || undefined } },
     { method: "PUT", path: `/${txId}`, body: { id: txId, teamId, status, memberId: cookies.swid } },
-    { method: "POST", path: "", body: { id: txId, teamId, type: "TRADE_PROPOSAL", executionType: exec, memberId: cookies.swid, relatedTransactionId: txId } },
     { method: "PATCH", path: `/${txId}`, body: { status } },
   ], accept ? "Offer accepted." : "Offer declined.");
 }
 
-export async function cancelTrade(fetchFn, cookies, season, leagueId, teamId, txId) {
+export async function cancelTrade(fetchFn, cookies, season, leagueId, teamId, txId, week = null) {
+  const body = { isLeagueManager: false, id: txId, teamId, type: "TRADE_PROPOSAL", executionType: "CANCEL", memberId: cookies.swid, relatedTransactionId: txId };
+  if (week) body.scoringPeriodId = week;
   return tradeAction(fetchFn, cookies, season, leagueId, teamId, txId, [
+    { method: "POST", path: "", body },
     { method: "DELETE", path: `/${txId}` },
-    { method: "POST", path: `/${txId}/cancel`, body: { teamId, memberId: cookies.swid } },
-    { method: "POST", path: "", body: { id: txId, teamId, type: "TRADE_PROPOSAL", executionType: "CANCEL", memberId: cookies.swid, relatedTransactionId: txId } },
+    { method: "POST", path: `/${txId}/cancel`, body: { teamId, memberId: cookies.swid, scoringPeriodId: week || undefined } },
     { method: "PATCH", path: `/${txId}`, body: { status: "CANCELED" } },
   ], "Offer withdrawn.");
 }

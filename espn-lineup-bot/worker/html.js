@@ -139,6 +139,8 @@ td .s{font-size:12px;color:var(--muted);line-height:1.2;margin-top:2px;white-spa
 .pose{height:150px;width:auto;flex:none;filter:drop-shadow(0 8px 14px rgba(214,51,108,.18))}.pose.sm{height:64px;margin:-8px 0}.pose.sm.wide{height:56px}.hero-pose{height:170px}
 .narrow{max-width:720px;margin:0 auto}.notes.hurt{display:flex;gap:12px;align-items:flex-start}.notes.hurt>div{flex:1}.pose.xs{height:72px;margin-top:2px}
 h1{margin-bottom:22px}.lede{margin-bottom:20px}
+.lastweek{display:flex;align-items:center;gap:8px;margin:6px 0 2px;font-size:14px}
+.runnow{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 @media (max-width:640px){.hero-pose{height:110px}.pose.sm{height:52px}}
 @media (max-width:640px){.luna.lg{width:88px;height:88px}.luna-hero .bubble::before{display:none}}
 @media (max-width:640px){main{padding:16px 14px 28px}.card{padding:16px;border-radius:16px}h1{font-size:30px}h2{font-size:20px}.hero{padding:20px}.hero p{font-size:24px}.hero .btn.big{flex-basis:100%}header{padding:8px 12px}header .logo{height:32px}header nav a{padding:6px 8px;font-size:14px}.login .logo{height:120px}.swap{grid-template-columns:1fr}.swap .arrow{text-align:center}.swap .arrow svg{transform:rotate(90deg)}.matchup .big{font-size:32px}.seg{top:54px;margin:0 -14px 18px;padding:3px 14px;border-radius:0}}
@@ -205,7 +207,7 @@ export function layout(title, body, { authed = false, flash = [], script = "" } 
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>${esc(title)}</title>${HEAD}<style>${CSS}</style></head><body>
 <header><a class="brand" href="/">${LOGO}Fantasy Advisor</a>
-${authed ? `<nav><a href="/">Leagues</a><a href="/lineups">Set lineups</a><a href="/settings">Settings</a></nav><form method="post" action="/logout"><button class="btn ghost" type="submit">Log out</button></form>` : ""}
+${authed ? `<nav><a href="/">Leagues</a><a href="/moves">Recommendations</a><a href="/lineups">Set lineups</a><a href="/settings">Settings</a></nav><form method="post" action="/logout"><button class="btn ghost" type="submit">Log out</button></form>` : ""}
 </header><main>${flash.map(flashBox).join("")}${body}</main>
 <footer>Luna is a very good dog. Projections are ESPN's; nothing here guarantees a win, it just stops points being left on the bench.</footer>${script}</body></html>`;
 }
@@ -306,7 +308,7 @@ export function indexPage({ bundles, errors, totalMoves, season, now, csrf = "",
   let top = "";
   if (live.length) {
     const leading = live.some((b) => b.report?.live && (b.report.win_prob ?? 0) >= 0.6), trouble = live.some((b) => b.problem_count > 0) || errors.some((e) => /rejecting the cookies/.test(e));
-    const lostWeek = live.length > 0 && live.every((b) => b.report?.live && b.report.remaining_share <= 0.05 && (b.report.win_prob ?? 1) <= 0.05);
+    const lostWeek = live.length > 0 && live.every((b) => b.report?.last_week ? b.report.last_week.result === "L" : (b.report?.live && b.report.remaining_share <= 0.05 && (b.report.win_prob ?? 1) <= 0.05));
     const locked = live.some((b) => b.season?.plan?.mode === "lock");
     const pose = trouble ? "warn" : totalMoves ? "football" : lostWeek ? "sad" : leading ? "celebrate" : locked ? "trophy" : "think";
     top = `<div class="card hero luna-hero">${POSE(pose, "pose hero-pose")}<div class="bubble">${totalMoves
@@ -331,7 +333,8 @@ export function indexPage({ bundles, errors, totalMoves, season, now, csrf = "",
     const lastSkip = b.auto?.events?.slice().reverse().find((e) => e.kind === "lineup" && e.skipped);
     return `<div class="card">
 <div class="lg-head">${badge(r.team, r.logo)}<div class="main"><div class="t"><a href="/league/${b.league_id}">${esc(b.name)}</a></div><div class="s">${esc(r.team)} · ${esc(r.record)}${b.season?.odds ? ` · ${b.season.odds.playoff_odds}% playoff odds` : ""}</div></div></div>
-<a class="winline" href="/league/${b.league_id}#lineup"><div class="pct ${wp == null ? "" : wp >= 0.6 ? "good" : wp <= 0.4 ? "bad" : ""}">${pct(wp)}</div><div class="main"><div class="t">Win chance vs ${esc(r.opponent)}</div><div class="s">${r.live ? "Live: from the score so far and what is left to play" : "Before kickoff: from both lineups as set"}</div></div>${I.chev}</a>
+${r.last_week ? `<div class="lastweek"><span class="tag ${r.last_week.result === "W" ? "good" : r.last_week.result === "L" ? "bad" : ""}">${r.last_week.result === "W" ? "Won" : r.last_week.result === "L" ? "Lost" : "Tied"} week ${r.last_week.week}</span><span class="muted">${pts(r.last_week.me)} – ${pts(r.last_week.opponent)} vs ${esc(r.last_week.opponent_name)}</span></div>` : ""}
+<a class="winline" href="/league/${b.league_id}#lineup"><div class="pct ${wp == null ? "" : wp >= 0.6 ? "good" : wp <= 0.4 ? "bad" : ""}">${pct(wp)}</div><div class="main"><div class="t">Win chance vs ${esc(r.opponent)} <span class="muted">week ${r.week}</span></div><div class="s">${r.live ? "Live: from the score so far and what is left to play" : r.last_week ? "Next up. From both lineups as they stand today" : "Before kickoff: from both lineups as set"}</div></div>${I.chev}</a>
 <div class="meter"><i style="width:${wp == null ? 50 : Math.round(wp * 100)}%"></i></div>
 <div class="group score">
 <div class="row"><div class="main"><div class="t">Score now</div><div class="s">${r.live ? "games in progress" : "nothing played yet"}</div></div><div class="trail"><span class="v">${pts(r.score.me)}</span><span class="m">${esc(r.opponent)} ${pts(r.score.opponent)}</span></div></div>
@@ -392,7 +395,7 @@ ${outlookRows ? `<h3>Remaining schedule</h3><div class="group">${outlookRows}</d
 ${sn.byes_ahead && sn.byes_ahead.length ? `<h3>Byes still to come</h3><div class="group">${sn.byes_ahead.map((x) => `<div class="row"><div class="main"><div class="t">${esc(x.name)}</div><div class="s">${esc(x.pos)}</div></div><div class="trail"><span class="tag">week ${x.week}</span></div></div>`).join("")}</div>` : ""}
 </div>` : "";
   const matchRow = (s) => `${badge(s.team, s.logo, "sm")}<span><strong>${esc(s.team)}</strong> <span class="muted">${esc(s.record)} · ${pts(s.espn_proj)} / ${pts(s.best_lineup_proj)}</span></span>`;
-  const body = `<h1>${esc(r.league)} <span class="muted">week ${r.week}</span></h1>
+  const body = `<h1>${esc(r.league)} <span class="muted">week ${r.week}</span></h1>${r.last_week ? `<p class="lede">Week ${r.last_week.week} is in the books: ${r.last_week.result === "W" ? "a win" : r.last_week.result === "L" ? "a loss" : "a tie"}, ${pts(r.last_week.me)} to ${pts(r.last_week.opponent)} against ${esc(r.last_week.opponent_name)}. Everything below is about week ${r.week}.</p>` : ""}
 <div class="seg"><a href="#analyst">Luna</a><a href="#lineup">Lineup</a><a href="#plan">Plan</a><a href="#opponent">Opponent</a><a href="#waivers">Waivers</a><a href="#trades">Trades</a><a href="#league">League</a><a href="#schedule">Schedule</a><a href="#standings">Standings</a></div>
 ${analyst}
 <div class="card" id="lineup">${matchup}
@@ -565,6 +568,34 @@ ${waiver && r.budget_left != null ? `<label for="bid">Bid (you have $${r.budget_
 
 // ------------------------------------------------------------------ lineups
 
+/** What a set lineup looks like, so the page still says something when there is nothing to change. */
+function lineupReview(r) {
+  const wp = r.win_prob;
+  return `${lineupTable(r, r.recommended)}
+<p class="stamp">Projected ${pts(r.current_lineup_proj)} (Advisor ${pts(r.advisor.me_as_set)}) vs ${esc(r.opponent)} ${pts(r.opponent_current_proj)} · win chance <strong class="${wp == null ? "" : wp >= 0.6 ? "good" : wp <= 0.4 ? "bad" : ""}">${pct(wp)}</strong>${r.ceiling?.differs ? ` · underdog option: <a href="/lineups?league=${r.league_id}&amp;mode=ceiling">ceiling lineup</a>` : ""}</p>
+${r.bench.length ? `<p class="muted">Bench: ${r.bench.map((p) => `${esc(p.name)} ${pts(p.proj)}`).join(" · ")}</p>` : ""}
+${r.warnings && r.warnings.length ? `<p class="muted">${r.warnings.map(esc).join(" ")}</p>` : ""}`;
+}
+
+/** All leagues' recommendations on one page. */
+export function movesPage(items, csrf) {
+  const cards = items.map((it) => {
+    if (it.error) return `<div class="card"><p class="bad">${esc(it.error)}</p></div>`;
+    const { b, plan } = it, r = b.report;
+    const steps = [];
+    if (r.lineup_items.length) steps.push(`Set the lineup: ${plural(r.lineup_items.length, "change")}, +${pts(r.recommended_lineup_proj - r.current_lineup_proj)} points`);
+    for (const t of plan.withdraw || []) steps.push(`Withdraw the offer to ${esc(t.with)}`);
+    for (const t of plan.offers || []) steps.push(`Offer ${esc(t.give_names)} to ${esc(t.with)} for ${esc(t.get_names)} (+${pts(t.my_gain)}/wk)`);
+    for (const m of plan.moves || []) steps.push(`${m.on_waivers ? "Claim" : "Add"} ${esc(m.name)}${m.drop ? `, drop ${esc(m.drop.name)}` : ""}`);
+    const none = !steps.length, sendable = (plan.offers || []).length + (plan.moves || []).length + (plan.withdraw || []).length > 0;
+    return `<div class="card"><div class="lg-head">${badge(r.team, r.logo)}<div class="main"><div class="t"><a href="/league/${r.league_id}">${esc(b.name)}</a></div><div class="s">week ${r.week} · ${esc(r.record)}${b.season?.odds ? ` · ${b.season.odds.playoff_odds}% playoff odds` : ""}${r.trades_closed ? " · trade deadline passed" : ""}</div></div>${POSE(none ? "pajamas" : "football", "pose sm")}</div>
+${b.analyst?.headline ? `<p class="take">${esc(b.analyst.headline)}</p>` : ""}
+${none ? `<p class="muted">Nothing to do here right now. Lineup set, no trade worth sending, nobody worth adding.</p>` : `<ol class="plan">${steps.map((x) => `<li>${x}</li>`).join("")}</ol>
+<div class="runnow">${r.lineup_items.length ? `<a class="btn${sendable ? " ghost" : ""}" href="/lineups?league=${r.league_id}">Set lineup</a>` : ""}${sendable ? `<a class="btn" href="/trades?league=${r.league_id}">Let Luna do the rest</a>` : ""}</div>`}</div>`;
+  });
+  return layout("Recommendations", `<h1>Recommendations <span class="muted">all leagues</span></h1><p class="lede">What Luna would do in each league right now. Nothing here goes to ESPN until you press a button.</p>${cards.join("") || `<div class="card"><p class="muted">No active leagues.</p></div>`}`, { authed: true });
+}
+
 export function lineupsPage({ bundles, results, only, csrf, ceiling = false }) {
   if (!results) {
     const any = bundles.reduce((n, b) => n + b.report.lineup_items.length, 0);
@@ -572,7 +603,7 @@ export function lineupsPage({ bundles, results, only, csrf, ceiling = false }) {
 <p class="lede">This is exactly what will be sent to ESPN. Only slot changes: nobody is added or dropped, locked players are left alone, and IR is never touched.</p>
 ${bundles.map((b) => `<div class="card"><div class="lg-head">${badge(b.report.team, b.report.logo)}<div class="main"><div class="t">${esc(b.name)}</div><div class="s">week ${b.week}</div></div></div>
 ${b.report.lineup_items.length ? `<div class="group">${b.report.lineup_items.map((it) => `<div class="row">${avatar({ name: it.name, player_id: it.playerId, pos: "", team: "" }, "sm")}<div class="main"><div class="t">${esc(it.name)}</div></div><div class="trail"><span class="m">${esc(it.from)}</span>${I.chev}<span class="v">${esc(it.to)}</span></div></div>`).join("")}</div>
-<p class="stamp">Projected: ${pts(b.report.current_lineup_proj)} &rarr; <strong>${pts(b.report.recommended_lineup_proj)}</strong></p>` : `<p class="good">Already set. No changes.</p>`}</div>`).join("")}
+<p class="stamp">Projected: ${pts(b.report.current_lineup_proj)} &rarr; <strong>${pts(b.report.recommended_lineup_proj)}</strong></p>` : `<p class="good">Already set. No changes.</p>${lineupReview(b.report)}`}</div>`).join("")}
 ${any ? `<form method="post" action="/lineups"><input type="hidden" name="csrf" value="${esc(csrf)}">${only ? `<input type="hidden" name="league" value="${esc(only)}">` : ""}${ceiling ? `<input type="hidden" name="mode" value="ceiling">` : ""}
 <button class="btn big" type="submit">Confirm and send to ESPN</button></form>
 <p class="stamp">Press once. ESPN has no undo for this; if you change your mind, change the lineup back on ESPN or re-run after projections move.</p>` : `<p><a class="btn ghost" href="/">Back</a></p>`}`;
