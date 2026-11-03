@@ -840,12 +840,14 @@ export class App {
         if (made >= 2) break;
         if (claimed.has(m.player_id) || (prev.failed?.[m.player_id] || 0) >= 3) continue;
         if (!m.drop && r.open_spots <= 0) continue;
+        // One speculative upgrade a week is team building; a second one is bench churn. Real holes are always filled.
+        if (!m.fills_empty_slot && (prev.upgrades || 0) >= 1) continue;
         if (m.drop && inOffers.has(m.drop.player_id)) continue; // never drop a player who is in an offer
         const suggested = this.suggestBid(b, m) ?? 0, bid = m.on_waivers ? suggested : 0;
         const result = await this.espn.addPlayer(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, b.current_week, { addId: m.player_id, dropId: m.drop ? m.drop.player_id : null, waiver: !!m.on_waivers, bid, fallbackBid: suggested });
         const kind = m.on_waivers || result.claimed ? "claim" : "add", bidUsed = result.claimed ? suggested : bid;
         // A refused add is not "done": it may be tried again next pass, but not forever.
-        if (result.ok) claimed.add(m.player_id); else { prev.failed = prev.failed || {}; prev.failed[m.player_id] = (prev.failed[m.player_id] || 0) + 1; }
+        if (result.ok) { claimed.add(m.player_id); if (!m.fills_empty_slot) prev.upgrades = (prev.upgrades || 0) + 1; } else { prev.failed = prev.failed || {}; prev.failed[m.player_id] = (prev.failed[m.player_id] || 0) + 1; }
         made++;
         log({ kind, ok: result.ok, message: result.message, add: m.name, drop: m.drop ? m.drop.name : null });
         await this.logActivity({ kind, league: b.name, league_id: b.league_id, week: b.week, ok: result.ok, message: result.message, add: m.name, drop: m.drop ? m.drop.name : null, bid: kind === "claim" ? bidUsed : null, by: "auto" });
