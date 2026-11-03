@@ -244,6 +244,29 @@ export async function freeAgents(fetchFn, cookies, league, week, position, proSc
   return (d.players || []).map((w) => parseBoxPlayer(w, league.season, week, proSchedWeek, ratings, now));
 }
 
+/**
+ * Week-by-week actual points for a set of players (the box-score view only carries the current week). Returns
+ * { playerId: { week: points } } for completed weeks before `week`. Uses the same player view the ESPN site uses for
+ * player cards, asking for every scoring period's stats.
+ */
+export async function playerWeeklyStats(fetchFn, cookies, league, ids, week) {
+  if (!ids.length) return {};
+  const filter = { players: { filterIds: { value: ids }, filterStatsForTopScoringPeriodIds: { value: 17, additionalValue: [`00${league.season}`, `10${league.season}`] } } };
+  const d = await getJson(fetchFn, `${leagueUrl(league.season, league.id)}?view=kona_player_info&scoringPeriodId=${week}`, cookies, { "x-fantasy-filter": JSON.stringify(filter) });
+  const out = {};
+  for (const w of d.players || []) {
+    const p = w.player || {}; if (p.id == null) continue;
+    const pts = {};
+    for (const s of p.stats || []) {
+      if (s.seasonId !== league.season || s.statSourceId !== 0 || s.statSplitTypeId === 2) continue;
+      const sp = s.scoringPeriodId; if (!(sp > 0 && sp < week)) continue;
+      pts[sp] = Math.round((s.appliedTotal || 0) * 100) / 100;
+    }
+    out[p.id] = pts;
+  }
+  return out;
+}
+
 /** Compact season-value rosters for every team (the 4 MB view; parsed and dropped immediately). */
 export async function rosters(fetchFn, cookies, league) {
   const d = await getJson(fetchFn, `${leagueUrl(league.season, league.id)}?view=mRoster`, cookies);

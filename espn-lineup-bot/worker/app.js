@@ -103,6 +103,22 @@ export class App {
       const vegas = await this.cached(`vegas:${s.season}:${week}`, 3600, false, async () => { try { return await fetchScoreboard(f, s.season, week); } catch (e) { console.warn("scoreboard failed", e?.message); return {}; } });
       const weekSd = leagueSd(league);
       const boxes = await this.espn.boxScores(f, c, league, week, sched, ratings, now);
+      // Week-by-week points for everyone in my matchup: recent form, volatility, floor and ceiling. Optional.
+      if (this.espn.playerWeeklyStats) {
+        try {
+          const box = boxes.find((b) => [b.home?.teamId, b.away?.teamId].includes(me.id));
+          const ps = [...(box?.home?.lineup || []), ...(box?.away?.lineup || [])].filter((p) => p.playerId != null);
+          const hist = await this.cached(`hist:${leagueId}:${week}`, this.cacheSeconds, false, () => this.espn.playerWeeklyStats(f, c, league, ps.map((p) => p.playerId), week));
+          for (const p of ps) {
+            const h = hist[p.playerId]; if (!h) continue;
+            const weeks = Object.keys(h).map(Number).sort((a, b) => a - b);
+            if (!weeks.length) continue;
+            p.history = weeks.map((w) => h[w]);
+            const last = weeks.slice(-3).map((w) => h[w]);
+            p.recentAvg = Math.round((last.reduce((a, b) => a + b, 0) / last.length) * 10) / 10;
+          }
+        } catch (e) { console.warn("weekly stats failed", e?.message); }
+      }
       // Season context: playoff odds decide how much the playoff weeks count when valuing players.
       const odds = simulateSeason(league, { sims: 1500, seed: leagueId, sd: weekSd });
       const myOdds = odds.by_team[me.id] || null;
