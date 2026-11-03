@@ -246,47 +246,37 @@ test("everything sent to ESPN is recorded and shown on the dashboard", async () 
   assert.match(h, /Sent to ESPN/); assert.match(h, new RegExp(`Trade offer to ${t.with}`)); assert.match(h, /Added TE FA, dropped/); assert.match(h, /automatic/);
 });
 
-test("trade blitz: preview the non-overlapping set, send the ticked ones, log each", async () => {
+test("recommended moves: one page, one button, sends the plan and logs each piece", async () => {
   const posts = [];
   const app = makeApp(posts);
   const cookie = await login(app);
   const page = await (await app.handle(req("/trades?league=1", { cookie }))).text();
-  assert.match(page, /Trade blitz/); assert.match(page, /Send the ticked offers|Withdraw the ticked offers/);
-  const ids = [...page.matchAll(/name="id" value="([0-9a-f]+)" form="blitz" checked/g)].map((m) => m[1]);
-  assert.ok(ids.length >= 1);
+  assert.match(page, /Recommended moves/); assert.match(page, /Do all of this on ESPN/); assert.match(page, /checked for every combination/);
+  assert.match(page, /<summary[^>]*>Adjust<\/summary>/);
   const csrf = page.match(/name="csrf" value="([0-9a-f]+)"/)[1];
-  const none = await app.handle(req("/trades", { method: "POST", cookie, body: form({ csrf, league: 1 }) }));
-  assert.match(await none.text(), /Tick at least one/); assert.equal(posts.length, 0);
-  const body = new URLSearchParams({ csrf, league: 1 }); for (const id of ids) body.append("id", id);
-  const done = await app.handle(req("/trades", { method: "POST", cookie, body: body.toString() }));
-  assert.match(await done.text(), new RegExp(`${ids.length} offer`));
-  assert.equal(posts.filter((p) => p.kind === "trade").length, ids.length);
-  assert.equal((await app.activity()).filter((e) => e.kind === "trade").length, ids.length);
+  const done = await (await app.handle(req("/trades", { method: "POST", cookie, body: form({ csrf, league: 1 }) }))).text();
+  // The fixture's pending offer (RB B for D W) is rated likely declined, so the plan withdraws it and sends the robust set.
+  assert.match(done, /1 of 1 withdrawn/);
+  assert.ok(posts.some((p) => p.kind === "withdraw") && posts.some((p) => p.kind === "trade"), posts.map((p) => p.kind).join(","));
+  const kinds = (await app.activity()).map((e) => e.kind);
+  assert.ok(kinds.includes("withdraw") && kinds.includes("trade"));
 });
 
-test("pending offers: listed and scored, kept out of the blitz, withdrawn and replaced in one submit", async () => {
+test("pending offers: listed, scored, judged, and replaceable through Adjust", async () => {
   const posts = [];
   const app = makeApp(posts);
   const cookie = await login(app);
   const b = await app.bundle(1);
-  assert.equal(b.pending.length, 1); assert.equal(b.pending[0].mine, true); assert.equal(b.pending[0].give_names, "TE B"); assert.equal(b.pending[0].get_names, "D W");
-  assert.ok(b.pending[0].my_gain > 0, "the pending offer is scored by the same math as the board");
+  assert.equal(b.pending.length, 1); assert.equal(b.pending[0].mine, true); assert.equal(b.pending[0].give_names, "RB B"); assert.equal(b.pending[0].get_names, "D W");
+  assert.ok(b.pending[0].my_gain > 0); assert.equal(b.pending[0].acceptable, false, "an injured back would not start for Rival and their lineup does not improve");
   const l = await (await app.handle(req("/league/1", { cookie }))).text();
-  assert.match(l, /Offers out on ESPN/); assert.match(l, /your offer/);
+  assert.match(l, /Offers out on ESPN/); assert.match(l, /likely declined/);
   const page = await (await app.handle(req("/trades?league=1", { cookie }))).text();
-  assert.match(page, /Your offers already out/); assert.match(page, /name="withdraw" value="555"/);
-  // While the offer stands, TE B is busy, so the TE B -> D W idea cannot be a new offer.
-  const newIds = [...page.matchAll(/name="id" value="([0-9a-f]+)" form="blitz" checked/g)].map((m) => m[1]);
-  const teB = b.trades.find((t) => t.give.some((p) => p.name === "TE B"));
-  assert.ok(teB, "the board offers TE B somewhere"); assert.ok(!newIds.includes(teB.id), "TE B is busy while the pending offer stands");
+  assert.match(page, /Withdraw your offer to Rival/);
+  // Adjust: withdraw nothing, send nothing: refused with a message, nothing posted.
   const csrf = page.match(/name="csrf" value="([0-9a-f]+)"/)[1];
-  // Withdraw it and send the TE B -> D W offer in one go.
-  const body = new URLSearchParams({ csrf, league: 1, withdraw: "555" }); body.append("id", teB.id);
-  const done = await (await app.handle(req("/trades", { method: "POST", cookie, body: body.toString() }))).text();
-  assert.match(done, /1 of 1 withdrawn, 1 of 1 offer sent/);
-  assert.deepEqual(posts.map((p) => p.kind), ["withdraw", "trade"]); assert.equal(posts[0].txId, 555);
-  const kinds = (await app.activity()).map((e) => e.kind);
-  assert.deepEqual(kinds.slice(0, 2), ["trade", "withdraw"]);
+  const none = await (await app.handle(req("/trades", { method: "POST", cookie, body: form({ csrf, league: 1, adjusted: 1 }) }))).text();
+  assert.match(none, /Nothing to send/); assert.equal(posts.length, 0);
   // Direct withdraw route refuses an offer that is not yours.
   const bad = await app.handle(req("/withdraw", { method: "POST", cookie, body: form({ csrf, league: 1, tx: 999 }) }));
   assert.equal(bad.status, 404);
@@ -308,10 +298,10 @@ test("accepted or declined offers are noticed on the next rebuild; blitz can sen
   assert.match(await (await app.handle(req("/", { cookie }))).text(), /was declined/);
   // Waiver moves on the blitz page: the D/ST claim is pre-ticked because it fills an empty slot; sending it posts a claim with a drop.
   const page = await (await app.handle(req("/trades?league=1", { cookie }))).text();
-  assert.match(page, /Waiver moves/); assert.match(page, /name="move" value="\d+" form="blitz"/); assert.match(page, /covers D A's bye this week only/);
+  assert.match(page, /Pickups/); assert.match(page, /covers D A's bye this week only/);
   const dst = (await app.bundle(1)).report.waivers["D/ST"][0];
   const csrf = page.match(/name="csrf" value="([0-9a-f]+)"/)[1];
-  const done = await (await app.handle(req("/trades", { method: "POST", cookie, body: form({ csrf, league: 1, move: dst.player_id }) }))).text();
+  const done = await (await app.handle(req("/trades", { method: "POST", cookie, body: form({ csrf, league: 1, adjusted: 1, move: dst.player_id }) }))).text();
   assert.match(done, /1 of 1 waiver move done/);
   const add = posts.find((p) => p.kind === "add");
   assert.ok(add && add.waiver === true && add.addId === dst.player_id && add.dropId != null);
@@ -327,7 +317,7 @@ test("a slot empty only because of a bye is cover-only: not urgent, not pre-tick
   const h = await (await app.handle(req("/", { cookie }))).text();
   assert.match(h, /empty this week only \(D A is on bye\); optional/);
   const page = await (await app.handle(req("/trades?league=1", { cookie }))).text();
-  assert.ok(!/name="move" value="\d+" form="blitz" checked/.test(page), "nothing pre-ticked for a bye gap");
+  assert.ok(!new RegExp(`name="move" value="${dst.player_id}" checked`).test(page), "the bye-gap defense is not pre-ticked");
   await app.savePrefs({ auto_lineup: false, auto_fill_empty: true });
   await app.handle(new Request("https://advisor.internal/__warm", { headers: { "x-warm-key": "test-secret" } }));
   assert.equal(posts.filter((p) => p.kind === "add").length, 0);

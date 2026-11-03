@@ -263,7 +263,7 @@ function todo(b) {
   const picks = Object.entries(r.waivers).flatMap(([pos, ps]) => ps.filter((p) => !p.error && p.player_id != null).map((p) => ({ ...p, pos: p.pos || pos }))).sort((a, b) => ((b.fills_empty_slot && !b.bye_cover) - (a.fills_empty_slot && !a.bye_cover)) || (b.edge - a.edge));
   if (picks[0]) items.push({ href: `/add?league=${b.league_id}&amp;player=${picks[0].player_id}`, text: `${picks[0].on_waivers ? "Claim" : "Add"} ${picks[0].name}`, sub: picks[0].fills_empty_slot ? (picks[0].bye_cover ? `your ${picks[0].pos} slot is empty this week only (${picks[0].returning} is on bye); optional` : `fills your empty ${picks[0].pos} slot`) : `+${pts(picks[0].edge)} over your weakest ${picks[0].pos}`, primary: picks[0].fills_empty_slot && !picks[0].bye_cover });
   if (b.trades && b.trades[0]) items.push({ href: `/trade?league=${b.league_id}&amp;id=${esc(b.trades[0].id)}`, text: `Propose ${b.trades[0].kind} trade to ${b.trades[0].with}`, sub: `+${pts(b.trades[0].my_gain)} a week, ${b.trades[0].their_gain >= 0 ? "they gain too" : "costs them little"}` });
-  if (b.trades && b.trades.length > 1) items.push({ href: `/trades?league=${b.league_id}`, text: "Trade blitz", sub: "several offers to several managers in one click" });
+  if (b.trades && b.trades.length > 1) items.push({ href: `/trades?league=${b.league_id}`, text: "Recommended moves", sub: "the offers and pickups to make, one button" });
   items.push({ href: `/league/${b.league_id}#plan`, text: "Game plan", sub: b.season?.odds ? `${b.season.odds.playoff_odds}% playoff odds` : "season strategy" });
   return `<div class="todo"><div class="lbl">To do</div><div class="group">${items.map((it) => `<a class="row link${it.primary ? " primary" : ""}" href="${it.href}"><div class="main"><div class="t">${it.text}</div><div class="s">${it.sub}</div></div><div class="trail">${I.chev}</div></a>`).join("")}</div></div>`;
 }
@@ -377,7 +377,7 @@ ${plan}
 ${lineupTable(r, r.opponent_lineup)}${r.opponent_issues.length ? note(`Their problems as set: ${r.opponent_issues.join("; ")}`) : ""}</div>
 <div class="card" id="waivers"><h2 class="top">Waiver watch</h2><p class="lede">Free agents projected above your weakest starter at that position this week. Add is immediate; Claim goes through your league's waiver process. What owned means: the share of ESPN leagues that roster the player, so a low number next to a high projection is a bargain nobody has noticed yet.</p>${waivers}</div>
 <div class="card" id="trades"><h2 class="top">Trade ideas</h2><p class="lede">Packages of one to three players a side, ranked by what your best lineup gains per week for the rest of the season and filtered to offers the other side could reasonably accept. Proposing sends the offer through ESPN; the other manager still has to accept.</p>
-${pending}${b.trades && b.trades.length ? `<p><a class="btn" href="/trades?league=${r.league_id}">Trade blitz: send several offers at once</a></p>` : ""}${trades}</div>
+${pending}${b.trades && b.trades.length ? `<p><a class="btn" href="/trades?league=${r.league_id}">Recommended moves: one button</a></p>` : ""}${trades}</div>
 <div class="card" id="league"><h2 class="top">All matchups, week ${r.week}</h2><p class="lede">ESPN projection / best possible from each roster.</p>
 <div class="group">${r.matchups.map((s) => `<div class="row" style="flex-wrap:wrap">${s.length === 2 ? `<span class="tm" style="flex:1 1 260px">${matchRow(s[0])}</span><span class="muted" style="font-weight:700;font-size:12px">VS</span><span class="tm" style="flex:1 1 260px">${matchRow(s[1])}</span>${[s[0].team_id, s[1].team_id].includes(r.team_id) ? `<span class="tag tint">you</span>` : ""}` : s.length ? `${badge(s[0].team, s[0].logo, "sm")}<span>${esc(s[0].team)} has a bye</span>` : ""}
 ${s.filter((x) => x.problems.length).map((x) => `<div class="note small" style="flex-basis:100%">${I.warn}<span>${esc(x.team)}: ${esc(x.problems.join("; "))}</span></div>`).join("")}</div>`).join("")}</div>
@@ -401,6 +401,35 @@ function tradeCard(r, t, withButton) {
 ${withButton ? `<p class="act"><a class="btn" href="/trade?league=${r.league_id}&amp;id=${esc(t.id)}">Propose this trade on ESPN</a></p>` : ""}</div>`;
 }
 
+/** One recommendation, one button. Everything the plan will do is listed; "Adjust" exposes the tick boxes. */
+function blitzSimple(b, csrf, plan, flash, allMoves) {
+  const r = b.report;
+  const steps = [];
+  for (const t of plan.withdraw) steps.push({ t: `Withdraw your offer to ${esc(t.with)}`, s: `${esc(t.give_names)} for ${esc(t.get_names)}. It grades ${t.their_gain >= 0 ? "+" : "-"}${Math.abs(t.their_gain).toFixed(1)} a week for them, so it will not be accepted.` });
+  for (const t of plan.offers) steps.push({ t: `Offer ${esc(t.give_names)} to ${esc(t.with)} for ${esc(t.get_names)}`, s: `+${pts(t.my_gain)} a week for you, ${t.their_gain >= 0 ? "+" : "-"}${Math.abs(t.their_gain).toFixed(1)} for them. ${esc(t.pitch)}` });
+  for (const m of plan.moves) steps.push({ t: `${m.on_waivers ? "Claim" : "Add"} ${esc(m.name)}${m.drop ? `, drop ${esc(m.drop.name)}` : ""}`, s: m.fills_empty_slot ? `fills your empty ${esc(m.pos)} slot` : `+${pts(m.edge)} over your weakest ${esc(m.pos)}${m.drop ? ` · ${esc(m.drop.reason)}` : ""}` });
+  const n = plan.offers.length;
+  const total = plan.offers.reduce((s, t) => s + t.my_gain, 0);
+  const head = n ? `${plural(n, "offer")} to ${plural(new Set(plan.offers.map((t) => t.with)).size, "manager")}` : "No new offers";
+  return layout("Recommended moves", `<h1>Recommended moves <span class="muted">${esc(r.league)}</span></h1>
+${flash ? flashBox(flash) : ""}
+<div class="card">
+<p class="headline" style="font-size:22px;font-weight:700;letter-spacing:-.02em;margin:0 0 6px">${head}${plan.moves.length ? ` and ${plural(plan.moves.length, "pickup")}` : ""}${plan.withdraw.length ? `, ${plural(plan.withdraw.length, "withdrawal")}` : ""}</p>
+<p class="lede">${n ? `Each offer helps on its own, and the set has been checked for every combination of yes and no: whichever managers accept, your lineup comes out ahead${plan.if_all_accepted != null ? ` (about +${pts(total)} a week if one lands, +${pts(plan.if_all_accepted)} if they all do)` : ""}, every slot stays filled and the roster stays within its limit. No player is offered twice and no manager gets two offers.` : "Nothing on the board is both good for you and likely to be accepted right now. Check back after waivers clear or when injuries move values."}</p>
+${steps.length ? `<div class="group">${steps.map((x, i) => `<div class="row"><div class="badge sm"><i>${i + 1}</i></div><div class="main"><div class="t">${x.t}</div><div class="s">${x.s}</div></div></div>`).join("")}</div>` : ""}
+${steps.length ? `<form method="post" action="/trades"><input type="hidden" name="csrf" value="${esc(csrf)}"><input type="hidden" name="league" value="${r.league_id}">
+<p style="margin-top:16px"><button class="btn big" type="submit">Do all of this on ESPN</button></p>
+<p class="stamp">Press once. Offers go to each manager separately; ESPN tells them and they accept or decline there. Claims only go through if you win them.</p></form>` : ""}
+</div>
+<details class="card"><summary style="cursor:pointer;font-weight:600">Adjust</summary>
+<form method="post" action="/trades" id="adj"><input type="hidden" name="csrf" value="${esc(csrf)}"><input type="hidden" name="league" value="${r.league_id}"><input type="hidden" name="adjusted" value="1">
+${(b.pending || []).filter((t) => t.mine).length ? `<h3>Your offers out on ESPN</h3><div class="trades">${(b.pending || []).filter((t) => t.mine).map((t) => `<label class="pick"><input type="checkbox" name="withdraw" value="${esc(String(t.id))}"${plan.withdraw.includes(t) ? " checked" : ""}>${pendingCard(r, t)}</label>`).join("")}</div>` : ""}
+${plan.offers.length ? `<h3>Offers</h3><div class="trades">${plan.offers.map((t) => `<label class="pick"><input type="checkbox" name="id" value="${esc(t.id)}" checked>${tradeCard(r, t, false)}</label>`).join("")}</div>` : ""}
+${allMoves.length ? `<h3>Pickups</h3><div class="group">${allMoves.map((m) => `<label class="row pick-row"><input type="checkbox" name="move" value="${m.player_id}"${plan.moves.some((x) => x.player_id === m.player_id) ? " checked" : ""}>${avatar(m, "sm")}<div class="main"><div class="t">${m.on_waivers ? "Claim" : "Add"} ${esc(m.name)} <span class="muted">${esc(m.pos)} · ${esc(m.team)} · ${pts(m.proj)} proj</span></div><div class="s">${m.fills_empty_slot ? (m.bye_cover ? `covers ${esc(m.returning)}'s bye this week only` : `fills your empty ${esc(m.pos)} slot`) : `+${pts(m.edge)} over your weakest ${esc(m.pos)}`}${m.drop ? ` · drop ${esc(m.drop.name)}` : ""}</div></div></label>`).join("")}</div>` : ""}
+<p style="margin-top:16px"><button class="btn ghost" type="submit">Send only the ticked items</button></p></form></details>
+<p><a class="btn ghost" href="/league/${r.league_id}#trades">Back</a></p>`, { authed: true });
+}
+
 // The league page is cached HTML without a session, so withdraw forms carry no CSRF and route through the blitz page instead.
 const csrfFor = () => null;
 const fmtExp = (ts) => ts ? new Date(ts).toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) : "";
@@ -414,7 +443,8 @@ function pendingCard(r, t, csrf) {
 <p class="stamp">${t.expires_at ? `Expires ${esc(fmtExp(t.expires_at))} ET.` : "Pending on ESPN."}${t.mine ? ` Withdraw it from the trade blitz page, or on ESPN.` : " Accept or decline it on ESPN."}</p></div>`;
 }
 
-export function blitzPage(b, picks, csrf, { flash = null, results = null, freed = null, moves = [] } = {}) {
+export function blitzPage(b, picks, csrf, { flash = null, results = null, freed = null, moves = [], plan = null } = {}) {
+  if (plan && !results) return blitzSimple(b, csrf, plan, flash, moves);
   const r = b.report;
   if (results) {
     const sent = results.filter((x) => x.result.ok).length;

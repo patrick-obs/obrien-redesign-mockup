@@ -168,6 +168,46 @@ export function evaluateTrade(mine, theirs, giveIds, getIds, slotCounts) {
 }
 
 /**
+ * A set of offers that works out whichever of them get accepted. Greedy by gain; a candidate joins only if every
+ * combination of accepted offers (including it) still gains at least `floor` a week against today's lineup, fills
+ * every starting slot, and keeps the roster within its limit. Needs the real player objects to simulate.
+ */
+export function robustSet(trades, { mine, rosters, slotCounts, rosterSize = 0, rosterCount = 0, busy = new Set(), max = 5, floor = 0 } = {}) {
+  const base = optimize(mine, slotCounts), baseTotal = projectedTotal(base), baseFilled = filled(base);
+  const byId = (ps, ids) => ps.filter((p) => ids.includes(p.playerId));
+  const apply = (set) => {
+    let roster = mine.slice(), extra = 0;
+    for (const t of set) {
+      const give = byId(roster, t.give.map((p) => p.player_id)), get = byId(rosters[t.with_team_id] || [], t.get.map((p) => p.player_id));
+      if (give.length !== t.give.length || get.length !== t.get.length) return null;
+      roster = roster.filter((p) => !give.includes(p)).concat(get); extra += get.length - give.length;
+    }
+    const a = optimize(roster, slotCounts);
+    return { gain: r1(projectedTotal(a) - baseTotal), ok: filled(a) >= baseFilled && (!rosterSize || rosterCount + extra <= rosterSize) };
+  };
+  const chosen = [], used = new Set(busy), partners = new Set();
+  for (const t of trades.slice().sort((a, b) => b.my_gain - a.my_gain)) {
+    if (t.with_team_id == null || partners.has(t.with_team_id)) continue;
+    if ([...t.give, ...t.get].some((p) => used.has(p.player_id))) continue;
+    const trial = chosen.concat([t]);
+    // Every subset that includes the candidate must hold up.
+    let good = true;
+    const others = chosen.length;
+    for (let m = 0; m < (1 << others) && good; m++) {
+      const subset = chosen.filter((_, i) => m & (1 << i)).concat([t]);
+      const res = apply(subset);
+      if (!res || !res.ok || res.gain < (subset.length === 1 ? Math.max(floor, MIN_MY_GAIN) : floor)) good = false;
+    }
+    if (!good) continue;
+    chosen.push(t); partners.add(t.with_team_id);
+    for (const p of [...t.give, ...t.get]) used.add(p.player_id);
+    if (chosen.length >= max) break;
+  }
+  const all = apply(chosen);
+  return { offers: chosen, if_all_accepted: all ? all.gain : null, robust: true };
+}
+
+/**
  * The best set of offers that can all be out at once: best gain first, never the same outgoing player in two offers,
  * at most one offer per manager, and never a player ESPN already has in a pending offer (pass their ids in `busy`).
  */

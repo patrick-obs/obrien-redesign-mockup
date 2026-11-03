@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { proposeTrades, playerValue, rosterPlayer, tradeId, blitzSet } from "../trades.js";
+import { proposeTrades, playerValue, rosterPlayer, tradeId, blitzSet, robustSet } from "../trades.js";
 import { buildLineupTransaction, buildTradeTransaction, buildAddTransaction } from "../espn.js";
 import { planLineupItems } from "../report.js";
 import { makePlayer, optimize } from "../optimizer.js";
@@ -103,4 +103,28 @@ test("value parity: a bench player does not buy a starter unless their lineup cl
   assert.ok(!ideas.some((i) => i.give_names === "QBb"), ideas.map((i) => `${i.give_names}>${i.get_names}`).join(", "));
   const loose = proposeTrades(mine, { Them: { id: 7, players: theirs } }, SLOTS, { perTeam: 20, perLeague: 40, parity: 0, requireStart: false });
   assert.ok(loose.some((i) => i.give_names === "QBb"), "without the rules the engine would offer it: " + loose.map((i) => `${i.give_names}>${i.get_names}`).join(", "));
+});
+
+test("robust set: two offers that are each fine alone but empty a slot together are not both sent", () => {
+  const ELIG = { QB: ["QB", "BE"], RB: ["RB", "BE"], WR: ["WR", "BE"], TE: ["TE", "BE"] };
+  let n = 700; const rp = (name, pos, v) => rosterPlayer(name, pos, ELIG[pos], "ACTIVE", v, n++);
+  const SLOTS = { QB: 1, RB: 1, WR: 2, TE: 1 };
+  // Three receivers for two slots: trading any one for a better back helps; trading two leaves a WR slot empty.
+  const mine = [rp("QB1", "QB", 18), rp("RB1", "RB", 8), rp("WR1", "WR", 12), rp("WR2", "WR", 11), rp("WR3", "WR", 10), rp("TE1", "TE", 7)];
+  const teamA = [rp("RBa", "RB", 16), rp("QBa", "QB", 15), rp("WRa", "WR", 9), rp("WRb", "WR", 9), rp("TEa", "TE", 6)];
+  const teamB = [rp("RBb", "RB", 15), rp("QBb", "QB", 15), rp("WRc", "WR", 9), rp("WRd", "WR", 9), rp("TEb", "TE", 6)];
+  const pj = (p) => ({ name: p.name, pos: p.position, value: p.proj, player_id: p.playerId });
+  const offer = (id, withId, give, get, gain) => ({ id, with: `T${withId}`, with_team_id: withId, give: give.map(pj), get: get.map(pj), my_gain: gain, give_names: give.map((p) => p.name).join(" + "), get_names: get.map((p) => p.name).join(" + "), their_gain: 0, pitch: "" });
+  const board = [offer("a", 1, [mine[2]], [teamA[0]], 8), offer("b", 2, [mine[3]], [teamB[0]], 7)];
+  const set = robustSet(board, { mine, rosters: { 1: teamA, 2: teamB }, slotCounts: SLOTS });
+  assert.equal(set.offers.length, 1, "only one of the two can be out safely: " + set.offers.map((o) => o.id).join(","));
+  assert.equal(set.offers[0].id, "a");
+  // With a fourth receiver both are safe together.
+  const deeper = mine.concat([rp("WR4", "WR", 9)]);
+  const set2 = robustSet(board, { mine: deeper, rosters: { 1: teamA, 2: teamB }, slotCounts: SLOTS });
+  assert.equal(set2.offers.length, 2); assert.ok(set2.if_all_accepted > 0);
+  // Roster limit: a 1-for-2 that would overfill the roster is skipped.
+  const two = offer("c", 1, [mine[2]], [teamA[0], teamA[2]], 9);
+  const set3 = robustSet([two], { mine, rosters: { 1: teamA, 2: teamB }, slotCounts: SLOTS, rosterSize: 6, rosterCount: 6 });
+  assert.equal(set3.offers.length, 0);
 });

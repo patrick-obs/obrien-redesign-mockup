@@ -2,7 +2,7 @@
 // Runs inside one Durable Object. Pure enough to test in Node with fakes.
 import * as espnMod from "./espn.js";
 import { buildReport, waiverThresholds } from "./report.js";
-import { playerValue, rosterPlayer, proposeTrades, blitzSet, evaluateTrade } from "./trades.js";
+import { playerValue, rosterPlayer, proposeTrades, blitzSet, robustSet, evaluateTrade } from "./trades.js";
 import { analystTake, polishTake } from "./analyst.js";
 import { byeWeeks, horizonWeights, availability, simulateSeason, scheduleOutlook, positionalStrength, gamePlan, leagueSd, playoffWeeks } from "./season.js";
 import { playoffSos, sosFactor } from "./trades.js";
@@ -140,7 +140,7 @@ export class App {
       rep = buildReport(league, me, boxes, week, now, faByPos, { vegas, weekSd });
       // Trades and roster shape, valued over the rest of the season: weekly value times the share of the weighted
       // remaining weeks the player is available for (bye weeks removed, playoff weeks weighted by contention).
-      let trades = [], strength = null, byesAhead = [], pending = [];
+      let trades = [], strength = null, byesAhead = [], pending = [], rosterPlayers = null;
       try {
         const rosters = await this.espn.rosters(f, c, league);
         const POS_ID = { QB: 1, RB: 2, WR: 3, TE: 4, K: 5, "D/ST": 16 };
@@ -156,6 +156,9 @@ export class App {
         });
         const mine = conv(me);
         const others = Object.fromEntries(league.teams.filter((t) => t.id !== me.id).map((t) => [t.name, { id: t.id, logo: t.logo || "", players: conv(t) }]));
+        // Kept for the blitz, which simulates combinations of accepted offers against real rosters.
+        const slim = (ps) => ps.map((p) => ({ name: p.name, position: p.position, eligible: p.eligible, slot: "BE", proj: p.proj, status: p.status, playerId: p.playerId, proTeam: p.proTeam, weekly: p.weekly }));
+        rosterPlayers = { [me.id]: slim(mine), ...Object.fromEntries(Object.values(others).map((o) => [o.id, slim(o.players)])) };
         trades = proposeTrades(mine, others, rep.slot_counts, { weeksLeft, horizonNote: contending ? "with the playoff weeks counted extra" : "" });
         strength = positionalStrength({ [me.id]: mine, ...Object.fromEntries(Object.values(others).map((o) => [o.id, o.players])) }, me.id, rep.slot_counts);
         const starters = new Set(Object.values(rep.recommended).flat().map((p) => p.name));
@@ -187,7 +190,7 @@ export class App {
       } catch (e) { console.warn("analyst failed", e?.message); }
       const season = { odds: myOdds, spots: odds.spots, outlook, strength, plan: { ...plan, bullets: analyst?.plan?.length ? analyst.plan : plan.bullets, source: analyst?.source === "claude" && analyst.plan?.length ? "claude" : "rules" }, weeks_left: weeksLeft, contending, byes_ahead: byesAhead,
         standings_odds: Object.fromEntries(Object.entries(odds.by_team).map(([id, o]) => [id, o.playoff_odds])) };
-      return { ...b, report: rep, trades, pending, analyst, season, team_id: me.id, week, problem_count };
+      return { ...b, report: rep, trades, pending, rosters: rosterPlayers, analyst, season, team_id: me.id, week, problem_count };
     });
   }
 
@@ -385,17 +388,19 @@ export class App {
     if (!leagueId) return html(errorPage("Pick a league first.", true), 404);
     const b = await this.bundle(leagueId);
     if (!b.started) return html(errorPage(`${b.name} has not started this season.`, true));
-    // Players already in a pending offer stay out of new offers unless that offer is withdrawn first.
-    const keep = form ? new Set(form.getAll("withdraw")) : new Set();
-    const busy = new Set((b.pending || []).filter((t) => !keep.has(String(t.id))).flatMap((t) => [...t.give_ids, ...t.get_ids]));
-    const picks = blitzSet(b.trades || [], { busy });
+    const plan = this.blitzPlan(b);
+    // The form may override the plan (Adjust); otherwise the plan is exactly what gets sent.
+    const keep = form && form.get("adjusted") === "1" ? new Set(form.getAll("withdraw")) : new Set(plan.withdraw.map((t) => String(t.id)));
+    const picks = plan.offers;
     const csrf = await this.csrf(request);
-    if (request.method !== "POST") return html(blitzPage(b, blitzSet(b.trades || [], { busy: new Set((b.pending || []).flatMap((t) => [...t.give_ids, ...t.get_ids])) }), csrf, { freed: blitzSet(b.trades || []), moves: this.waiverMoves(b) }));
+    if (request.method !== "POST") return html(blitzPage(b, picks, csrf, { plan, moves: this.waiverMoves(b) }));
     if (!(await this.checkCsrf(request, form))) return html(errorPage("Form expired. Go back and try again.", true), 400);
-    const chosen = new Set(form.getAll("id"));
+    const adjusted = form.get("adjusted") === "1";
+    const chosen = adjusted ? new Set(form.getAll("id")) : new Set(picks.map((t) => t.id));
     const toSend = picks.filter((t) => chosen.has(t.id));
-    const moves = this.waiverMoves(b).filter((m) => form.getAll("move").includes(String(m.player_id)));
-    if (!toSend.length && !moves.length && !keep.size) return html(blitzPage(b, picks, csrf, { flash: "Tick at least one offer or waiver move to send.", moves: this.waiverMoves(b) }));
+    const wantMoves = adjusted ? form.getAll("move") : plan.moves.map((m) => String(m.player_id));
+    const moves = this.waiverMoves(b).filter((m) => wantMoves.includes(String(m.player_id)));
+    if (!toSend.length && !moves.length && !keep.size) return html(blitzPage(b, picks, csrf, { flash: "Nothing to send: the board has no offer that is safe whichever way it goes.", plan, moves: this.waiverMoves(b) }));
     const results = [];
     for (const m of moves) {
       const result = await this.espn.addPlayer(this.fetchFn, this.cookies(s), s.season, b.league_id, b.team_id, b.week, { addId: m.player_id, dropId: m.drop ? m.drop.player_id : null, waiver: m.on_waivers, bid: 0 });
@@ -420,6 +425,24 @@ export class App {
     }
     await this.clearCache();
     return html(blitzPage(b, picks, csrf, { results }));
+  }
+
+  /**
+   * The one-button plan: withdraw pending offers the engine now rates as likely declined or clearly beaten, then send
+   * the robust set of new offers (safe under any combination of acceptances), and make the waiver moves that fill
+   * real holes. Everything else is left alone.
+   */
+  blitzPlan(b) {
+    const r = b.report, mine = (b.rosters || {})[b.team_id] || [];
+    const withdraw = (b.pending || []).filter((t) => t.mine && t.acceptable === false);
+    const stillOut = (b.pending || []).filter((t) => t.mine && !withdraw.includes(t));
+    const busy = new Set(stillOut.flatMap((t) => [...t.give_ids, ...t.get_ids]));
+    const set = mine.length ? robustSet(b.trades || [], { mine, rosters: b.rosters || {}, slotCounts: r.slot_counts, rosterSize: r.roster_size, rosterCount: r.roster_count, busy, max: 4 })
+      : { offers: blitzSet(b.trades || [], { busy, max: 4 }), if_all_accepted: null, robust: false };
+    // Never burn a roster spot on one-week bye cover automatically; real holes and clear upgrades only.
+    const moves = this.waiverMoves(b).filter((m) => !m.bye_cover && (m.fills_empty_slot || m.edge >= 2));
+    const why = withdraw.map((t) => `${t.give_names} for ${t.get_names} to ${t.with}: the other side comes out behind, so it is not going to be accepted.`);
+    return { withdraw, offers: set.offers, if_all_accepted: set.if_all_accepted, robust: set.robust, moves, why };
   }
 
   /** The top waiver move per position, each with its drop chosen the same way the add page would: cheapest non-starter first. */
